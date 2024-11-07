@@ -8,7 +8,7 @@ const PPASummaryTable = () => {
   const { assets, constants } = usePortfolio();
 
   const calculateAnnualGeneration = (asset) => {
-    return asset.capacity * constants.HOURS_IN_YEAR * constants.capacityFactors[asset.type][asset.state];
+    return asset.capacity * asset.volumeLossAdjustment / 100 * constants.HOURS_IN_YEAR * constants.capacityFactors[asset.type][asset.state];
   };
 
   const generateYearlyData = () => {
@@ -72,11 +72,11 @@ const PPASummaryTable = () => {
 
         const merchantPercentage = 100 - contractedPercentage;
         if (merchantPercentage > 0) {
-          const merchantVolume = annualGeneration * (merchantPercentage / 100);
-          const merchantMW = asset.capacity * (merchantPercentage / 100);
-          const merchantPrice = constants.merchantPrices[asset.state].black + 
-                              constants.merchantPrices[asset.state].green;
-          const escalationFactor = Math.pow(1 + constants.merchantPrices[asset.state].escalation / 100, year - startYear);
+            const merchantVolume = annualGeneration * (merchantPercentage / 100);
+            const merchantMW = asset.capacity * (merchantPercentage / 100);
+            const merchantPrice = constants.merchantPrices.states[asset.state].black + 
+                                 constants.merchantPrices.states[asset.state].green;
+            const escalationFactor = Math.pow(1 + constants.merchantPrices.escalation / 100, year - startYear);
 
           yearlyData.push({
             year,
@@ -87,7 +87,7 @@ const PPASummaryTable = () => {
             contractType: 'merchant',
             buyerPercentage: merchantPercentage,
             basePrice: merchantPrice.toFixed(2),
-            indexation: constants.merchantPrices[asset.state].escalation,
+            indexation: constants.merchantPrices.escalation,
             indexedPrice: (merchantPrice * escalationFactor).toFixed(2),
             term: `${year}`,
             volume: Math.round(merchantVolume),

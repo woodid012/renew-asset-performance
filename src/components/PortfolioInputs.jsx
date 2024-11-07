@@ -24,14 +24,30 @@ const PortfolioInputs = () => {
     if (newValue >= 0) {
       updateConstants('merchantPrices', {
         ...constants.merchantPrices,
-        [state]: {
-          ...constants.merchantPrices[state],
-          [type]: newValue
+        states: {
+          ...constants.merchantPrices.states,
+          [state]: {
+            ...constants.merchantPrices.states[state],
+            [type]: newValue
+          }
         }
       });
     }
   };
 
+  const handleEscalationChange = (value) => {
+    const newValue = parseFloat(value) || 0;
+    if (newValue >= 0) {
+      updateConstants('merchantPrices', {
+        ...constants.merchantPrices,
+        escalation: newValue
+      });
+    }
+  };
+
+  // Define states array for consistent use throughout the component
+  const states = ['NSW', 'VIC', 'QLD', 'SA'];
+  
   return (
     <div className="space-y-6">
       <Card>
@@ -41,14 +57,13 @@ const PortfolioInputs = () => {
         <CardContent>
           <div className="grid grid-cols-5 gap-4">
             <div className="font-medium">Technology</div>
-            <div className="font-medium text-center">NSW</div>
-            <div className="font-medium text-center">VIC</div>
-            <div className="font-medium text-center">QLD</div>
-            <div className="font-medium text-center">SA</div>
+            {states.map(state => (
+              <div key={`header-${state}`} className="font-medium text-center">{state}</div>
+            ))}
             
             {/* Solar Capacity Factors */}
             <div className="font-medium">Solar</div>
-            {['NSW', 'VIC', 'QLD', 'SA'].map(state => (
+            {states.map(state => (
               <div key={`solar-${state}`}>
                 <Input
                   type="number"
@@ -64,7 +79,7 @@ const PortfolioInputs = () => {
 
             {/* Wind Capacity Factors */}
             <div className="font-medium">Wind</div>
-            {['NSW', 'VIC', 'QLD', 'SA'].map(state => (
+            {states.map(state => (
               <div key={`wind-${state}`}>
                 <Input
                   type="number"
@@ -86,47 +101,54 @@ const PortfolioInputs = () => {
           <CardTitle>Merchant Prices</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-4 gap-4">
-            <div className="font-medium">State</div>
-            <div className="font-medium text-center">Black Energy ($/MWh)</div>
-            <div className="font-medium text-center">Green Certificates ($/MWh)</div>
-            <div className="font-medium text-center">Annual Escalation (%)</div>
+          <div className="space-y-6">
+            {/* Common Escalation Rate */}
+            <div className="grid grid-cols-2 gap-4 items-center">
+              <div className="font-medium">Annual Escalation (%)</div>
+              <div>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  value={constants.merchantPrices.escalation}
+                  onChange={(e) => handleEscalationChange(e.target.value)}
+                  className="text-center"
+                />
+              </div>
+            </div>
 
-            {Object.entries(constants.merchantPrices).map(([state, prices]) => (
-              <React.Fragment key={state}>
-                <div className="font-medium">{state}</div>
-                <div>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.1"
-                    value={prices.black}
-                    onChange={(e) => handleMerchantPriceChange(state, 'black', e.target.value)}
-                    className="text-center"
-                  />
-                </div>
-                <div>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.1"
-                    value={prices.green}
-                    onChange={(e) => handleMerchantPriceChange(state, 'green', e.target.value)}
-                    className="text-center"
-                  />
-                </div>
-                <div>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.1"
-                    value={prices.escalation}
-                    onChange={(e) => handleMerchantPriceChange(state, 'escalation', e.target.value)}
-                    className="text-center"
-                  />
-                </div>
-              </React.Fragment>
-            ))}
+            {/* State-specific prices */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="font-medium">State</div>
+              <div className="font-medium text-center">Black Energy ($/MWh)</div>
+              <div className="font-medium text-center">Green Certificates ($/MWh)</div>
+
+              {states.map(state => (
+                <React.Fragment key={state}>
+                  <div className="font-medium">{state}</div>
+                  <div>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      value={constants.merchantPrices.states[state]?.black}
+                      onChange={(e) => handleMerchantPriceChange(state, 'black', e.target.value)}
+                      className="text-center"
+                    />
+                  </div>
+                  <div>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      value={constants.merchantPrices.states[state]?.green}
+                      onChange={(e) => handleMerchantPriceChange(state, 'green', e.target.value)}
+                      className="text-center"
+                    />
+                  </div>
+                </React.Fragment>
+              ))}
+            </div>
           </div>
         </CardContent>
       </Card>

@@ -78,11 +78,12 @@ const EarningsRiskAnalysis = () => {
     const merchantPercentage = (100 - contractedPercentage) / 100;
     const merchantVolume = annualGeneration * merchantPercentage;
     const yearsSinceStart = year - constants.analysisStartYear;
-    const merchantPricing = constants.merchantPrices[asset.state];
+    const merchantPricing = constants.merchantPrices.states[asset.state];
     const escalatedPrice = (merchantPricing.black + merchantPricing.green) * 
-      Math.pow(1 + merchantPricing.escalation / 100, yearsSinceStart);
+      Math.pow(1 + constants.merchantPrices.escalation / 100, yearsSinceStart);
     const merchantRevenue = merchantVolume * escalatedPrice;
 
+    
     return {
       ppaRevenue,
       merchantRevenue,

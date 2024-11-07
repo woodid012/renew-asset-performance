@@ -83,7 +83,7 @@ export const PortfolioProvider = ({ children }) => {
     }
   });
 
-  // Initialize constants state
+  // Initialize constants state with updated merchant prices structure
   const [constants, setConstants] = useState({
     HOURS_IN_YEAR: 8760,
     capacityFactors: {
@@ -101,15 +101,24 @@ export const PortfolioProvider = ({ children }) => {
       }
     },
     merchantPrices: {
-      NSW: {
-        black: 75,
-        green: 25,
-        escalation: 3.0
-      },
-      VIC: {
-        black: 70,
-        green: 22,
-        escalation: 2.8
+      escalation: 2.5, // Common escalation parameter for all states
+      states: {
+        NSW: {
+          black: 75,
+          green: 25,
+        },
+        VIC: {
+          black: 70,
+          green: 22,
+        },
+        QLD: {
+          black: 65,
+          green: 20,
+        },
+        SA: {
+          black: 80,
+          green: 28,
+        }
       }
     },
     analysisStartYear: 2024,
