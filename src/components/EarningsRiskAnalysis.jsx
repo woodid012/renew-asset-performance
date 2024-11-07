@@ -13,15 +13,29 @@ const EarningsRiskAnalysis = () => {
       constants.capacityFactors[asset.type][asset.state];
 
     // Calculate PPA Revenue
-    const ppaRevenue = asset.contracts.reduce((total, ppa) => {
-      const startYear = new Date(ppa.startDate).getFullYear();
-      const endYear = new Date(ppa.endDate).getFullYear();
-      
-      if (year >= startYear && year <= endYear) {
+    const ppaRevenue = (asset.contracts || []).reduce((total, ppa) => {
+      // Validate contract has all required fields
+      if (!ppa.startDate || !ppa.endDate || !ppa.buyersPercentage || 
+          !ppa.indexation || isNaN(ppa.indexation) ||
+          !ppa.type || (
+            (ppa.type === 'bundled' && (!ppa.greenPrice || !ppa.blackPrice || isNaN(ppa.greenPrice) || isNaN(ppa.blackPrice))) ||
+            (ppa.type !== 'bundled' && (!ppa.strikePrice || isNaN(ppa.strikePrice)))
+          )) {
+        return total; // Skip invalid contracts
+      }
+
+      try {
+        const startYear = new Date(ppa.startDate).getFullYear();
+        const endYear = new Date(ppa.endDate).getFullYear();
+        
+        if (isNaN(startYear) || isNaN(endYear) || year < startYear || year > endYear) {
+          return total;
+        }
+
         const yearsSinceStart = year - startYear;
-        const indexationFactor = Math.pow(1 + ppa.indexation / 100, yearsSinceStart);
-        const ppaVolume = annualGeneration * (ppa.buyersPercentage / 100);
-        let ppaPrice;
+        const indexationFactor = Math.pow(1 + parseFloat(ppa.indexation) / 100, yearsSinceStart);
+        const ppaVolume = annualGeneration * (parseFloat(ppa.buyersPercentage) / 100);
+        let ppaPrice = 0;
         
         if (ppa.type === 'bundled') {
           ppaPrice = (parseFloat(ppa.greenPrice) + parseFloat(ppa.blackPrice)) * indexationFactor;
@@ -30,18 +44,35 @@ const EarningsRiskAnalysis = () => {
         }
         
         return total + (ppaVolume * ppaPrice);
+      } catch (error) {
+        console.warn('Error processing contract:', error);
+        return total;
       }
-      return total;
     }, 0);
 
     // Calculate Merchant Revenue
-    const contractedPercentage = asset.contracts.reduce((sum, contract) => {
-      const startYear = new Date(contract.startDate).getFullYear();
-      const endYear = new Date(contract.endDate).getFullYear();
-      if (year >= startYear && year <= endYear) {
-        return sum + parseFloat(contract.buyersPercentage);
+    const contractedPercentage = (asset.contracts || []).reduce((sum, contract) => {
+      // Skip invalid contracts
+      if (!contract.startDate || !contract.endDate || !contract.buyersPercentage || isNaN(contract.buyersPercentage)) {
+        return sum;
       }
-      return sum;
+
+      try {
+        const startYear = new Date(contract.startDate).getFullYear();
+        const endYear = new Date(contract.endDate).getFullYear();
+        
+        if (isNaN(startYear) || isNaN(endYear)) {
+          return sum;
+        }
+
+        if (year >= startYear && year <= endYear) {
+          return sum + parseFloat(contract.buyersPercentage);
+        }
+        return sum;
+      } catch (error) {
+        console.warn('Error processing contract percentage:', error);
+        return sum;
+      }
     }, 0);
 
     const merchantPercentage = (100 - contractedPercentage) / 100;
