@@ -1,139 +1,102 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
+import { usePortfolio } from '@/contexts/PortfolioContext';
 
 const PortfolioDashboard = () => {
-  // Asset visibility state
-  const [visibleAssets, setVisibleAssets] = useState({
-    'Solar Farm Alpha': true,
-    'Wind Farm Beta': true
-  });
+  const { assets, constants } = usePortfolio();
+  const [visibleAssets, setVisibleAssets] = useState({});
+  
+  useEffect(() => {
+    const newVisibleAssets = {};
+    Object.values(assets).forEach(asset => {
+      newVisibleAssets[asset.name] = true;
+    });
+    setVisibleAssets(newVisibleAssets);
+  }, [assets]);
 
-  // Portfolio data
-  const portfolioData = [
-    {
-      year: 2024,
-      assets: {
-        'Solar Farm Alpha': {
-          total: 85,
-          contracted: 63,
-          merchant: 22,
-          contractedPercentage: 74
-        },
-        'Wind Farm Beta': {
-          total: 112,
-          contracted: 67,
-          merchant: 45,
-          contractedPercentage: 60
-        }
-      }
-    },
-    {
-      year: 2025,
-      assets: {
-        'Solar Farm Alpha': {
-          total: 88,
-          contracted: 65,
-          merchant: 23,
-          contractedPercentage: 74
-        },
-        'Wind Farm Beta': {
-          total: 115,
-          contracted: 69,
-          merchant: 46,
-          contractedPercentage: 60
-        }
-      }
-    },
-    {
-      year: 2026,
-      assets: {
-        'Solar Farm Alpha': {
-          total: 91,
-          contracted: 67,
-          merchant: 24,
-          contractedPercentage: 74
-        },
-        'Wind Farm Beta': {
-          total: 118,
-          contracted: 71,
-          merchant: 47,
-          contractedPercentage: 60
-        }
-      }
-    },
-    {
-      year: 2027,
-      assets: {
-        'Solar Farm Alpha': {
-          total: 93,
-          contracted: 38,
-          merchant: 55,
-          contractedPercentage: 41
-        },
-        'Wind Farm Beta': {
-          total: 121,
-          contracted: 59,
-          merchant: 62,
-          contractedPercentage: 49
-        }
-      }
-    },
-    {
-      year: 2028,
-      assets: {
-        'Solar Farm Alpha': {
-          total: 96,
-          contracted: 39,
-          merchant: 57,
-          contractedPercentage: 41
-        },
-        'Wind Farm Beta': {
-          total: 124,
-          contracted: 46,
-          merchant: 78,
-          contractedPercentage: 37
-        }
-      }
-    },
-    {
-      year: 2029,
-      assets: {
-        'Solar Farm Alpha': {
-          total: 98,
-          contracted: 0,
-          merchant: 98,
-          contractedPercentage: 0
-        },
-        'Wind Farm Beta': {
-          total: 127,
-          contracted: 47,
-          merchant: 80,
-          contractedPercentage: 37
-        }
-      }
-    },
-    {
-      year: 2030,
-      assets: {
-        'Solar Farm Alpha': {
-          total: 101,
-          contracted: 0,
-          merchant: 101,
-          contractedPercentage: 0
-        },
-        'Wind Farm Beta': {
-          total: 130,
-          contracted: 0,
-          merchant: 130,
-          contractedPercentage: 0
-        }
-      }
-    }
-  ];
+  const generatePortfolioData = () => {
+    const currentYear = new Date().getFullYear();
+    const years = Array.from({length: 7}, (_, i) => currentYear + i);
+    
+    return years.map(year => {
+      const yearData = {
+        year,
+        assets: {}
+      };
 
+      Object.values(assets).forEach(asset => {
+        const assetRevenue = calculateAssetRevenue(asset, year);
+        yearData.assets[asset.name] = assetRevenue;
+      });
+
+      return yearData;
+    });
+  };
+
+  const calculateAssetRevenue = (asset, year) => {
+    const HOURS_IN_YEAR = constants.HOURS_IN_YEAR || 8760;
+    const capacityFactor = constants.capacityFactors?.[asset.type]?.[asset.state] || 0.28; // Default to NSW solar
+    const capacity = parseFloat(asset.capacity) || 0;
+    const volumeLossAdjustment = parseFloat(asset.volumeLossAdjustment) || 95;
+    const annualGeneration = capacity * volumeLossAdjustment / 100  * HOURS_IN_YEAR * capacityFactor;
+
+    const activeContracts = asset.contracts.filter(contract => {
+      const startYear = new Date(contract.startDate).getFullYear();
+      const endYear = new Date(contract.endDate).getFullYear();
+      return year >= startYear && year <= endYear;
+    });
+
+    let contracted = 0;
+    let merchant = 0;
+    
+    activeContracts.forEach(contract => {
+      const buyersPercentage = parseFloat(contract.buyersPercentage) || 0;
+      const years = year - new Date(contract.startDate).getFullYear();
+      const indexation = parseFloat(contract.indexation) || 0;
+      let price = 0;
+
+      if (contract.type === 'bundled') {
+        price = (parseFloat(contract.greenPrice) || 0) + (parseFloat(contract.blackPrice) || 0);
+      } else {
+        price = parseFloat(contract.strikePrice) || 0;
+      }
+
+      // Apply indexation
+      price *= Math.pow(1 + indexation/100, years);
+      
+      // Apply floor if exists
+      if (contract.hasFloor && price < parseFloat(contract.floorValue)) {
+        price = parseFloat(contract.floorValue);
+      }
+
+      // Calculate revenue in millions
+      const contractRevenue = (annualGeneration * buyersPercentage/100 * price) / 1000000;
+      contracted += contractRevenue;
+    });
+
+    // Calculate merchant revenue
+    const totalContractedPercentage = activeContracts.reduce((sum, contract) => 
+      sum + (parseFloat(contract.buyersPercentage) || 0), 0);
+    
+    const merchantPercentage = 100 - totalContractedPercentage;
+    const merchantPrice = 50; // Simplified merchant price assumption
+    merchant = (annualGeneration * merchantPercentage/100 * merchantPrice) / 1000000;
+
+    return {
+      total: contracted + merchant,
+      contracted,
+      merchant,
+      contractedPercentage: totalContractedPercentage
+    };
+  };
+
+  const portfolioData = generatePortfolioData();
+
+  // Rest of the component remains the same...
+  
   // Process data based on visible assets
   const processedData = portfolioData.map(yearData => {
     const processedYearData = {
@@ -150,14 +113,14 @@ const PortfolioDashboard = () => {
         processedYearData.total += assetData.total;
         processedYearData.contracted += assetData.contracted;
         processedYearData.merchant += assetData.merchant;
-        processedYearData.totalGeneration += assetData.total;
+        processedYearData.totalGeneration += parseFloat(assets[Object.keys(assets).find(key => 
+          assets[key].name === assetName)].capacity) || 0;
         processedYearData[`${assetName} Total`] = assetData.total;
         processedYearData[`${assetName} Contracted`] = assetData.contracted;
         processedYearData[`${assetName} Merchant`] = assetData.merchant;
       }
     });
 
-    // Calculate weighted contracted percentage
     processedYearData.weightedContractedPercentage = 
       processedYearData.totalGeneration > 0 
         ? (processedYearData.contracted / processedYearData.total) * 100 
@@ -174,15 +137,26 @@ const PortfolioDashboard = () => {
   };
 
   const assetColors = {
-    'Solar Farm Alpha': {
-      base: '#8884d8',
-      light: '#9996db'
-    },
-    'Wind Farm Beta': {
-      base: '#82ca9d',
-      light: '#a3d9b6'
-    }
+    base: ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#00C49F'],
+    light: ['#9996db', '#a3d9b6', '#ffd47f', '#ff9347', '#00D4AE']
   };
+
+  const getAssetColor = (index) => ({
+    base: assetColors.base[index % assetColors.base.length],
+    light: assetColors.light[index % assetColors.light.length]
+  });
+
+  if (Object.keys(assets).length === 0) {
+    return (
+      <div className="p-4">
+        <Card>
+          <CardContent className="py-8">
+            <p className="text-center text-gray-500">No assets in portfolio to visualize</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 p-4">
@@ -193,14 +167,14 @@ const PortfolioDashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {Object.keys(visibleAssets).map((assetName) => (
-                <div key={assetName} className="flex items-center space-x-2">
+              {Object.values(assets).map((asset) => (
+                <div key={asset.id} className="flex items-center space-x-2">
                   <Checkbox
-                    id={assetName}
-                    checked={visibleAssets[assetName]}
-                    onCheckedChange={() => toggleAsset(assetName)}
+                    id={asset.id}
+                    checked={visibleAssets[asset.name]}
+                    onCheckedChange={() => toggleAsset(asset.name)}
                   />
-                  <Label htmlFor={assetName}>{assetName}</Label>
+                  <Label htmlFor={asset.id}>{asset.name}</Label>
                 </div>
               ))}
             </div>
@@ -235,20 +209,20 @@ const PortfolioDashboard = () => {
                 <YAxis label={{ value: 'Revenue (Million $)', angle: -90, position: 'insideLeft' }} />
                 <Tooltip />
                 <Legend />
-                {Object.entries(visibleAssets).map(([assetName, isVisible]) => 
-                  isVisible && (
-                    <React.Fragment key={assetName}>
+                {Object.values(assets).map((asset, index) => 
+                  visibleAssets[asset.name] && (
+                    <React.Fragment key={asset.id}>
                       <Bar 
-                        dataKey={`${assetName} Contracted`} 
+                        dataKey={`${asset.name} Contracted`} 
                         stackId="a" 
-                        fill={assetColors[assetName].base}
-                        name={`${assetName} Contracted`}
+                        fill={getAssetColor(index).base}
+                        name={`${asset.name} Contracted`}
                       />
                       <Bar 
-                        dataKey={`${assetName} Merchant`} 
+                        dataKey={`${asset.name} Merchant`} 
                         stackId="a" 
-                        fill={assetColors[assetName].light}
-                        name={`${assetName} Merchant`}
+                        fill={getAssetColor(index).light}
+                        name={`${asset.name} Merchant`}
                       />
                     </React.Fragment>
                   )

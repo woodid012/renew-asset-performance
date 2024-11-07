@@ -2,12 +2,14 @@ import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { usePortfolio } from '@/contexts/PortfolioContext';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { Input } from '@/components/ui/input';
 
 const EarningsRiskAnalysis = () => {
-  const { assets, constants } = usePortfolio();
+  const { assets, constants, updateConstants } = usePortfolio();
+  const hasAssets = useMemo(() => Object.keys(assets || {}).length > 0, [assets]);
 
   const calculateBaseRevenue = (asset, year) => {
-    const annualGeneration = asset.capacity * constants.HOURS_IN_YEAR * 
+    const annualGeneration = asset.capacity * asset.volumeLossAdjustment / 100 * constants.HOURS_IN_YEAR * 
       constants.capacityFactors[asset.type][asset.state];
 
     // Calculate PPA Revenue
@@ -24,7 +26,7 @@ const EarningsRiskAnalysis = () => {
         if (ppa.type === 'bundled') {
           ppaPrice = (parseFloat(ppa.greenPrice) + parseFloat(ppa.blackPrice)) * indexationFactor;
         } else {
-          ppaPrice = ppaPrice = parseFloat(ppa.strikePrice) * indexationFactor;
+          ppaPrice = parseFloat(ppa.strikePrice) * indexationFactor;
         }
         
         return total + (ppaVolume * ppaPrice);
@@ -58,11 +60,12 @@ const EarningsRiskAnalysis = () => {
   };
 
   const generateScenarios = () => {
+    if (!hasAssets) return [];
+    
     const numScenarios = 1000;
     const scenarios = [];
 
     for (let i = 0; i < numScenarios; i++) {
-      // Generate random variations using normal-ish distribution
       const volumeChange = (Math.random() * 2 - 1) * constants.volumeVariation;
       const priceChange = (Math.random() * 2 - 1) * constants.priceVariation;
       
@@ -70,10 +73,7 @@ const EarningsRiskAnalysis = () => {
         for (let year = constants.analysisStartYear; year <= constants.analysisEndYear; year++) {
           const base = calculateBaseRevenue(asset, year);
           
-          // Apply volume sensitivity to both PPA and merchant
           const adjustedPPARevenue = base.ppaRevenue * (1 + volumeChange/100);
-          
-          // Apply both volume and price sensitivity to merchant
           const adjustedMerchantRevenue = base.merchantRevenue * 
             (1 + volumeChange/100) * (1 + priceChange/100);
           
@@ -84,7 +84,7 @@ const EarningsRiskAnalysis = () => {
             year,
             volumeChange,
             priceChange,
-            revenue: scenarioRevenue / 1000000 // Convert to millions
+            revenue: scenarioRevenue / 1000000
           });
         }
       });
@@ -93,10 +93,11 @@ const EarningsRiskAnalysis = () => {
     return scenarios;
   };
 
-  const scenarios = useMemo(() => generateScenarios(), [assets, constants]);
+  const scenarios = useMemo(() => generateScenarios(), [assets, constants, hasAssets]);
 
-  // Create histogram data
   const createHistogramData = (data, year) => {
+    if (!data.length) return [];
+    
     const yearData = data.filter(s => s.year === year);
     const revenues = yearData.map(s => s.revenue);
     const min = Math.min(...revenues);
@@ -118,8 +119,18 @@ const EarningsRiskAnalysis = () => {
     }));
   };
 
-  // Calculate statistics
   const calculateStatistics = (data, year) => {
+    if (!data.length) {
+      return {
+        baseCase: 0,
+        p90: 0,
+        p50: 0,
+        p10: 0,
+        min: 0,
+        max: 0
+      };
+    }
+
     const yearData = data.filter(s => s.year === year);
     const revenues = yearData.map(s => s.revenue).sort((a, b) => a - b);
     const baseCase = Object.values(assets).reduce((sum, asset) => {
@@ -129,11 +140,11 @@ const EarningsRiskAnalysis = () => {
 
     return {
       baseCase: baseCase,
-      p90: revenues[Math.floor(revenues.length * 0.1)],
-      p50: revenues[Math.floor(revenues.length * 0.5)],
-      p10: revenues[Math.floor(revenues.length * 0.9)],
-      min: revenues[0],
-      max: revenues[revenues.length - 1]
+      p90: revenues[Math.floor(revenues.length * 0.1)] || 0,
+      p50: revenues[Math.floor(revenues.length * 0.5)] || 0,
+      p10: revenues[Math.floor(revenues.length * 0.9)] || 0,
+      min: revenues[0] || 0,
+      max: revenues[revenues.length - 1] || 0
     };
   };
 
@@ -159,6 +170,13 @@ const EarningsRiskAnalysis = () => {
     }));
   }, [scenarios]);
 
+  const EmptyState = () => (
+    <div className="flex flex-col items-center justify-center h-72 text-gray-500">
+      <p className="text-lg font-medium">No Assets Available</p>
+      <p className="text-sm">Add assets to view risk analysis</p>
+    </div>
+  );
+
   return (
     <div className="space-y-6 p-4">
       <div className="grid grid-cols-2 gap-6">
@@ -167,27 +185,29 @@ const EarningsRiskAnalysis = () => {
             <CardTitle>Revenue Distribution</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={histogramData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    dataKey="revenue" 
-                    label={{ value: 'Revenue (Million $)', position: 'bottom' }}
-                  />
-                  <YAxis 
-                    label={{ value: 'Frequency', angle: -90, position: 'insideLeft' }}
-                  />
-                  <Tooltip
-                    formatter={(value, name, props) => [
-                      `Count: ${value}`,
-                      `Range: $${props.payload.binStart}M - $${props.payload.binEnd}M`
-                    ]}
-                  />
-                  <Bar dataKey="frequency" fill="#8884d8" name="Scenarios" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            {hasAssets ? (
+              <div className="h-72">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={histogramData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey="revenue" 
+                      label={{ value: 'Revenue (Million $)', position: 'bottom' }}
+                    />
+                    <YAxis 
+                      label={{ value: 'Frequency', angle: -90, position: 'insideLeft' }}
+                    />
+                    <Tooltip
+                      formatter={(value, name, props) => [
+                        `Count: ${value}`,
+                        `Range: $${props.payload.binStart}M - $${props.payload.binEnd}M`
+                      ]}
+                    />
+                    <Bar dataKey="frequency" fill="#8884d8" name="Scenarios" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            ) : <EmptyState />}
           </CardContent>
         </Card>
 
@@ -196,35 +216,37 @@ const EarningsRiskAnalysis = () => {
             <CardTitle>Risk Metrics</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-gray-500">Base Case Revenue</p>
-                  <p className="text-2xl font-bold">${stats.baseCase.toFixed(1)}M</p>
+            {hasAssets ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-gray-500">Base Case Revenue</p>
+                    <p className="text-2xl font-bold">${stats.baseCase.toFixed(1)}M</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">P50 Revenue</p>
+                    <p className="text-2xl font-bold">${stats.p50.toFixed(1)}M</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">P90 Revenue</p>
+                    <p className="text-2xl font-bold">${stats.p90.toFixed(1)}M</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">P10 Revenue</p>
+                    <p className="text-2xl font-bold">${stats.p10.toFixed(1)}M</p>
+                  </div>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">P50 Revenue</p>
-                  <p className="text-2xl font-bold">${stats.p50.toFixed(1)}M</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">P90 Revenue</p>
-                  <p className="text-2xl font-bold">${stats.p90.toFixed(1)}M</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">P10 Revenue</p>
-                  <p className="text-2xl font-bold">${stats.p10.toFixed(1)}M</p>
+                  <p className="text-sm text-gray-500 mb-1">Assumptions</p>
+                  <ul className="text-sm space-y-1">
+                    <li>Volume Sensitivity: ±{constants.volumeVariation}%</li>
+                    <li>Price Sensitivity: ±{constants.priceVariation}%</li>
+                    <li>Merchant revenue affected by both volume and price risk</li>
+                    <li>PPA revenue affected by volume risk only</li>
+                  </ul>
                 </div>
               </div>
-              <div>
-                <p className="text-sm text-gray-500 mb-1">Assumptions</p>
-                <ul className="text-sm space-y-1">
-                  <li>Volume Sensitivity: ±{constants.volumeVariation}%</li>
-                  <li>Price Sensitivity: ±{constants.priceVariation}%</li>
-                  <li>Merchant revenue affected by both volume and price risk</li>
-                  <li>PPA revenue affected by volume risk only</li>
-                </ul>
-              </div>
-            </div>
+            ) : <EmptyState />}
           </CardContent>
         </Card>
       </div>
@@ -234,19 +256,78 @@ const EarningsRiskAnalysis = () => {
           <CardTitle>Portfolio Revenue Range Over Time</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={waterfallData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="year" />
-                <YAxis label={{ value: 'Revenue (Million $)', angle: -90, position: 'insideLeft' }} />
-                <Tooltip />
-                <Legend />
-                <Line dataKey="p90" stroke="#ff7300" name="P90" dot={false} strokeWidth={2} />
-                <Line dataKey="baseCase" stroke="#8884d8" name="Base Case" dot={false} strokeWidth={2} />
-                <Line dataKey="p10" stroke="#82ca9d" name="P10" dot={false} strokeWidth={2} />
-              </LineChart>
-            </ResponsiveContainer>
+          {hasAssets ? (
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={waterfallData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="year" />
+                  <YAxis label={{ value: 'Revenue (Million $)', angle: -90, position: 'insideLeft' }} />
+                  <Tooltip />
+                  <Legend />
+                  <Line dataKey="p90" stroke="#ff7300" name="P90" dot={false} strokeWidth={2} />
+                  <Line dataKey="baseCase" stroke="#8884d8" name="Base Case" dot={false} strokeWidth={2} />
+                  <Line dataKey="p10" stroke="#82ca9d" name="P10" dot={false} strokeWidth={2} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          ) : <EmptyState />}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Analysis Parameters</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Risk Analysis Period
+              </label>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-sm text-gray-500 mb-1">Start Year</div>
+                  <Input
+                    type="number"
+                    value={constants.analysisStartYear || 2024}
+                    onChange={(e) => updateConstants('analysisStartYear', parseInt(e.target.value))}
+                  />
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500 mb-1">End Year</div>
+                  <Input
+                    type="number"
+                    value={constants.analysisEndYear || 2030}
+                    onChange={(e) => updateConstants('analysisEndYear', parseInt(e.target.value))}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Monte Carlo Simulation
+              </label>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-sm text-gray-500 mb-1">Volume Variation (%)</div>
+                  <Input
+                    type="number"
+                    value={constants.volumeVariation || 20}
+                    onChange={(e) => updateConstants('volumeVariation', parseInt(e.target.value))}
+                  />
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500 mb-1">Price Variation (%)</div>
+                  <Input
+                    type="number"
+                    value={constants.priceVariation || 30}
+                    onChange={(e) => updateConstants('priceVariation', parseInt(e.target.value))}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>

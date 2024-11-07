@@ -12,14 +12,16 @@ const AssetDashboard = () => {
 
   const addNewTab = () => {
     const newId = String(Object.keys(assets).length + 1);
+    const assetNumber = Object.keys(assets).length + 1;
     setAssets(prev => ({
       ...prev,
       [newId]: {
         id: newId,
-        name: 'New Asset',
+        name: `New Asset ${assetNumber}`,
         state: '',
         capacity: '',
         type: '',
+        volumeLossAdjustment: '100',
         contracts: []
       }
     }));
@@ -57,11 +59,10 @@ const AssetDashboard = () => {
 
   if (Object.keys(assets).length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center p-8">
+      <div className="flex flex-col items-left justify-left p-8">
         <p className="text-gray-500 mb-4">No assets in portfolio</p>
-        <Button onClick={addNewTab}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Asset
+        <Button variant="default" size="icon" onClick={addNewTab}>
+          <Plus className="h-4 w-4" />
         </Button>
       </div>
     );
@@ -93,7 +94,7 @@ const AssetDashboard = () => {
               </TabsTrigger>
             ))}
           </TabsList>
-          <Button variant="outline" size="icon" onClick={addNewTab}>
+          <Button onClick={addNewTab}>
             <Plus className="h-4 w-4" />
           </Button>
         </div>
@@ -116,7 +117,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts }) => {
   const addContract = () => {
     const newContract = {
       id: String(asset.contracts.length + 1),
-      name: '',
+      counterparty: `Counterparty ${asset.contracts.length + 1}`,
       type: '',
       buyersPercentage: '',
       shape: 'flat',
@@ -139,9 +140,22 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts }) => {
 
   const updateContract = (id, field, value) => {
     onUpdateContracts(
-      asset.contracts.map(contract =>
-        contract.id === id ? { ...contract, [field]: value } : contract
-      )
+      asset.contracts.map(contract => {
+        if (contract.id !== id) return contract;
+        
+        const updatedContract = { ...contract, [field]: value };
+        
+        // For bundled contracts, calculate green price based on strike and black price
+        if (updatedContract.type === 'bundled') {
+          if (field === 'strikePrice' || field === 'blackPrice') {
+            const strikePrice = field === 'strikePrice' ? Number(value) : Number(contract.strikePrice) || 0;
+            const blackPrice = field === 'blackPrice' ? Number(value) : Number(contract.blackPrice) || 0;
+            updatedContract.greenPrice = strikePrice - blackPrice;
+          }
+        }
+        
+        return updatedContract;
+      })
     );
   };
 
@@ -196,6 +210,21 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts }) => {
                 <option value="solar">Solar</option>
               </select>
             </div>
+            <div className="space-y-2">
+              <div className="flex items-center space-x-2">
+                <label className="text-sm font-medium">Vol. Adjust (%)</label>
+                <span className="text-xs text-gray-500">(Availability / MLF / Other adjustments)</span>
+              </div>
+              <Input
+                type="number"
+                min="0"
+                max="100"
+                step="0.1"
+                placeholder="Volume Loss Adjustment"
+                value={asset.volumeLossAdjustment}
+                onChange={(e) => onUpdateAsset('volumeLossAdjustment', e.target.value)}
+              />
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -203,7 +232,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts }) => {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Contracts</CardTitle>
-          <Button variant="outline" size="sm" onClick={addContract}>
+          <Button onClick={addContract}>
             <Plus className="h-4 w-4 mr-2" />
             Add Contract
           </Button>
@@ -221,6 +250,15 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts }) => {
               </Button>
               <CardContent className="pt-8">
                 <div className="grid grid-cols-2 gap-4">
+                  {/* First Row */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Counterparty</label>
+                    <Input
+                      placeholder="Counterparty Name"
+                      value={contract.counterparty}
+                      onChange={(e) => updateContract(contract.id, 'counterparty', e.target.value)}
+                    />
+                  </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Contract Type</label>
                     <select
@@ -234,6 +272,16 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts }) => {
                       <option value="black">Black Only</option>
                     </select>
                   </div>
+
+                  {/* Second Row */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Strike Price</label>
+                    <Input
+                      type="number"
+                      value={contract.strikePrice}
+                      onChange={(e) => updateContract(contract.id, 'strikePrice', e.target.value)}
+                    />
+                  </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Buyer's Percentage (%)</label>
                     <Input
@@ -245,16 +293,10 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts }) => {
                       onChange={(e) => updateContract(contract.id, 'buyersPercentage', e.target.value)}
                     />
                   </div>
-                  {contract.type === 'bundled' ? (
+
+                  {/* Bundled-specific fields */}
+                  {contract.type === 'bundled' && (
                     <>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Green Price</label>
-                        <Input
-                          type="number"
-                          value={contract.greenPrice}
-                          onChange={(e) => updateContract(contract.id, 'greenPrice', e.target.value)}
-                        />
-                      </div>
                       <div className="space-y-2">
                         <label className="text-sm font-medium">Black Price</label>
                         <Input
@@ -263,17 +305,20 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts }) => {
                           onChange={(e) => updateContract(contract.id, 'blackPrice', e.target.value)}
                         />
                       </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Green Price</label>
+                        <Input
+                          type="number"
+                          value={contract.greenPrice}
+                          onChange={(e) => updateContract(contract.id, 'greenPrice', e.target.value)}
+                          disabled
+                          className="bg-gray-100"
+                        />
+                      </div>
                     </>
-                  ) : (
-                    <div className="space-y-2 col-span-2">
-                      <label className="text-sm font-medium">Strike Price</label>
-                      <Input
-                        type="number"
-                        value={contract.strikePrice}
-                        onChange={(e) => updateContract(contract.id, 'strikePrice', e.target.value)}
-                      />
-                    </div>
                   )}
+
+                  {/* Remaining fields */}
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Start Date</label>
                     <Input

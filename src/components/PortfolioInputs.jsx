@@ -130,63 +130,6 @@ const PortfolioInputs = () => {
           </div>
         </CardContent>
       </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Analysis Parameters</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Risk Analysis Period
-              </label>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <div className="text-sm text-gray-500 mb-1">Start Year</div>
-                  <Input
-                    type="number"
-                    value={constants.analysisStartYear || 2024}
-                    onChange={(e) => updateConstants('analysisStartYear', parseInt(e.target.value))}
-                  />
-                </div>
-                <div>
-                  <div className="text-sm text-gray-500 mb-1">End Year</div>
-                  <Input
-                    type="number"
-                    value={constants.analysisEndYear || 2030}
-                    onChange={(e) => updateConstants('analysisEndYear', parseInt(e.target.value))}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Monte Carlo Simulation
-              </label>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <div className="text-sm text-gray-500 mb-1">Volume Variation (%)</div>
-                  <Input
-                    type="number"
-                    value={constants.volumeVariation || 20}
-                    onChange={(e) => updateConstants('volumeVariation', parseInt(e.target.value))}
-                  />
-                </div>
-                <div>
-                  <div className="text-sm text-gray-500 mb-1">Price Variation (%)</div>
-                  <Input
-                    type="number"
-                    value={constants.priceVariation || 30}
-                    onChange={(e) => updateConstants('priceVariation', parseInt(e.target.value))}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 };

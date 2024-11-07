@@ -12,7 +12,7 @@ import {
 // Import components for each tab
 import PortfolioInputs from "@/components/PortfolioInputs";
 import AssetDashboard from "@/components/AssetDashboard";
-//import PortfolioRevenue from "@/components/PortfolioRevenue";
+import PortfolioRevenue from "@/components/PortfolioRevenue";
 import PPASummaryTable from "@/components/PPASummaryTable";
 import EarningsRiskAnalysis from "@/components/EarningsRiskAnalysis";
 import PortfolioSettings from "@/components/PortfolioSettings";
@@ -24,7 +24,7 @@ const App = () => {
   const tabs = [
     {
       id: "inputs",
-      label: "Inputs",
+      label: "Global",
       icon: Sliders,
       component: PortfolioInputs,
     },
@@ -34,12 +34,12 @@ const App = () => {
       icon: LayoutDashboard,
       component: AssetDashboard,
     },
-    //{
-     // id: "revenue",
-      //label: "Portfolio Summary",
-      //icon: FileSpreadsheet,
-      //component: PortfolioRevenue,
-    //},
+    {
+      id: "revenue",
+      label: "Portfolio Chart",
+      icon: FileSpreadsheet,
+      component: PortfolioRevenue,
+    },
     {
       id: "risk",
       label: "Risk Analysis",
@@ -48,7 +48,7 @@ const App = () => {
     },
     {
       id: "ppa",
-      label: "PPA Summary",
+      label: "Export",
       icon: FileSpreadsheet,
       component: PPASummaryTable,
     },
@@ -64,7 +64,7 @@ const App = () => {
     <div className="min-h-screen bg-gray-50 p-4">
       <Card className="mx-auto max-w-7xl">
         <div className="p-6">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-8">
             <h1 className="text-3xl font-bold">Portfolio Management</h1>
             <div className="text-sm text-muted-foreground">
               Last Updated: {new Date().toLocaleDateString()}
@@ -74,17 +74,17 @@ const App = () => {
           <Tabs 
             value={activeTab} 
             onValueChange={setActiveTab} 
-            className="space-y-4"
+            className="space-y-6"
           >
-            <TabsList className="grid grid-cols-5 w-[600px]">
+            <TabsList className="grid grid-cols-6 w-full gap-2 p-1">
               {tabs.map((tab) => (
                 <TabsTrigger
                   key={tab.id}
                   value={tab.id}
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-2 px-4 py-2"
                 >
                   <tab.icon className="h-4 w-4" />
-                  {tab.label}
+                  <span className="hidden sm:inline">{tab.label}</span>
                 </TabsTrigger>
               ))}
             </TabsList>
@@ -93,7 +93,7 @@ const App = () => {
               const TabComponent = tab.component;
               return (
                 <TabsContent key={tab.id} value={tab.id}>
-                  <Card>
+                  <Card className="p-4">
                     <TabComponent />
                   </Card>
                 </TabsContent>
@@ -101,7 +101,7 @@ const App = () => {
             })}
           </Tabs>
 
-          <div className="mt-4 text-sm text-muted-foreground">
+          <div className="mt-6 text-sm text-muted-foreground">
             <p>
               Manage your portfolio settings, assets, and risk analysis in one place.
             </p>

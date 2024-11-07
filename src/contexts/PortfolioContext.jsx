@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useCallback } from 'react';
 
 const PortfolioContext = createContext();
 
@@ -11,8 +11,53 @@ export const usePortfolio = () => {
 };
 
 export const PortfolioProvider = ({ children }) => {
-  // Initialize state with both assets and constants
-  const [assets, setAssets] = useState({});
+  // Initialize state with assets
+  const [assets, setAssets] = useState({
+    '1': {
+      id: '1',
+      name: 'Example Solar Farm',
+      state: 'NSW',
+      capacity: 100,
+      type: 'solar',
+      volumeLossAdjustment: 95,
+      contracts: [
+        {
+          id: '1',
+          counterparty: "Counterparty 1",
+          type: 'bundled',
+          buyersPercentage: 70,
+          shape: 'solar',
+          strikePrice: '75',
+          greenPrice: '30',
+          blackPrice: '45',
+          indexation: 2.5,
+          hasFloor: true,
+          floorValue: '0',
+          startDate: '2024-01-01',
+          endDate: '2034-12-31',
+          term: '10'
+        },
+        {
+          id: '2',
+          counterparty: "Counterparty 2",
+          type: 'green',
+          buyersPercentage: 20,
+          shape: 'solar',
+          strikePrice: '45',
+          greenPrice: '',
+          blackPrice: '',
+          indexation: 2.0,
+          hasFloor: false,
+          floorValue: '',
+          startDate: '2024-01-01',
+          endDate: '2029-12-31',
+          term: '5'
+        }
+      ]
+    }
+  });
+
+  // Initialize constants state
   const [constants, setConstants] = useState({
     HOURS_IN_YEAR: 8760,
     capacityFactors: {
@@ -47,16 +92,24 @@ export const PortfolioProvider = ({ children }) => {
     priceVariation: 30
   });
 
+  // Create updateConstants as a useCallback to prevent unnecessary rerenders
+  const updateConstants = useCallback((field, value) => {
+    console.log('Updating constant:', field, 'to:', value); // Debug log
+    setConstants(prev => {
+      const newConstants = {
+        ...prev,
+        [field]: value
+      };
+      console.log('New constants state:', newConstants); // Debug log
+      return newConstants;
+    });
+  }, []);
+
   const value = {
     assets,
     setAssets,
     constants,
-    updateConstants: (field, value) => {
-      setConstants(prev => ({
-        ...prev,
-        [field]: value
-      }));
-    }
+    updateConstants
   };
 
   return (
@@ -65,3 +118,5 @@ export const PortfolioProvider = ({ children }) => {
     </PortfolioContext.Provider>
   );
 };
+
+export default PortfolioProvider;
