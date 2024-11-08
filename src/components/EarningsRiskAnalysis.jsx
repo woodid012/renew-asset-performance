@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { usePortfolio } from '@/contexts/PortfolioContext';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 
 const EarningsRiskAnalysis = () => {
   const { assets, constants, updateConstants } = usePortfolio();
+  const [selectedYear, setSelectedYear] = useState(constants.analysisStartYear);
   const hasAssets = useMemo(() => Object.keys(assets || {}).length > 0, [assets]);
 
   const calculateBaseRevenue = (asset, year) => {
@@ -82,7 +83,6 @@ const EarningsRiskAnalysis = () => {
     const escalatedPrice = (merchantPricing.black + merchantPricing.green) * 
       Math.pow(1 + constants.merchantPrices.escalation / 100, yearsSinceStart);
     const merchantRevenue = merchantVolume * escalatedPrice;
-
     
     return {
       ppaRevenue,
@@ -181,13 +181,13 @@ const EarningsRiskAnalysis = () => {
   };
 
   const histogramData = useMemo(() => 
-    createHistogramData(scenarios, constants.analysisStartYear),
-    [scenarios, constants.analysisStartYear]
+    createHistogramData(scenarios, selectedYear),
+    [scenarios, selectedYear]
   );
 
   const stats = useMemo(() => 
-    calculateStatistics(scenarios, constants.analysisStartYear),
-    [scenarios, constants.analysisStartYear]
+    calculateStatistics(scenarios, selectedYear),
+    [scenarios, selectedYear]
   );
 
   const waterfallData = useMemo(() => {
@@ -218,27 +218,45 @@ const EarningsRiskAnalysis = () => {
           </CardHeader>
           <CardContent>
             {hasAssets ? (
-              <div className="h-72">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={histogramData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis 
-                      dataKey="revenue" 
-                      label={{ value: 'Revenue (Million $)', position: 'bottom' }}
-                    />
-                    <YAxis 
-                      label={{ value: 'Frequency', angle: -90, position: 'insideLeft' }}
-                    />
-                    <Tooltip
-                      formatter={(value, name, props) => [
-                        `Count: ${value}`,
-                        `Range: $${props.payload.binStart}M - $${props.payload.binEnd}M`
-                      ]}
-                    />
-                    <Bar dataKey="frequency" fill="#8884d8" name="Scenarios" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+              <>
+                <div className="mb-4">
+                  <select
+                    className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+                    value={selectedYear}
+                    onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                  >
+                    {Array.from(
+                      { length: constants.analysisEndYear - constants.analysisStartYear + 1 },
+                      (_, i) => constants.analysisStartYear + i
+                    ).map((year) => (
+                      <option key={year} value={year}>
+                        {year}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="h-72">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={histogramData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis 
+                        dataKey="revenue" 
+                        label={{ value: 'Revenue (Million $)', position: 'bottom' }}
+                      />
+                      <YAxis 
+                        label={{ value: 'Frequency', angle: -90, position: 'insideLeft' }}
+                      />
+                      <Tooltip
+                        formatter={(value, name, props) => [
+                          `Count: ${value}`,
+                          `Range: $${props.payload.binStart}M - $${props.payload.binEnd}M`
+                        ]}
+                      />
+                      <Bar dataKey="frequency" fill="#8884d8" name="Scenarios" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </>
             ) : <EmptyState />}
           </CardContent>
         </Card>
@@ -285,30 +303,6 @@ const EarningsRiskAnalysis = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Portfolio Revenue Range Over Time</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {hasAssets ? (
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={waterfallData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="year" />
-                  <YAxis label={{ value: 'Revenue (Million $)', angle: -90, position: 'insideLeft' }} />
-                  <Tooltip />
-                  <Legend />
-                  <Line dataKey="p90" stroke="#ff7300" name="P90" dot={false} strokeWidth={2} />
-                  <Line dataKey="baseCase" stroke="#8884d8" name="Base Case" dot={false} strokeWidth={2} />
-                  <Line dataKey="p10" stroke="#82ca9d" name="P10" dot={false} strokeWidth={2} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          ) : <EmptyState />}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
           <CardTitle>Analysis Parameters</CardTitle>
         </CardHeader>
         <CardContent>
@@ -338,7 +332,7 @@ const EarningsRiskAnalysis = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">
+            <label className="block text-sm font-medium mb-2">
                 Monte Carlo Simulation
               </label>
               <div className="grid grid-cols-2 gap-4">
@@ -346,21 +340,49 @@ const EarningsRiskAnalysis = () => {
                   <div className="text-sm text-gray-500 mb-1">Volume Variation (%)</div>
                   <Input
                     type="number"
-                    value={constants.volumeVariation || 20}
-                    onChange={(e) => updateConstants('volumeVariation', parseInt(e.target.value))}
+                    value={constants.volumeVariation ?? 20}
+                    min={0}
+                    onChange={(e) => updateConstants('volumeVariation', parseInt(e.target.value) || 0)}
                   />
                 </div>
                 <div>
                   <div className="text-sm text-gray-500 mb-1">Price Variation (%)</div>
                   <Input
                     type="number"
-                    value={constants.priceVariation || 30}
-                    onChange={(e) => updateConstants('priceVariation', parseInt(e.target.value))}
+                    value={constants.priceVariation ?? 30}
+                    min={0}
+                    onChange={(e) => updateConstants('priceVariation', parseInt(e.target.value) || 0)}
                   />
                 </div>
               </div>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Portfolio Revenue Range Over Time</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {hasAssets ? (
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={waterfallData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="year" />
+                  <YAxis label={{ value: 'Revenue (Million $)', angle: -90, position: 'insideLeft' }} />
+                  <Tooltip />
+                  <Legend />
+                  <Line dataKey="p90" stroke="#ff7300" name="P90" dot={false} strokeWidth={2} />
+                  <Line dataKey="baseCase" stroke="#8884d8" name="Base Case" dot={false} strokeWidth={2} />
+                  <Line dataKey="p10" stroke="#82ca9d" name="P10" dot={false} strokeWidth={2} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          ) : <EmptyState />}
         </CardContent>
       </Card>
     </div>

@@ -32,7 +32,7 @@ export const PortfolioProvider = ({ children }) => {
           blackPrice: '45',
           indexation: 2.5,
           hasFloor: true,
-          floorValue: '70',
+          floorValue: '0',
           startDate: '2024-01-01',
           endDate: '2028-12-31',
           term: '5'

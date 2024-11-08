@@ -17,9 +17,25 @@ const PortfolioDashboard = () => {
     setVisibleAssets(newVisibleAssets);
   }, [assets]);
 
+  const calculateMerchantPrice = (asset, year) => {
+    const baseYear = constants.analysisStartYear;
+    const years = year - baseYear;
+    const escalation = constants.merchantPrices.escalation / 100;
+    
+    const statePrices = constants.merchantPrices.states[asset.state];
+    if (!statePrices) return 0;
+
+    const blackPrice = statePrices.black * Math.pow(1 + escalation, years);
+    const greenPrice = statePrices.green * Math.pow(1 + escalation, years);
+    
+    return blackPrice + greenPrice;
+  };
+
   const generatePortfolioData = () => {
-    const currentYear = new Date().getFullYear();
-    const years = Array.from({length: 7}, (_, i) => currentYear + i);
+    const years = Array.from(
+      {length: constants.analysisEndYear - constants.analysisStartYear + 1}, 
+      (_, i) => constants.analysisStartYear + i
+    );
     
     return years.map(year => {
       const yearData = {
@@ -37,11 +53,11 @@ const PortfolioDashboard = () => {
   };
 
   const calculateAssetRevenue = (asset, year) => {
-    const HOURS_IN_YEAR = constants.HOURS_IN_YEAR || 8760;
-    const capacityFactor = constants.capacityFactors?.[asset.type]?.[asset.state] || 0.28; // Default to NSW solar
+    const HOURS_IN_YEAR = constants.HOURS_IN_YEAR;
+    const capacityFactor = constants.capacityFactors[asset.type]?.[asset.state] || 0;
     const capacity = parseFloat(asset.capacity) || 0;
     const volumeLossAdjustment = parseFloat(asset.volumeLossAdjustment) || 95;
-    const annualGeneration = capacity * volumeLossAdjustment / 100  * HOURS_IN_YEAR * capacityFactor;
+    const annualGeneration = capacity * volumeLossAdjustment / 100 * HOURS_IN_YEAR * capacityFactor;
 
     const activeContracts = asset.contracts.filter(contract => {
       const startYear = new Date(contract.startDate).getFullYear();
@@ -64,25 +80,21 @@ const PortfolioDashboard = () => {
         price = parseFloat(contract.strikePrice) || 0;
       }
 
-      // Apply indexation
       price *= Math.pow(1 + indexation/100, years);
       
-      // Apply floor if exists
       if (contract.hasFloor && price < parseFloat(contract.floorValue)) {
         price = parseFloat(contract.floorValue);
       }
 
-      // Calculate revenue in millions
       const contractRevenue = (annualGeneration * buyersPercentage/100 * price) / 1000000;
       contracted += contractRevenue;
     });
 
-    // Calculate merchant revenue
     const totalContractedPercentage = activeContracts.reduce((sum, contract) => 
       sum + (parseFloat(contract.buyersPercentage) || 0), 0);
     
     const merchantPercentage = 100 - totalContractedPercentage;
-    const merchantPrice = 50; // Simplified merchant price assumption
+    const merchantPrice = calculateMerchantPrice(asset, year);
     merchant = (annualGeneration * merchantPercentage/100 * merchantPrice) / 1000000;
 
     return {
@@ -94,10 +106,7 @@ const PortfolioDashboard = () => {
   };
 
   const portfolioData = generatePortfolioData();
-
-  // Rest of the component remains the same...
   
-  // Process data based on visible assets
   const processedData = portfolioData.map(yearData => {
     const processedYearData = {
       year: yearData.year,
@@ -110,20 +119,20 @@ const PortfolioDashboard = () => {
 
     Object.entries(yearData.assets).forEach(([assetName, assetData]) => {
       if (visibleAssets[assetName]) {
-        processedYearData.total += assetData.total;
-        processedYearData.contracted += assetData.contracted;
-        processedYearData.merchant += assetData.merchant;
+        processedYearData.total += Number(assetData.total.toFixed(2));
+        processedYearData.contracted += Number(assetData.contracted.toFixed(2));
+        processedYearData.merchant += Number(assetData.merchant.toFixed(2));
         processedYearData.totalGeneration += parseFloat(assets[Object.keys(assets).find(key => 
           assets[key].name === assetName)].capacity) || 0;
-        processedYearData[`${assetName} Total`] = assetData.total;
-        processedYearData[`${assetName} Contracted`] = assetData.contracted;
-        processedYearData[`${assetName} Merchant`] = assetData.merchant;
+        processedYearData[`${assetName} Total`] = Number(assetData.total.toFixed(2));
+        processedYearData[`${assetName} Contracted`] = Number(assetData.contracted.toFixed(2));
+        processedYearData[`${assetName} Merchant`] = Number(assetData.merchant.toFixed(2));
       }
     });
-
+    
     processedYearData.weightedContractedPercentage = 
       processedYearData.totalGeneration > 0 
-        ? (processedYearData.contracted / processedYearData.total) * 100 
+        ? Number(((processedYearData.contracted / processedYearData.total) * 100).toFixed(2))
         : 0;
 
     return processedYearData;
@@ -191,6 +200,25 @@ const PortfolioDashboard = () => {
                 .filter(([_, isVisible]) => isVisible)
                 .map(([name]) => name)
                 .join(', ')}
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm font-medium">Total Capacity</p>
+                <p className="text-2xl font-bold">
+                  {Object.values(assets)
+                    .filter(asset => visibleAssets[asset.name])
+                    .reduce((sum, asset) => sum + parseFloat(asset.capacity), 0)}
+                  MW
+                </p>
+              </div>
+              <div>
+                <p className="text-sm font-medium">Average Contracted %</p>
+                <p className="text-2xl font-bold">
+                  {Math.round(
+                    processedData[0]?.weightedContractedPercentage || 0
+                  )}%
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>
