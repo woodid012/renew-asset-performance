@@ -109,15 +109,15 @@ export const PortfolioProvider = ({ children }) => {
         },
         VIC: {
           black: 70,
-          green: 22,
+          green: 25,
         },
         QLD: {
           black: 65,
-          green: 20,
+          green: 25,
         },
         SA: {
           black: 80,
-          green: 28,
+          green: 25,
         }
       }
     },
