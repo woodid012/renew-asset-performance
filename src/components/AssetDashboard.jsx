@@ -7,7 +7,7 @@ import { Plus, X } from 'lucide-react';
 import { usePortfolio } from '@/contexts/PortfolioContext';
 
 const AssetDashboard = () => {
-  const { assets, setAssets } = usePortfolio();
+  const { assets, setAssets, defaultNewAsset } = usePortfolio();
   const [activeTab, setActiveTab] = useState(Object.keys(assets)[0] || '1');
 
   const addNewTab = () => {
@@ -17,10 +17,10 @@ const AssetDashboard = () => {
       ...prev,
       [newId]: {
         id: newId,
-        name: `New Asset ${assetNumber}`,
-        state: '',
-        capacity: '',
-        type: '',
+        name: `Default Asset ${assetNumber}`,
+        state: 'NSW',
+        capacity: '100',
+        type: 'solar',
         volumeLossAdjustment: '100',
         contracts: []
       }
@@ -28,6 +28,7 @@ const AssetDashboard = () => {
     setActiveTab(newId);
   };
 
+  
   const updateAsset = (id, field, value) => {
     setAssets(prev => ({
       ...prev,

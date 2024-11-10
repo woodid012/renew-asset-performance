@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import Papa from 'papaparse';
 
 const PortfolioContext = createContext();
 
@@ -98,164 +99,9 @@ export const PortfolioProvider = ({ children }) => {
         SA: 0.40
       }
     },
-    
     merchantPrices: {
-      solar: {
-        black: {
-          NSW: {
-            2024: 75,
-            2025: 77,
-            2026: 79,
-            2027: 81,
-            2028: 83,
-            2029: 85,
-            2030: 87
-          },
-          VIC: {
-            2024: 70,
-            2025: 72,
-            2026: 74,
-            2027: 76,
-            2028: 78,
-            2029: 80,
-            2030: 82
-          },
-          QLD: {
-            2024: 65,
-            2025: 67,
-            2026: 69,
-            2027: 71,
-            2028: 73,
-            2029: 75,
-            2030: 77
-          },
-          SA: {
-            2024: 80,
-            2025: 82,
-            2026: 84,
-            2027: 86,
-            2028: 88,
-            2029: 90,
-            2030: 92
-          }
-        },
-        green: {
-          NSW: {
-            2024: 25,
-            2025: 26,
-            2026: 27,
-            2027: 28,
-            2028: 29,
-            2029: 30,
-            2030: 31
-          },
-          VIC: {
-            2024: 25,
-            2025: 26,
-            2026: 27,
-            2027: 28,
-            2028: 29,
-            2029: 30,
-            2030: 31
-          },
-          QLD: {
-            2024: 25,
-            2025: 26,
-            2026: 27,
-            2027: 28,
-            2028: 29,
-            2029: 30,
-            2030: 31
-          },
-          SA: {
-            2024: 25,
-            2025: 26,
-            2026: 27,
-            2027: 28,
-            2028: 29,
-            2029: 30,
-            2030: 31
-          }
-        }
-      },
-      wind: {
-        black: {
-          NSW: {
-            2024: 65,
-            2025: 67,
-            2026: 69,
-            2027: 71,
-            2028: 73,
-            2029: 75,
-            2030: 77
-          },
-          VIC: {
-            2024: 60,
-            2025: 62,
-            2026: 64,
-            2027: 66,
-            2028: 68,
-            2029: 70,
-            2030: 72
-          },
-          QLD: {
-            2024: 55,
-            2025: 57,
-            2026: 59,
-            2027: 61,
-            2028: 63,
-            2029: 65,
-            2030: 67
-          },
-          SA: {
-            2024: 70,
-            2025: 72,
-            2026: 74,
-            2027: 76,
-            2028: 78,
-            2029: 80,
-            2030: 82
-          }
-        },
-        green: {
-          NSW: {
-            2024: 28,
-            2025: 29,
-            2026: 30,
-            2027: 31,
-            2028: 32,
-            2029: 33,
-            2030: 34
-          },
-          VIC: {
-            2024: 28,
-            2025: 29,
-            2026: 30,
-            2027: 31,
-            2028: 32,
-            2029: 33,
-            2030: 34
-          },
-          QLD: {
-            2024: 28,
-            2025: 29,
-            2026: 30,
-            2027: 31,
-            2028: 32,
-            2029: 33,
-            2030: 34
-          },
-          SA: {
-            2024: 28,
-            2025: 29,
-            2026: 30,
-            2027: 31,
-            2028: 32,
-            2029: 33,
-            2030: 34
-          }
-        }
-      }
+      solar: { black: {}, green: {} },
+      wind: { black: {}, green: {} }
     },
     analysisStartYear: 2024,
     analysisEndYear: 2030,
@@ -263,7 +109,63 @@ export const PortfolioProvider = ({ children }) => {
     priceVariation: 30
   });
 
-  // Enhanced updateConstants function that can handle the nested structure
+  // Load merchant prices from CSV
+    // Load merchant prices from CSV
+    useEffect(() => {
+      const loadMerchantPrices = async () => {
+        try {
+          console.log('Attempting to load merchant prices...');
+          const response = await fetch('/merchant_prices.csv');
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          const csvText = await response.text();
+          console.log('CSV content loaded:', csvText.slice(0, 100) + '...'); // Log first 100 chars
+          
+          Papa.parse(csvText, {
+            header: true,
+            dynamicTyping: true,
+            complete: (results) => {
+              console.log('Parse complete, rows:', results.data.length);
+              const newMerchantPrices = {
+                solar: { black: {}, green: {} },
+                wind: { black: {}, green: {} }
+              };
+  
+              results.data.forEach(row => {
+                if (!row.profile || !row.type || !row.state || !row.year || !row.price) {
+                  console.log('Skipping invalid row:', row);
+                  return;
+                }
+  
+                if (!newMerchantPrices[row.profile][row.type][row.state]) {
+                  newMerchantPrices[row.profile][row.type][row.state] = {};
+                }
+                newMerchantPrices[row.profile][row.type][row.state][row.year] = row.price;
+              });
+  
+              console.log('Processed merchant prices:', newMerchantPrices);
+              setConstants(prev => ({
+                ...prev,
+                merchantPrices: newMerchantPrices
+              }));
+            },
+            error: (error) => {
+              console.error('Error parsing CSV:', error);
+            }
+          });
+        } catch (error) {
+          console.error('Error loading merchant prices:', error);
+          console.error('Error details:', {
+            message: error.message,
+            stack: error.stack
+          });
+        }
+      };
+  
+      loadMerchantPrices();
+    }, []);
+
   const updateConstants = useCallback((field, value) => {
     console.log('Updating constant:', field, 'to:', value);
     setConstants(prev => {
@@ -272,7 +174,6 @@ export const PortfolioProvider = ({ children }) => {
         const newConstants = { ...prev };
         let current = newConstants;
         
-        // Navigate to the nested object
         for (let i = 0; i < fields.length - 1; i++) {
           if (!current[fields[i]]) {
             current[fields[i]] = {};
@@ -281,9 +182,7 @@ export const PortfolioProvider = ({ children }) => {
           current = current[fields[i]];
         }
         
-        // Update the final field
         current[fields[fields.length - 1]] = value;
-        
         return newConstants;
       }
 
@@ -294,7 +193,6 @@ export const PortfolioProvider = ({ children }) => {
     });
   }, []);
 
-  // Merchant price lookup function
   const getMerchantPrice = useCallback((profile, type, region, year) => {
     try {
       return constants.merchantPrices[profile][type][region][year] || 0;
