@@ -98,10 +98,12 @@ export const PortfolioProvider = ({ children }) => {
         QLD: 0.32,
         SA: 0.40
       }
+      // Baseload doesn't need capacity factors
     },
     merchantPrices: {
       solar: { black: {}, green: {} },
-      wind: { black: {}, green: {} }
+      wind: { black: {}, green: {} },
+      baseload: { black: {}, green: {} }  // Added baseload
     },
     analysisStartYear: 2024,
     analysisEndYear: 2030,
@@ -110,17 +112,16 @@ export const PortfolioProvider = ({ children }) => {
   });
 
   // Load merchant prices from CSV
-    // Load merchant prices from CSV
   useEffect(() => {
     const loadMerchantPrices = async () => {
       try {
         console.log('Attempting to load merchant prices...');
-        const response = await fetch('/merchant_prices.csv');
+        const response = await fetch('/merchant_prices_baseload.csv');
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         const csvText = await response.text();
-        console.log('CSV content loaded:', csvText.slice(0, 100) + '...'); // Log first 100 chars
+        console.log('CSV content loaded:', csvText.slice(0, 100) + '...');
         
         Papa.parse(csvText, {
           header: true,
@@ -129,7 +130,8 @@ export const PortfolioProvider = ({ children }) => {
             console.log('Parse complete, rows:', results.data.length);
             const newMerchantPrices = {
               solar: { black: {}, green: {} },
-              wind: { black: {}, green: {} }
+              wind: { black: {}, green: {} },
+              baseload: { black: {}, green: {} }  // Added baseload
             };
 
             results.data.forEach(row => {
@@ -138,9 +140,17 @@ export const PortfolioProvider = ({ children }) => {
                 return;
               }
 
+              // Initialize nested objects if they don't exist
+              if (!newMerchantPrices[row.profile]) {
+                newMerchantPrices[row.profile] = { black: {}, green: {} };
+              }
+              if (!newMerchantPrices[row.profile][row.type]) {
+                newMerchantPrices[row.profile][row.type] = {};
+              }
               if (!newMerchantPrices[row.profile][row.type][row.state]) {
                 newMerchantPrices[row.profile][row.type][row.state] = {};
               }
+
               newMerchantPrices[row.profile][row.type][row.state][row.year] = row.price;
             });
 
@@ -195,7 +205,7 @@ export const PortfolioProvider = ({ children }) => {
 
   const getMerchantPrice = useCallback((profile, type, region, year) => {
     try {
-      return constants.merchantPrices[profile][type][region][year] || 0;
+      return constants.merchantPrices[profile]?.[type]?.[region]?.[year] || 0;
     } catch (error) {
       console.warn(`Could not find merchant price for profile=${profile}, type=${type}, region=${region}, year=${year}`);
       return 0;

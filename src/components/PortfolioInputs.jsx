@@ -47,7 +47,11 @@ const PortfolioInputs = () => {
         header: true,
         complete: (results) => {
           try {
-            const newMerchantPrices = { solar: { black: {}, green: {} }, wind: { black: {}, green: {} } };
+            const newMerchantPrices = { 
+              solar: { black: {}, green: {} }, 
+              wind: { black: {}, green: {} },
+              baseload: { black: {}, green: {} }  // Added baseload
+            };
             
             results.data.forEach(row => {
               if (!row.profile || !row.type || !row.state || !row.year || !row.price) return;
@@ -76,7 +80,7 @@ const PortfolioInputs = () => {
 
   const handleExport = () => {
     const rows = [];
-    ['solar', 'wind'].forEach(profile => {
+    ['solar', 'wind', 'baseload'].forEach(profile => {  // Added baseload
       ['black', 'green'].forEach(type => {
         states.forEach(state => {
           years.forEach(year => {
@@ -220,6 +224,7 @@ const PortfolioInputs = () => {
                 />
               </div>
             ))}
+         
           </div>
         </CardContent>
       </Card>
@@ -258,15 +263,17 @@ const PortfolioInputs = () => {
         <CardContent>
           <Tabs defaultValue="solar" className="w-full">
             <TabsList className="mb-4">
-              <TabsTrigger value="solar">Solar</TabsTrigger>
-              <TabsTrigger value="wind">Wind</TabsTrigger>
+              {Object.keys(constants.merchantPrices).map(profile => (
+                <TabsTrigger key={profile} value={profile}>
+                  {profile.charAt(0).toUpperCase() + profile.slice(1)}
+                </TabsTrigger>
+              ))}
             </TabsList>
-            <TabsContent value="solar">
-              <MerchantPriceTable profile="solar" />
-            </TabsContent>
-            <TabsContent value="wind">
-              <MerchantPriceTable profile="wind" />
-            </TabsContent>
+            {Object.keys(constants.merchantPrices).map(profile => (
+              <TabsContent key={profile} value={profile}>
+                <MerchantPriceTable profile={profile} />
+              </TabsContent>
+            ))}
           </Tabs>
         </CardContent>
       </Card>
