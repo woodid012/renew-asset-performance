@@ -111,57 +111,60 @@ export const PortfolioProvider = ({ children }) => {
 
   // Load merchant prices from CSV
     // Load merchant prices from CSV
-    useEffect(() => {
-      const loadMerchantPrices = async () => {
-        try {
-          console.log('Attempting to load merchant prices...');
-          // Use absolute path since it's in public folder
-          const response = await window.fs.readFile('merchant_prices.csv', { encoding: 'utf8' });
-          console.log('CSV content loaded:', response.slice(0, 100) + '...'); // Log first 100 chars
-          
-          Papa.parse(response, {
-            header: true,
-            dynamicTyping: true,
-            complete: (results) => {
-              console.log('Parse complete, rows:', results.data.length);
-              const newMerchantPrices = {
-                solar: { black: {}, green: {} },
-                wind: { black: {}, green: {} }
-              };
-    
-              results.data.forEach(row => {
-                if (!row.profile || !row.type || !row.state || !row.year || !row.price) {
-                  console.log('Skipping invalid row:', row);
-                  return;
-                }
-    
-                if (!newMerchantPrices[row.profile][row.type][row.state]) {
-                  newMerchantPrices[row.profile][row.type][row.state] = {};
-                }
-                newMerchantPrices[row.profile][row.type][row.state][row.year] = row.price;
-              });
-    
-              console.log('Processed merchant prices:', newMerchantPrices);
-              setConstants(prev => ({
-                ...prev,
-                merchantPrices: newMerchantPrices
-              }));
-            },
-            error: (error) => {
-              console.error('Error parsing CSV:', error);
-            }
-          });
-        } catch (error) {
-          console.error('Error loading merchant prices:', error);
-          console.error('Error details:', {
-            message: error.message,
-            stack: error.stack
-          });
+  useEffect(() => {
+    const loadMerchantPrices = async () => {
+      try {
+        console.log('Attempting to load merchant prices...');
+        const response = await fetch('/merchant_prices.csv');
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
         }
-      };
-    
-      loadMerchantPrices();
-    }, []);
+        const csvText = await response.text();
+        console.log('CSV content loaded:', csvText.slice(0, 100) + '...'); // Log first 100 chars
+        
+        Papa.parse(csvText, {
+          header: true,
+          dynamicTyping: true,
+          complete: (results) => {
+            console.log('Parse complete, rows:', results.data.length);
+            const newMerchantPrices = {
+              solar: { black: {}, green: {} },
+              wind: { black: {}, green: {} }
+            };
+
+            results.data.forEach(row => {
+              if (!row.profile || !row.type || !row.state || !row.year || !row.price) {
+                console.log('Skipping invalid row:', row);
+                return;
+              }
+
+              if (!newMerchantPrices[row.profile][row.type][row.state]) {
+                newMerchantPrices[row.profile][row.type][row.state] = {};
+              }
+              newMerchantPrices[row.profile][row.type][row.state][row.year] = row.price;
+            });
+
+            console.log('Processed merchant prices:', newMerchantPrices);
+            setConstants(prev => ({
+              ...prev,
+              merchantPrices: newMerchantPrices
+            }));
+          },
+          error: (error) => {
+            console.error('Error parsing CSV:', error);
+          }
+        });
+      } catch (error) {
+        console.error('Error loading merchant prices:', error);
+        console.error('Error details:', {
+          message: error.message,
+          stack: error.stack
+        });
+      }
+    };
+
+    loadMerchantPrices();
+  }, []);
 
   const updateConstants = useCallback((field, value) => {
     console.log('Updating constant:', field, 'to:', value);
