@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, X } from 'lucide-react';
 import { usePortfolio } from '@/contexts/PortfolioContext';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const AssetDashboard = () => {
   const { assets, setAssets, defaultNewAsset } = usePortfolio();
@@ -128,7 +129,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts }) => {
       indexation: '',
       hasFloor: false,
       floorValue: '',
-      startDate: '',
+      startDate: '01/01/2024',
       endDate: '',
       term: ''
     };
@@ -178,17 +179,20 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts }) => {
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">State</label>
-              <select
+              <Select
                 value={asset.state}
-                onChange={(e) => onUpdateAsset('state', e.target.value)}
-                className="w-full p-2 border rounded"
+                onValueChange={(value) => onUpdateAsset('state', value)}
               >
-                <option value="">Select State</option>
-                <option value="NSW">NSW</option>
-                <option value="VIC">VIC</option>
-                <option value="SA">SA</option>
-                <option value="QLD">QLD</option>
-              </select>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select State" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="NSW">NSW</SelectItem>
+                  <SelectItem value="VIC">VIC</SelectItem>
+                  <SelectItem value="SA">SA</SelectItem>
+                  <SelectItem value="QLD">QLD</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Capacity (MW)</label>
@@ -201,15 +205,18 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts }) => {
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Type</label>
-              <select
+              <Select
                 value={asset.type}
-                onChange={(e) => onUpdateAsset('type', e.target.value)}
-                className="w-full p-2 border rounded"
+                onValueChange={(value) => onUpdateAsset('type', value)}
               >
-                <option value="">Select Type</option>
-                <option value="wind">Wind</option>
-                <option value="solar">Solar</option>
-              </select>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="wind">Wind</SelectItem>
+                  <SelectItem value="solar">Solar</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <div className="flex items-center space-x-2">
@@ -262,16 +269,19 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts }) => {
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Contract Type</label>
-                    <select
-                      value={contract.type}
-                      onChange={(e) => updateContract(contract.id, 'type', e.target.value)}
-                      className="w-full p-2 border rounded"
+                    <Select 
+                      value={contract.type} 
+                      onValueChange={(value) => updateContract(contract.id, 'type', value)}
                     >
-                      <option value="">Select Type</option>
-                      <option value="bundled">Bundled PPA</option>
-                      <option value="green">Green Only</option>
-                      <option value="black">Black Only</option>
-                    </select>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="bundled">Bundled PPA</SelectItem>
+                        <SelectItem value="green">Green Only</SelectItem>
+                        <SelectItem value="black">Black Only</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   {/* Second Row */}
@@ -348,14 +358,18 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts }) => {
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Floor</label>
                     <div className="flex space-x-2">
-                      <select
+                    <Select
                         value={contract.hasFloor ? 'yes' : 'no'}
-                        onChange={(e) => updateContract(contract.id, 'hasFloor', e.target.value === 'yes')}
-                        className="w-1/3 p-2 border rounded"
+                        onValueChange={(value) => updateContract(contract.id, 'hasFloor', value === 'yes')}
                       >
-                        <option value="no">No</option>
-                        <option value="yes">Yes</option>
-                      </select>
+                        <SelectTrigger className="w-1/3">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="no">No</SelectItem>
+                          <SelectItem value="yes">Yes</SelectItem>
+                        </SelectContent>
+                      </Select>
                       {contract.hasFloor && (
                         <Input
                           type="number"
