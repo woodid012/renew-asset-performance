@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { usePortfolio } from '@/contexts/PortfolioContext';
 
@@ -7,6 +8,7 @@ const PriceChart = () => {
   const { constants } = usePortfolio();
   const [selectedRegion, setSelectedRegion] = useState('NSW');
   const [chartData, setChartData] = useState([]);
+  const [yAxisDomain, setYAxisDomain] = useState([0, 100]);
 
   const states = ['NSW', 'QLD', 'SA', 'VIC'];
   const years = Array.from(
@@ -15,6 +17,33 @@ const PriceChart = () => {
   );
 
   useEffect(() => {
+    // Find the maximum price across all regions and profiles
+    let maxPrice = 0;
+    states.forEach(region => {
+      years.forEach(year => {
+        // Check baseload black prices
+        const baseloadPrice = constants.merchantPrices?.baseload?.black?.[region]?.[year];
+        if (baseloadPrice) maxPrice = Math.max(maxPrice, baseloadPrice);
+        
+        // Check solar black prices
+        const solarPrice = constants.merchantPrices?.solar?.black?.[region]?.[year];
+        if (solarPrice) maxPrice = Math.max(maxPrice, solarPrice);
+        
+        // Check wind black prices
+        const windPrice = constants.merchantPrices?.wind?.black?.[region]?.[year];
+        if (windPrice) maxPrice = Math.max(maxPrice, windPrice);
+        
+        // Check green certificate prices
+        const greenPrice = constants.merchantPrices?.solar?.green?.[region]?.[year];
+        if (greenPrice) maxPrice = Math.max(maxPrice, greenPrice);
+      });
+    });
+
+    // Round up to nearest 50 for a clean max value
+    const roundedMax = Math.ceil(maxPrice / 50) * 50;
+    setYAxisDomain([0, roundedMax]);
+
+    // Create chart data for selected region
     const data = years.map(year => {
       const dataPoint = { year };
       
@@ -66,6 +95,21 @@ const PriceChart = () => {
 
   return (
     <Card className="w-full">
+      <CardHeader>
+        <CardTitle className="text-xl">Price Chart</CardTitle>
+        <div className="flex gap-2 mt-4">
+          {states.map(state => (
+            <Button
+              key={state}
+              variant={selectedRegion === state ? "default" : "outline"}
+              onClick={() => setSelectedRegion(state)}
+              className="min-w-16"
+            >
+              {state}
+            </Button>
+          ))}
+        </div>
+      </CardHeader>
       <CardContent>
         <div className="h-96 w-full">
           <ResponsiveContainer>
@@ -78,6 +122,7 @@ const PriceChart = () => {
                 tickCount={years.length}
               />
               <YAxis 
+                domain={yAxisDomain}
                 label={{ value: 'Price ($/MWh)', angle: -90, position: 'insideLeft', offset: 0 }}
               />
               <Tooltip content={<CustomTooltip />} />
