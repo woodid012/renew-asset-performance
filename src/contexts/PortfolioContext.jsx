@@ -115,14 +115,11 @@ export const PortfolioProvider = ({ children }) => {
       const loadMerchantPrices = async () => {
         try {
           console.log('Attempting to load merchant prices...');
-          const response = await fetch('/merchant_prices.csv');
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
-          const csvText = await response.text();
-          console.log('CSV content loaded:', csvText.slice(0, 100) + '...'); // Log first 100 chars
+          // Use absolute path since it's in public folder
+          const response = await window.fs.readFile('merchant_prices.csv', { encoding: 'utf8' });
+          console.log('CSV content loaded:', response.slice(0, 100) + '...'); // Log first 100 chars
           
-          Papa.parse(csvText, {
+          Papa.parse(response, {
             header: true,
             dynamicTyping: true,
             complete: (results) => {
@@ -131,19 +128,19 @@ export const PortfolioProvider = ({ children }) => {
                 solar: { black: {}, green: {} },
                 wind: { black: {}, green: {} }
               };
-  
+    
               results.data.forEach(row => {
                 if (!row.profile || !row.type || !row.state || !row.year || !row.price) {
                   console.log('Skipping invalid row:', row);
                   return;
                 }
-  
+    
                 if (!newMerchantPrices[row.profile][row.type][row.state]) {
                   newMerchantPrices[row.profile][row.type][row.state] = {};
                 }
                 newMerchantPrices[row.profile][row.type][row.state][row.year] = row.price;
               });
-  
+    
               console.log('Processed merchant prices:', newMerchantPrices);
               setConstants(prev => ({
                 ...prev,
@@ -162,7 +159,7 @@ export const PortfolioProvider = ({ children }) => {
           });
         }
       };
-  
+    
       loadMerchantPrices();
     }, []);
 
