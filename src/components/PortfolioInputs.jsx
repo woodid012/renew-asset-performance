@@ -2,6 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { usePortfolio } from '@/contexts/PortfolioContext';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const PortfolioInputs = () => {
   const { constants, updateConstants } = usePortfolio();
@@ -9,54 +10,14 @@ const PortfolioInputs = () => {
   const handleCapacityFactorChange = (technology, state, value) => {
     const newValue = parseFloat(value) || 0;
     if (newValue >= 0 && newValue <= 1) {
-      updateConstants('capacityFactors', {
-        ...constants.capacityFactors,
-        [technology]: {
-          ...constants.capacityFactors[technology],
-          [state]: newValue
-        }
-      });
+      updateConstants(`capacityFactors.${technology}.${state}`, newValue);
     }
   };
 
-  const handleMerchantPriceChange = (state, type, year, value) => {
+  const handleMerchantPriceChange = (profile, type, region, year, value) => {
     const newValue = parseFloat(value) || 0;
     if (newValue >= 0) {
-      if (type === 'green') {
-        // Update green price for all states
-        const updatedStates = {};
-        ['NSW', 'VIC', 'QLD', 'SA'].forEach(stateKey => {
-          updatedStates[stateKey] = {
-            ...constants.merchantPrices.states[stateKey],
-            green: {
-              ...constants.merchantPrices.states[stateKey].green,
-              [year]: newValue
-            }
-          };
-        });
-
-        updateConstants('merchantPrices', {
-          ...constants.merchantPrices,
-          states: {
-            ...constants.merchantPrices.states,
-            ...updatedStates
-          }
-        });
-      } else {
-        updateConstants('merchantPrices', {
-          ...constants.merchantPrices,
-          states: {
-            ...constants.merchantPrices.states,
-            [state]: {
-              ...constants.merchantPrices.states[state],
-              [type]: {
-                ...constants.merchantPrices.states[state][type],
-                [year]: newValue
-              }
-            }
-          }
-        });
-      }
+      updateConstants(`merchantPrices.${profile}.${type}.${region}.${year}`, newValue);
     }
   };
 
@@ -64,6 +25,70 @@ const PortfolioInputs = () => {
   const years = Array.from(
     { length: constants.analysisEndYear - constants.analysisStartYear + 1 },
     (_, i) => constants.analysisStartYear + i
+  );
+
+  const MerchantPriceTable = ({ profile }) => (
+    <div className="space-y-8">
+      {/* Black Energy Prices Table */}
+      <div>
+        <h3 className="font-medium text-lg mb-4">Black Energy Price ($/MWh)</h3>
+        <div className="grid gap-4">
+          <div className="grid grid-cols-[100px_repeat(7,1fr)] gap-2 items-center">
+            <div className="font-medium">Year</div>
+            {years.map(year => (
+              <div key={year} className="text-center font-medium">{year}</div>
+            ))}
+          </div>
+          
+          {states.map(state => (
+            <div key={state} className="grid grid-cols-[100px_repeat(7,1fr)] gap-2 items-center">
+              <div className="font-medium">{state}</div>
+              {years.map(year => (
+                <Input
+                  key={`${state}-black-${year}`}
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  value={constants.merchantPrices[profile].black[state][year]}
+                  onChange={(e) => handleMerchantPriceChange(profile, 'black', state, year, e.target.value)}
+                  className="text-center"
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Green Certificate Prices Table */}
+      <div>
+        <h3 className="font-medium text-lg mb-4">Green Certificate Price ($/MWh)</h3>
+        <div className="grid gap-4">
+          <div className="grid grid-cols-[100px_repeat(7,1fr)] gap-2 items-center">
+            <div className="font-medium">Year</div>
+            {years.map(year => (
+              <div key={year} className="text-center font-medium">{year}</div>
+            ))}
+          </div>
+          
+          {states.map(state => (
+            <div key={state} className="grid grid-cols-[100px_repeat(7,1fr)] gap-2 items-center">
+              <div className="font-medium">{state}</div>
+              {years.map(year => (
+                <Input
+                  key={`${state}-green-${year}`}
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  value={constants.merchantPrices[profile].green[state][year]}
+                  onChange={(e) => handleMerchantPriceChange(profile, 'green', state, year, e.target.value)}
+                  className="text-center"
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   );
   
   return (
@@ -118,64 +143,19 @@ const PortfolioInputs = () => {
         <CardHeader>
           <CardTitle>Merchant Prices</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-8">
-          {/* Black Energy Prices Table */}
-          <div>
-            <h3 className="font-medium text-lg mb-4">Black Energy Price ($/MWh)</h3>
-            <div className="grid gap-4">
-              <div className="grid grid-cols-[100px_repeat(7,1fr)] gap-2 items-center">
-                <div className="font-medium">Year</div>
-                {years.map(year => (
-                  <div key={year} className="text-center font-medium">{year}</div>
-                ))}
-              </div>
-              
-              {states.map(state => (
-                <div key={state} className="grid grid-cols-[100px_repeat(7,1fr)] gap-2 items-center">
-                  <div className="font-medium">{state}</div>
-                  {years.map(year => (
-                    <Input
-                      key={`${state}-black-${year}`}
-                      type="number"
-                      min="0"
-                      step="0.1"
-                      value={constants.merchantPrices.states[state].black[year]}
-                      onChange={(e) => handleMerchantPriceChange(state, 'black', year, e.target.value)}
-                      className="text-center"
-                    />
-                  ))}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Green Certificate Prices Table */}
-          <div>
-            <h3 className="font-medium text-lg mb-4">Green Certificate Price ($/MWh)</h3>
-            <div className="grid gap-4">
-              <div className="grid grid-cols-[100px_repeat(7,1fr)] gap-2 items-center">
-                <div className="font-medium">Year</div>
-                {years.map(year => (
-                  <div key={year} className="text-center font-medium">{year}</div>
-                ))}
-              </div>
-              
-              <div className="grid grid-cols-[100px_repeat(7,1fr)] gap-2 items-center">
-                <div className="font-medium">All States</div>
-                {years.map(year => (
-                  <Input
-                    key={`green-${year}`}
-                    type="number"
-                    min="0"
-                    step="0.1"
-                    value={constants.merchantPrices.states.NSW.green[year]}
-                    onChange={(e) => handleMerchantPriceChange('NSW', 'green', year, e.target.value)}
-                    className="text-center"
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
+        <CardContent>
+          <Tabs defaultValue="solar" className="w-full">
+            <TabsList className="mb-4">
+              <TabsTrigger value="solar">Solar</TabsTrigger>
+              <TabsTrigger value="wind">Wind</TabsTrigger>
+            </TabsList>
+            <TabsContent value="solar">
+              <MerchantPriceTable profile="solar" />
+            </TabsContent>
+            <TabsContent value="wind">
+              <MerchantPriceTable profile="wind" />
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
     </div>

@@ -5,7 +5,7 @@ import { Download } from 'lucide-react';
 import { usePortfolio } from '@/contexts/PortfolioContext';
 
 const PPASummaryTable = () => {
-  const { assets, constants } = usePortfolio();
+  const { assets, constants, getMerchantPrice } = usePortfolio();
 
   const calculateAnnualGeneration = (asset) => {
     return asset.capacity * asset.volumeLossAdjustment / 100 * constants.HOURS_IN_YEAR * constants.capacityFactors[asset.type][asset.state];
@@ -72,14 +72,13 @@ const PPASummaryTable = () => {
 
         const merchantPercentage = 100 - contractedPercentage;
         if (merchantPercentage > 0) {
-            const merchantVolume = annualGeneration * (merchantPercentage / 100);
-            const merchantMW = asset.capacity * (merchantPercentage / 100);
-            
-            // Get year-specific merchant prices
-            const merchantPricing = constants.merchantPrices.states[asset.state];
-            const blackPrice = merchantPricing.black[year] || 0;
-            const greenPrice = merchantPricing.green[year] || 0;
-            const merchantPrice = blackPrice + greenPrice;
+          const merchantVolume = annualGeneration * (merchantPercentage / 100);
+          const merchantMW = asset.capacity * (merchantPercentage / 100);
+          
+          // Get type-specific merchant prices using getMerchantPrice
+          const blackPrice = getMerchantPrice(asset.type, 'black', asset.state, year);
+          const greenPrice = getMerchantPrice(asset.type, 'green', asset.state, year);
+          const merchantPrice = blackPrice + greenPrice;
 
           yearlyData.push({
             year,

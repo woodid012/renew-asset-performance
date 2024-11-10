@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label"
 import { usePortfolio } from '@/contexts/PortfolioContext';
 
 const PortfolioDashboard = () => {
-  const { assets, constants } = usePortfolio();
+  const { assets, constants, getMerchantPrice } = usePortfolio();
   const [visibleAssets, setVisibleAssets] = useState({});
   
   useEffect(() => {
@@ -18,12 +18,8 @@ const PortfolioDashboard = () => {
   }, [assets]);
 
   const calculateMerchantPrice = (asset, year) => {
-    const statePrices = constants.merchantPrices.states[asset.state];
-    if (!statePrices) return 0;
-  
-    const blackPrice = statePrices.black[year] || 0;
-    const greenPrice = statePrices.green[year] || 0;
-    
+    const blackPrice = getMerchantPrice(asset.type, 'black', asset.state, year) || 0;
+    const greenPrice = getMerchantPrice(asset.type, 'green', asset.state, year) || 0;
     return blackPrice + greenPrice;
   };
 

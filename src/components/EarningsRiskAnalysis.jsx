@@ -5,7 +5,7 @@ import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, L
 import { Input } from '@/components/ui/input';
 
 const EarningsRiskAnalysis = () => {
-  const { assets, constants, updateConstants } = usePortfolio();
+  const { assets, constants, updateConstants, getMerchantPrice } = usePortfolio();
   const [selectedYear, setSelectedYear] = useState(constants.analysisStartYear);
   const hasAssets = useMemo(() => Object.keys(assets || {}).length > 0, [assets]);
 
@@ -13,89 +13,85 @@ const EarningsRiskAnalysis = () => {
     const annualGeneration = asset.capacity * asset.volumeLossAdjustment / 100 * constants.HOURS_IN_YEAR * 
       constants.capacityFactors[asset.type][asset.state];
 
-
-        // Calculate PPA Revenue - Keep this section exactly the same
-        const ppaRevenue = (asset.contracts || []).reduce((total, ppa) => {
-          // Validate contract has all required fields
-          if (!ppa.startDate || !ppa.endDate || !ppa.buyersPercentage || 
-              !ppa.indexation || isNaN(ppa.indexation) ||
-              !ppa.type || (
-                (ppa.type === 'bundled' && (!ppa.greenPrice || !ppa.blackPrice || isNaN(ppa.greenPrice) || isNaN(ppa.blackPrice))) ||
-                (ppa.type !== 'bundled' && (!ppa.strikePrice || isNaN(ppa.strikePrice)))
-              )) {
-            return total; // Skip invalid contracts
-          }
-      
-          try {
-            const startYear = new Date(ppa.startDate).getFullYear();
-            const endYear = new Date(ppa.endDate).getFullYear();
-            
-            if (isNaN(startYear) || isNaN(endYear) || year < startYear || year > endYear) {
-              return total;
-            }
-      
-            const yearsSinceStart = year - startYear;
-            const indexationFactor = Math.pow(1 + parseFloat(ppa.indexation) / 100, yearsSinceStart);
-            const ppaVolume = annualGeneration * (parseFloat(ppa.buyersPercentage) / 100);
-            let ppaPrice = 0;
-            
-            if (ppa.type === 'bundled') {
-              ppaPrice = (parseFloat(ppa.greenPrice) + parseFloat(ppa.blackPrice)) * indexationFactor;
-            } else {
-              ppaPrice = parseFloat(ppa.strikePrice) * indexationFactor;
-            }
-            
-            return total + (ppaVolume * ppaPrice);
-          } catch (error) {
-            console.warn('Error processing contract:', error);
-            return total;
-          }
-        }, 0);
-      
-        // Calculate Merchant Revenue
-        const contractedPercentage = (asset.contracts || []).reduce((sum, contract) => {
-          // Skip invalid contracts
-          if (!contract.startDate || !contract.endDate || !contract.buyersPercentage || isNaN(contract.buyersPercentage)) {
-            return sum;
-          }
-      
-          try {
-            const startYear = new Date(contract.startDate).getFullYear();
-            const endYear = new Date(contract.endDate).getFullYear();
-            
-            if (isNaN(startYear) || isNaN(endYear)) {
-              return sum;
-            }
-      
-            if (year >= startYear && year <= endYear) {
-              return sum + parseFloat(contract.buyersPercentage);
-            }
-            return sum;
-          } catch (error) {
-            console.warn('Error processing contract percentage:', error);
-            return sum;
-          }
-        }, 0);
-      
-        // Modified merchant revenue calculation to use year-based prices
-        const merchantPercentage = (100 - contractedPercentage) / 100;
-        const merchantVolume = annualGeneration * merchantPercentage;
-        const merchantPricing = constants.merchantPrices.states[asset.state];
+    // Calculate PPA Revenue
+    const ppaRevenue = (asset.contracts || []).reduce((total, ppa) => {
+      // Validate contract has all required fields
+      if (!ppa.startDate || !ppa.endDate || !ppa.buyersPercentage || 
+          !ppa.indexation || isNaN(ppa.indexation) ||
+          !ppa.type || (
+            (ppa.type === 'bundled' && (!ppa.greenPrice || !ppa.blackPrice || isNaN(ppa.greenPrice) || isNaN(ppa.blackPrice))) ||
+            (ppa.type !== 'bundled' && (!ppa.strikePrice || isNaN(ppa.strikePrice)))
+          )) {
+        return total; // Skip invalid contracts
+      }
+  
+      try {
+        const startYear = new Date(ppa.startDate).getFullYear();
+        const endYear = new Date(ppa.endDate).getFullYear();
         
-        // Get year-specific prices
-        const blackPrice = merchantPricing.black[year] || 0;
-        const greenPrice = merchantPricing.green[year] || 0;
-        const merchantPrice = blackPrice + greenPrice;
+        if (isNaN(startYear) || isNaN(endYear) || year < startYear || year > endYear) {
+          return total;
+        }
+  
+        const yearsSinceStart = year - startYear;
+        const indexationFactor = Math.pow(1 + parseFloat(ppa.indexation) / 100, yearsSinceStart);
+        const ppaVolume = annualGeneration * (parseFloat(ppa.buyersPercentage) / 100);
+        let ppaPrice = 0;
         
-        // Calculate merchant revenue using the year-specific price
-        const merchantRevenue = merchantVolume * merchantPrice;
+        if (ppa.type === 'bundled') {
+          ppaPrice = (parseFloat(ppa.greenPrice) + parseFloat(ppa.blackPrice)) * indexationFactor;
+        } else {
+          ppaPrice = parseFloat(ppa.strikePrice) * indexationFactor;
+        }
         
-        return {
-          ppaRevenue,
-          merchantRevenue,
-          totalRevenue: ppaRevenue + merchantRevenue
-        };
-      };
+        return total + (ppaVolume * ppaPrice);
+      } catch (error) {
+        console.warn('Error processing contract:', error);
+        return total;
+      }
+    }, 0);
+  
+    // Calculate Merchant Revenue
+    const contractedPercentage = (asset.contracts || []).reduce((sum, contract) => {
+      if (!contract.startDate || !contract.endDate || !contract.buyersPercentage || isNaN(contract.buyersPercentage)) {
+        return sum;
+      }
+  
+      try {
+        const startYear = new Date(contract.startDate).getFullYear();
+        const endYear = new Date(contract.endDate).getFullYear();
+        
+        if (isNaN(startYear) || isNaN(endYear)) {
+          return sum;
+        }
+  
+        if (year >= startYear && year <= endYear) {
+          return sum + parseFloat(contract.buyersPercentage);
+        }
+        return sum;
+      } catch (error) {
+        console.warn('Error processing contract percentage:', error);
+        return sum;
+      }
+    }, 0);
+  
+    // Modified merchant revenue calculation to use type-based prices
+    const merchantPercentage = (100 - contractedPercentage) / 100;
+    const merchantVolume = annualGeneration * merchantPercentage;
+    
+    // Get year and type-specific prices using getMerchantPrice
+    const blackPrice = getMerchantPrice(asset.type, 'black', asset.state, year);
+    const greenPrice = getMerchantPrice(asset.type, 'green', asset.state, year);
+    const merchantPrice = blackPrice + greenPrice;
+    
+    const merchantRevenue = merchantVolume * merchantPrice;
+    
+    return {
+      ppaRevenue,
+      merchantRevenue,
+      totalRevenue: ppaRevenue + merchantRevenue
+    };
+  };
       
       // Keep generateScenarios exactly the same
       const generateScenarios = () => {
