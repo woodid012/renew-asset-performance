@@ -19,34 +19,52 @@ const PortfolioInputs = () => {
     }
   };
 
-  const handleMerchantPriceChange = (state, type, value) => {
+  const handleMerchantPriceChange = (state, type, year, value) => {
     const newValue = parseFloat(value) || 0;
     if (newValue >= 0) {
-      updateConstants('merchantPrices', {
-        ...constants.merchantPrices,
-        states: {
-          ...constants.merchantPrices.states,
-          [state]: {
-            ...constants.merchantPrices.states[state],
-            [type]: newValue
+      if (type === 'green') {
+        // Update green price for all states
+        const updatedStates = {};
+        ['NSW', 'VIC', 'QLD', 'SA'].forEach(stateKey => {
+          updatedStates[stateKey] = {
+            ...constants.merchantPrices.states[stateKey],
+            green: {
+              ...constants.merchantPrices.states[stateKey].green,
+              [year]: newValue
+            }
+          };
+        });
+
+        updateConstants('merchantPrices', {
+          ...constants.merchantPrices,
+          states: {
+            ...constants.merchantPrices.states,
+            ...updatedStates
           }
-        }
-      });
+        });
+      } else {
+        updateConstants('merchantPrices', {
+          ...constants.merchantPrices,
+          states: {
+            ...constants.merchantPrices.states,
+            [state]: {
+              ...constants.merchantPrices.states[state],
+              [type]: {
+                ...constants.merchantPrices.states[state][type],
+                [year]: newValue
+              }
+            }
+          }
+        });
+      }
     }
   };
 
-  const handleEscalationChange = (value) => {
-    const newValue = parseFloat(value) || 0;
-    if (newValue >= 0) {
-      updateConstants('merchantPrices', {
-        ...constants.merchantPrices,
-        escalation: newValue
-      });
-    }
-  };
-
-  // Define states array for consistent use throughout the component
-  const states = ['NSW', 'VIC', 'QLD', 'SA'];
+  const states = ['NSW', 'QLD', 'SA', 'VIC'];
+  const years = Array.from(
+    { length: constants.analysisEndYear - constants.analysisStartYear + 1 },
+    (_, i) => constants.analysisStartYear + i
+  );
   
   return (
     <div className="space-y-6">
@@ -100,54 +118,62 @@ const PortfolioInputs = () => {
         <CardHeader>
           <CardTitle>Merchant Prices</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-6">
-            {/* Common Escalation Rate */}
-            <div className="grid grid-cols-2 gap-4 items-center">
-              <div className="font-medium">Annual Escalation (%)</div>
-              <div>
-                <Input
-                  type="number"
-                  min="0"
-                  step="0.1"
-                  value={constants.merchantPrices.escalation}
-                  onChange={(e) => handleEscalationChange(e.target.value)}
-                  className="text-center"
-                />
+        <CardContent className="space-y-8">
+          {/* Black Energy Prices Table */}
+          <div>
+            <h3 className="font-medium text-lg mb-4">Black Energy Price ($/MWh)</h3>
+            <div className="grid gap-4">
+              <div className="grid grid-cols-[100px_repeat(7,1fr)] gap-2 items-center">
+                <div className="font-medium">Year</div>
+                {years.map(year => (
+                  <div key={year} className="text-center font-medium">{year}</div>
+                ))}
               </div>
-            </div>
-
-            {/* State-specific prices */}
-            <div className="grid grid-cols-3 gap-4">
-              <div className="font-medium">State</div>
-              <div className="font-medium text-center">Black Energy ($/MWh)</div>
-              <div className="font-medium text-center">Green Certificates ($/MWh)</div>
-
+              
               {states.map(state => (
-                <React.Fragment key={state}>
+                <div key={state} className="grid grid-cols-[100px_repeat(7,1fr)] gap-2 items-center">
                   <div className="font-medium">{state}</div>
-                  <div>
+                  {years.map(year => (
                     <Input
+                      key={`${state}-black-${year}`}
                       type="number"
                       min="0"
                       step="0.1"
-                      value={constants.merchantPrices.states[state]?.black}
-                      onChange={(e) => handleMerchantPriceChange(state, 'black', e.target.value)}
+                      value={constants.merchantPrices.states[state].black[year]}
+                      onChange={(e) => handleMerchantPriceChange(state, 'black', year, e.target.value)}
                       className="text-center"
                     />
-                  </div>
-                  <div>
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.1"
-                      value={constants.merchantPrices.states[state]?.green}
-                      onChange={(e) => handleMerchantPriceChange(state, 'green', e.target.value)}
-                      className="text-center"
-                    />
-                  </div>
-                </React.Fragment>
+                  ))}
+                </div>
               ))}
+            </div>
+          </div>
+
+          {/* Green Certificate Prices Table */}
+          <div>
+            <h3 className="font-medium text-lg mb-4">Green Certificate Price ($/MWh)</h3>
+            <div className="grid gap-4">
+              <div className="grid grid-cols-[100px_repeat(7,1fr)] gap-2 items-center">
+                <div className="font-medium">Year</div>
+                {years.map(year => (
+                  <div key={year} className="text-center font-medium">{year}</div>
+                ))}
+              </div>
+              
+              <div className="grid grid-cols-[100px_repeat(7,1fr)] gap-2 items-center">
+                <div className="font-medium">All States</div>
+                {years.map(year => (
+                  <Input
+                    key={`green-${year}`}
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={constants.merchantPrices.states.NSW.green[year]}
+                    onChange={(e) => handleMerchantPriceChange('NSW', 'green', year, e.target.value)}
+                    className="text-center"
+                  />
+                ))}
+              </div>
             </div>
           </div>
         </CardContent>

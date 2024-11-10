@@ -18,15 +18,11 @@ const PortfolioDashboard = () => {
   }, [assets]);
 
   const calculateMerchantPrice = (asset, year) => {
-    const baseYear = constants.analysisStartYear;
-    const years = year - baseYear;
-    const escalation = constants.merchantPrices.escalation / 100;
-    
     const statePrices = constants.merchantPrices.states[asset.state];
     if (!statePrices) return 0;
-
-    const blackPrice = statePrices.black * Math.pow(1 + escalation, years);
-    const greenPrice = statePrices.green * Math.pow(1 + escalation, years);
+  
+    const blackPrice = statePrices.black[year] || 0;
+    const greenPrice = statePrices.green[year] || 0;
     
     return blackPrice + greenPrice;
   };

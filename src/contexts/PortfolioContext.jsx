@@ -83,75 +83,158 @@ export const PortfolioProvider = ({ children }) => {
     }
   });
 
-  // Initialize constants state with updated merchant prices structure
-  const [constants, setConstants] = useState({
-    HOURS_IN_YEAR: 8760,
-    capacityFactors: {
-      solar: {
-        NSW: 0.28,
-        VIC: 0.25,
-        QLD: 0.29,
-        SA: 0.27
-      },
-      wind: {
-        NSW: 0.35,
-        VIC: 0.38,
-        QLD: 0.32,
-        SA: 0.40
-      }
-    },
-    merchantPrices: {
-      escalation: 2.5, // Common escalation parameter for all states
-      states: {
-        NSW: {
-          black: 75,
-          green: 25,
+     // Initialize constants state with year-based merchant prices structure
+    const [constants, setConstants] = useState({
+      HOURS_IN_YEAR: 8760,
+      capacityFactors: {
+        solar: {
+          NSW: 0.28,
+          VIC: 0.25,
+          QLD: 0.29,
+          SA: 0.27
         },
-        VIC: {
-          black: 70,
-          green: 25,
-        },
-        QLD: {
-          black: 65,
-          green: 25,
-        },
-        SA: {
-          black: 80,
-          green: 25,
+        wind: {
+          NSW: 0.35,
+          VIC: 0.38,
+          QLD: 0.32,
+          SA: 0.40
         }
-      }
-    },
-    analysisStartYear: 2024,
-    analysisEndYear: 2030,
-    volumeVariation: 20,
-    priceVariation: 30
-  });
-
-  // Create updateConstants as a useCallback to prevent unnecessary rerenders
-  const updateConstants = useCallback((field, value) => {
-    console.log('Updating constant:', field, 'to:', value); // Debug log
-    setConstants(prev => {
-      const newConstants = {
-        ...prev,
-        [field]: value
-      };
-      console.log('New constants state:', newConstants); // Debug log
-      return newConstants;
+      },
+      merchantPrices: {
+        states: {
+          NSW: {
+            black: {
+              2024: 75,
+              2025: 77,
+              2026: 79,
+              2027: 81,
+              2028: 83,
+              2029: 85,
+              2030: 87
+            },
+            green: {
+              2024: 25,
+              2025: 26,
+              2026: 27,
+              2027: 28,
+              2028: 29,
+              2029: 30,
+              2030: 31
+            }
+          },
+          VIC: {
+            black: {
+              2024: 70,
+              2025: 72,
+              2026: 74,
+              2027: 76,
+              2028: 78,
+              2029: 80,
+              2030: 82
+            },
+            green: {
+              2024: 25,
+              2025: 26,
+              2026: 27,
+              2027: 28,
+              2028: 29,
+              2029: 30,
+              2030: 31
+            }
+          },
+          QLD: {
+            black: {
+              2024: 65,
+              2025: 67,
+              2026: 69,
+              2027: 71,
+              2028: 73,
+              2029: 75,
+              2030: 77
+            },
+            green: {
+              2024: 25,
+              2025: 26,
+              2026: 27,
+              2027: 28,
+              2028: 29,
+              2029: 30,
+              2030: 31
+            }
+          },
+          SA: {
+            black: {
+              2024: 80,
+              2025: 82,
+              2026: 84,
+              2027: 86,
+              2028: 88,
+              2029: 90,
+              2030: 92
+            },
+            green: {
+              2024: 25,
+              2025: 26,
+              2026: 27,
+              2027: 28,
+              2028: 29,
+              2029: 30,
+              2030: 31
+            }
+          }
+        }
+      },
+      analysisStartYear: 2024,
+      analysisEndYear: 2030,
+      volumeVariation: 20,
+      priceVariation: 30
     });
-  }, []);
-
-  const value = {
-    assets,
-    setAssets,
-    constants,
-    updateConstants
+  
+    // Enhanced updateConstants function to handle nested updates
+    const updateConstants = useCallback((field, value) => {
+      console.log('Updating constant:', field, 'to:', value); // Debug log
+      setConstants(prev => {
+        // Handle nested updates
+        if (field.includes('.')) {
+          const fields = field.split('.');
+          const newConstants = { ...prev };
+          let current = newConstants;
+          
+          // Navigate to the nested object
+          for (let i = 0; i < fields.length - 1; i++) {
+            current[fields[i]] = { ...current[fields[i]] };
+            current = current[fields[i]];
+          }
+          
+          // Update the final field
+          current[fields[fields.length - 1]] = value;
+          
+          console.log('New constants state:', newConstants); // Debug log
+          return newConstants;
+        }
+  
+        // Handle top-level updates
+        const newConstants = {
+          ...prev,
+          [field]: value
+        };
+        console.log('New constants state:', newConstants); // Debug log
+        return newConstants;
+      });
+    }, []);
+  
+    const value = {
+      assets,
+      setAssets,
+      constants,
+      updateConstants
+    };
+  
+    return (
+      <PortfolioContext.Provider value={value}>
+        {children}
+      </PortfolioContext.Provider>
+    );
   };
-
-  return (
-    <PortfolioContext.Provider value={value}>
-      {children}
-    </PortfolioContext.Provider>
-  );
-};
-
-export default PortfolioProvider;
+  
+  export default PortfolioProvider;

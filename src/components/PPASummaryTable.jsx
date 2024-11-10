@@ -74,9 +74,12 @@ const PPASummaryTable = () => {
         if (merchantPercentage > 0) {
             const merchantVolume = annualGeneration * (merchantPercentage / 100);
             const merchantMW = asset.capacity * (merchantPercentage / 100);
-            const merchantPrice = constants.merchantPrices.states[asset.state].black + 
-                                 constants.merchantPrices.states[asset.state].green;
-            const escalationFactor = Math.pow(1 + constants.merchantPrices.escalation / 100, year - startYear);
+            
+            // Get year-specific merchant prices
+            const merchantPricing = constants.merchantPrices.states[asset.state];
+            const blackPrice = merchantPricing.black[year] || 0;
+            const greenPrice = merchantPricing.green[year] || 0;
+            const merchantPrice = blackPrice + greenPrice;
 
           yearlyData.push({
             year,
@@ -87,8 +90,8 @@ const PPASummaryTable = () => {
             contractType: 'merchant',
             buyerPercentage: merchantPercentage,
             basePrice: merchantPrice.toFixed(2),
-            indexation: constants.merchantPrices.escalation,
-            indexedPrice: (merchantPrice * escalationFactor).toFixed(2),
+            indexation: '-',  // Not applicable for merchant prices
+            indexedPrice: merchantPrice.toFixed(2),  // Merchant price is already year-specific
             term: `${year}`,
             volume: Math.round(merchantVolume),
             equivalentMW: merchantMW.toFixed(1)
