@@ -1,0 +1,9 @@
+assetId,name,state,capacity,type,volumeLossAdjustment,contractId,contractCounterparty,contractType,contractBuyersPercentage,contractShape,contractStrikePrice,contractGreenPrice,contractBlackPrice,contractIndexation,contractHasFloor,contractFloorValue,contractStartDate,contractEndDate,contractTerm
+1,W SF,VIC,100,solar,95,1,"Corporate PPA 1",bundled,90,solar,85,20,65,2,TRUE,0,2022-07-01,2022-07-02,5
+2,N SF,VIC,100,solar,95,1,"Retail PPA",bundled,50,solar,60,20,40,2,FALSE,,2022-07-01,2034-06-30,3
+3,T SF,SA,150,solar,95,1,"Corporate PPA 1",bundled,100,solar,50,15,35,2.5,TRUE,0,2023-11-15,2038-10-31,10
+4,W WF,VIC,200,wind,95,1,"Corporate PPA 1",bundled,40,wind,80,15,65,2.5,TRUE,0,2022-07-01,2032-06-30,4
+5,W WF,VIC,200,wind,95,1,"Corporate PPA 1",bundled,40,wind,85,15,70,2.5,TRUE,0,2024-01-01,2035-01-01,5
+6,B SF,QLD,50,solar,95,1,"Corporate PPA 1",bundled,50,solar,50,15,35,2.5,TRUE,0,2022-12-01,2032-12-01,6
+7,M SF,NSW,10,solar,95,1,"Corporate PPA 1",green,100,solar,50,15,35,2.5,TRUE,0,2022-07-01,2027-01-01,7
+8,M SF,NSW,10,solar,95,1,"Corporate PPA 1",green,100,solar,50,15,35,0,TRUE,0,2023-04-01,2033-04-01,8

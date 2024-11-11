@@ -1,5 +1,10 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import Papa from 'papaparse';
+import _ from 'lodash';
+
+// Use @ alias for src directory
+const ASSETS_PATH = '/src/data/assets_v2.csv';
+const MERCHANT_PRICES_PATH = '/src/data/merchant_prices_baseload.csv';
 
 const PortfolioContext = createContext();
 
@@ -12,77 +17,7 @@ export const usePortfolio = () => {
 };
 
 export const PortfolioProvider = ({ children }) => {
-  const [assets, setAssets] = useState({
-    '1': {
-      id: '1',
-      name: 'Solar Farm Alpha',
-      state: 'NSW',
-      capacity: 100,
-      type: 'solar',
-      volumeLossAdjustment: 95,
-      contracts: [
-        {
-          id: '1',
-          counterparty: "Corporate PPA 1",
-          type: 'bundled',
-          buyersPercentage: 40,
-          shape: 'solar',
-          strikePrice: '75',
-          greenPrice: '30',
-          blackPrice: '45',
-          indexation: 2.5,
-          hasFloor: true,
-          floorValue: '0',
-          startDate: '2024-01-01',
-          endDate: '2028-12-31',
-          term: '5'
-        },
-        {
-          id: '2',
-          counterparty: "Retail PPA",
-          type: 'bundled',
-          buyersPercentage: 30,
-          shape: 'solar',
-          strikePrice: '85',
-          greenPrice: '45',
-          blackPrice: '40',
-          indexation: 2.0,
-          hasFloor: false,
-          floorValue: '',
-          startDate: '2024-01-01',
-          endDate: '2026-12-31',
-          term: '3'
-        }
-      ]
-    },
-    '2': {
-      id: '2',
-      name: 'Wind Farm Beta',
-      state: 'VIC',
-      capacity: 150,
-      type: 'wind',
-      volumeLossAdjustment: 95,
-      contracts: [
-        {
-          id: '1',
-          counterparty: "Corporate PPA 1",
-          type: 'bundled',
-          buyersPercentage: 25,
-          shape: 'wind',
-          strikePrice: '100',
-          greenPrice: '28',
-          blackPrice: '72',
-          indexation: 2.5,
-          hasFloor: true,
-          floorValue: '0',
-          startDate: '2024-07-01',
-          endDate: '2034-06-31',
-          term: '10'
-        }
-      ]
-    }
-  });
-
+  const [assets, setAssets] = useState({});
   const [constants, setConstants] = useState({
     HOURS_IN_YEAR: 8760,
     capacityFactors: {
@@ -98,12 +33,11 @@ export const PortfolioProvider = ({ children }) => {
         QLD: 0.32,
         SA: 0.40
       }
-      // Baseload doesn't need capacity factors
     },
     merchantPrices: {
       solar: { black: {}, green: {} },
       wind: { black: {}, green: {} },
-      baseload: { black: {}, green: {} }  // Added baseload
+      baseload: { black: {}, green: {} }
     },
     analysisStartYear: 2024,
     analysisEndYear: 2030,
@@ -111,17 +45,97 @@ export const PortfolioProvider = ({ children }) => {
     priceVariation: 30
   });
 
-  // Load merchant prices from CSV
+  // Load assets from CSV
   useEffect(() => {
-    const loadMerchantPrices = async () => {
+    const loadAssets = async () => {
       try {
-        console.log('Attempting to load merchant prices...');
-        const response = await fetch('/merchant_prices_baseload.csv');
+        console.log('Loading assets from CSV...', ASSETS_PATH);
+        // Use dynamic import for CSV files
+        const csvModule = await import(/* @vite-ignore */ ASSETS_PATH);
+        const response = await fetch(csvModule.default);
+        
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         const csvText = await response.text();
-        console.log('CSV content loaded:', csvText.slice(0, 100) + '...');
+        
+        Papa.parse(csvText, {
+          header: true,
+          dynamicTyping: true,
+          skipEmptyLines: true,
+          complete: (results) => {
+            console.log('Parse complete, rows:', results.data.length);
+            
+            // Group the data by assetId
+            const groupedByAsset = _.groupBy(results.data, 'assetId');
+            
+            // Transform the data into the required structure
+            const transformedAssets = _.mapValues(groupedByAsset, (assetRows) => {
+              // All rows for an asset have the same base information
+              const firstRow = assetRows[0];
+              
+              // Transform contract data
+              const contracts = assetRows.map(row => ({
+                id: row.contractId.toString(),
+                counterparty: row.contractCounterparty,
+                type: row.contractType,
+                buyersPercentage: row.contractBuyersPercentage,
+                shape: row.contractShape,
+                strikePrice: row.contractStrikePrice.toString(),
+                greenPrice: row.contractGreenPrice.toString(),
+                blackPrice: row.contractBlackPrice.toString(),
+                indexation: row.contractIndexation,
+                hasFloor: row.contractHasFloor,
+                floorValue: row.contractFloorValue?.toString() || '',
+                startDate: row.contractStartDate,
+                endDate: row.contractEndDate,
+                term: row.contractTerm.toString()
+              }));
+              
+              // Return the transformed asset structure
+              return {
+                id: firstRow.assetId.toString(),
+                name: firstRow.name,
+                state: firstRow.state,
+                capacity: firstRow.capacity,
+                type: firstRow.type,
+                volumeLossAdjustment: firstRow.volumeLossAdjustment,
+                contracts
+              };
+            });
+            
+            console.log('Transformed assets:', transformedAssets);
+            setAssets(transformedAssets);
+          },
+          error: (error) => {
+            console.error('Error parsing assets CSV:', error);
+          }
+        });
+      } catch (error) {
+        console.error('Error loading assets:', error);
+        console.error('Error details:', {
+          message: error.message,
+          stack: error.stack
+        });
+      }
+    };
+
+    loadAssets();
+  }, []);
+
+  // Load merchant prices from CSV
+  useEffect(() => {
+    const loadMerchantPrices = async () => {
+      try {
+        console.log('Attempting to load merchant prices...', MERCHANT_PRICES_PATH);
+        // Use dynamic import for CSV files
+        const csvModule = await import(/* @vite-ignore */ MERCHANT_PRICES_PATH);
+        const response = await fetch(csvModule.default);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const csvText = await response.text();
         
         Papa.parse(csvText, {
           header: true,
@@ -131,7 +145,7 @@ export const PortfolioProvider = ({ children }) => {
             const newMerchantPrices = {
               solar: { black: {}, green: {} },
               wind: { black: {}, green: {} },
-              baseload: { black: {}, green: {} }  // Added baseload
+              baseload: { black: {}, green: {} }
             };
 
             results.data.forEach(row => {
@@ -140,7 +154,6 @@ export const PortfolioProvider = ({ children }) => {
                 return;
               }
 
-              // Initialize nested objects if they don't exist
               if (!newMerchantPrices[row.profile]) {
                 newMerchantPrices[row.profile] = { black: {}, green: {} };
               }

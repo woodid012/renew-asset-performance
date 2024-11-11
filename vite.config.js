@@ -16,5 +16,6 @@ export default defineConfig({
     commonjsOptions: {
       include: [/node_modules/]
     }
-  }
+  },
+  assetsInclude: ['**/*.csv']  // Add this line to handle CSV files
 })
