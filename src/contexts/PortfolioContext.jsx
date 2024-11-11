@@ -2,9 +2,9 @@ import React, { createContext, useContext, useState, useCallback, useEffect } fr
 import Papa from 'papaparse';
 import _ from 'lodash';
 
-// Use @ alias for src directory
-const ASSETS_PATH = '/src/data/assets.csv';
-const MERCHANT_PRICES_PATH = '/src/data/merchant_prices_baseload.csv';
+// Use public directory for both development and production
+const ASSETS_PATH = '/assets.csv';
+const MERCHANT_PRICES_PATH = '/merchant_prices_baseload.csv';
 
 const PortfolioContext = createContext();
 
@@ -50,9 +50,7 @@ export const PortfolioProvider = ({ children }) => {
     const loadAssets = async () => {
       try {
         console.log('Loading assets from CSV...', ASSETS_PATH);
-        // Use dynamic import for CSV files
-        const csvModule = await import(/* @vite-ignore */ ASSETS_PATH);
-        const response = await fetch(csvModule.default);
+        const response = await fetch(ASSETS_PATH);
         
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -64,6 +62,11 @@ export const PortfolioProvider = ({ children }) => {
           dynamicTyping: true,
           skipEmptyLines: true,
           complete: (results) => {
+            if (!results.data || results.data.length === 0) {
+              console.error('No data found in assets CSV');
+              return;
+            }
+
             console.log('Parse complete, rows:', results.data.length);
             
             // Group the data by assetId
@@ -76,25 +79,25 @@ export const PortfolioProvider = ({ children }) => {
               
               // Transform contract data
               const contracts = assetRows.map(row => ({
-                id: row.contractId.toString(),
+                id: row.contractId?.toString(),
                 counterparty: row.contractCounterparty,
                 type: row.contractType,
                 buyersPercentage: row.contractBuyersPercentage,
                 shape: row.contractShape,
-                strikePrice: row.contractStrikePrice.toString(),
-                greenPrice: row.contractGreenPrice.toString(),
-                blackPrice: row.contractBlackPrice.toString(),
+                strikePrice: row.contractStrikePrice?.toString(),
+                greenPrice: row.contractGreenPrice?.toString(),
+                blackPrice: row.contractBlackPrice?.toString(),
                 indexation: row.contractIndexation,
                 hasFloor: row.contractHasFloor,
                 floorValue: row.contractFloorValue?.toString() || '',
                 startDate: row.contractStartDate,
                 endDate: row.contractEndDate,
-                term: row.contractTerm.toString()
+                term: row.contractTerm?.toString()
               }));
               
               // Return the transformed asset structure
               return {
-                id: firstRow.assetId.toString(),
+                id: firstRow.assetId?.toString(),
                 name: firstRow.name,
                 state: firstRow.state,
                 capacity: firstRow.capacity,
@@ -128,9 +131,7 @@ export const PortfolioProvider = ({ children }) => {
     const loadMerchantPrices = async () => {
       try {
         console.log('Attempting to load merchant prices...', MERCHANT_PRICES_PATH);
-        // Use dynamic import for CSV files
-        const csvModule = await import(/* @vite-ignore */ MERCHANT_PRICES_PATH);
-        const response = await fetch(csvModule.default);
+        const response = await fetch(MERCHANT_PRICES_PATH);
         
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -141,6 +142,11 @@ export const PortfolioProvider = ({ children }) => {
           header: true,
           dynamicTyping: true,
           complete: (results) => {
+            if (!results.data || results.data.length === 0) {
+              console.error('No data found in merchant prices CSV');
+              return;
+            }
+
             console.log('Parse complete, rows:', results.data.length);
             const newMerchantPrices = {
               solar: { black: {}, green: {} },
@@ -149,7 +155,7 @@ export const PortfolioProvider = ({ children }) => {
             };
 
             results.data.forEach(row => {
-              if (!row.profile || !row.type || !row.state || !row.year || !row.price) {
+              if (!row.profile || !row.type || !row.state || !row.year || row.price === undefined) {
                 console.log('Skipping invalid row:', row);
                 return;
               }
