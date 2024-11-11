@@ -129,7 +129,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts }) => {
       indexation: '',
       hasFloor: false,
       floorValue: '',
-      startDate: '01/01/2024',
+      startDate: '2024/01/01',
       endDate: '',
       term: ''
     };

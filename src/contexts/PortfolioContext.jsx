@@ -3,7 +3,7 @@ import Papa from 'papaparse';
 import _ from 'lodash';
 
 // Use @ alias for src directory
-const ASSETS_PATH = '/src/data/assets_v2.csv';
+const ASSETS_PATH = '/src/data/assets.csv';
 const MERCHANT_PRICES_PATH = '/src/data/merchant_prices_baseload.csv';
 
 const PortfolioContext = createContext();
