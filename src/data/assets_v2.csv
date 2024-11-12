@@ -1,7 +1,0 @@
-assetId,name,state,capacity,type,volumeLossAdjustment,contractId,contractCounterparty,contractType,contractBuyersPercentage,contractShape,contractStrikePrice,contractGreenPrice,contractBlackPrice,contractIndexation,contractHasFloor,contractFloorValue,contractStartDate,contractEndDate
-1,Wombat Solar,NSW,100,solar,90,1,Counterparty 1,bundled,50,flat,80,20,60,2.5,FALSE,,2024-01-01,2034-12-31
-1,Wombat Solar,NSW,100,solar,90,2,Counterparty 2,bundled,40,flat,85,20,65,2.5,FALSE,,2020-01-01,2029-12-31
-2,Emu Wind,VIC,200,wind,95,1,Counterparty 1,bundled,80,flat,100,15,85,2,TRUE,0,2024-01-01,2034-12-31
-3,Koala Wind,QLD,50,wind,100,1,Counterparty 1,bundled,75,flat,90,10,80,2.5,FALSE,,2025-01-01,2034-12-31
-4,Kangaroo Solar,NSW,200,solar,100,1,Counterparty 1,green,20,flat,20,,,2.5,FALSE,,2024-01-01,2030-12-31
-4,Kangaroo Solar,NSW,200,solar,100,2,Counterparty 2,bundled,75,flat,75,15,60,2.5,TRUE,0,2024-01-01,2036-12-31

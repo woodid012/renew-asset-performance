@@ -1,5 +1,6 @@
 import React from 'react';
 import { calculateAssetRevenue } from './portfolioUtils.jsx';
+import { generateScenarios, createHistogramData, calculateStatistics } from './earningsRisk';
 
 const StressTestAnalysis = ({ assets, constants, getMerchantPrice, selectedYear }) => {
   if (!assets || Object.keys(assets).length === 0) return null;
@@ -15,18 +16,46 @@ const StressTestAnalysis = ({ assets, constants, getMerchantPrice, selectedYear 
     }, 0);
   };
 
-  // Calculate base case for comparison
-  const baseCase = Object.values(assets).reduce((sum, asset) => {
-    const baseRev = calculateAssetRevenue(asset, selectedYear, constants, getMerchantPrice);
-    return sum + baseRev.total;
-  }, 0);
+  // Generate Monte Carlo scenarios
+  const scenarios = generateScenarios(assets, constants, getMerchantPrice);
+  
+  // Calculate base case and key metrics for selected year
+  const stats = calculateStatistics(scenarios, selectedYear, assets, constants, getMerchantPrice);
+  const baseCase = stats.baseCase;
+  const p50Value = stats.p50;
+  const p10Value = stats.p10;
+  const p90Value = stats.p90;
+  const range = p10Value - p90Value;
+  const rangePercent = ((range / baseCase) * 100).toFixed(1);
 
+  // Calculate waterfall data using Monte Carlo results for each year
+  const waterfallData = Array.from(
+    { length: constants.analysisEndYear - constants.analysisStartYear + 1 },
+    (_, i) => {
+      const year = constants.analysisStartYear + i;
+      const yearStats = calculateStatistics(scenarios, year, assets, constants, getMerchantPrice);
+      const volumeVar = constants.volumeVariation || 0;
+      const greenVar = constants.greenPriceVariation || constants.priceVariation || 0;
+      const blackVar = constants.blackPriceVariation || constants.priceVariation || 0;
+
+      return {
+        year,
+        baseCase: yearStats.baseCase,
+        p10: yearStats.p10,
+        p90: yearStats.p90,
+        worstCase: calculateStressScenario(-volumeVar, -greenVar, -blackVar),
+        volumeStress: calculateStressScenario(-volumeVar, 0, 0),
+        priceStress: calculateStressScenario(0, -greenVar, -blackVar)
+      };
+    }
+  );
+
+  // Define stress test scenarios
   const volumeVar = constants.volumeVariation || 0;
   const greenVar = constants.greenPriceVariation || constants.priceVariation || 0;
   const blackVar = constants.blackPriceVariation || constants.priceVariation || 0;
 
-  // Define scenarios
-  const scenarios = [
+  const stressScenarios = [
     {
       name: "Worst Case",
       description: "Maximum adverse changes in all variables",
@@ -59,27 +88,43 @@ const StressTestAnalysis = ({ assets, constants, getMerchantPrice, selectedYear 
     }
   ];
 
-  return (
-    <div className="space-y-1 text-sm">
-      <div className="text-xs text-gray-500 mb-2">
-        Impact of extreme scenarios on annual revenue for year {selectedYear}
-      </div>
-      {scenarios.map((scenario, index) => (
-        <div key={index} className="flex justify-between items-baseline py-1 px-2 bg-gray-50 rounded">
-          <div>
-            <div className="font-medium">{scenario.name}</div>
-            <div className="text-xs text-gray-500">{scenario.changes}</div>
-          </div>
-          <div className="text-right ml-4">
-            <div className="font-medium">${(scenario.revenue).toFixed(1)}M</div>
-            <div className="text-xs text-red-500">
-              {((scenario.revenue / baseCase - 1) * 100).toFixed(1)}%
+  // Return all calculations needed by EarningsRiskAnalysis
+  return {
+    scenarios: stressScenarios,
+    histogramData: createHistogramData(scenarios, selectedYear),
+    waterfallData,
+    metrics: {
+      baseCase: baseCase,
+      p50: p50Value,
+      p10: p10Value,
+      p90: p90Value,
+      range: range,
+      rangePercent: rangePercent,
+      p10Percent: ((p10Value / baseCase - 1) * 100).toFixed(1),
+      p90Percent: ((p90Value / baseCase - 1) * 100).toFixed(1)
+    },
+    StressTestResults: () => (
+      <div className="space-y-1 text-sm">
+        <div className="text-xs text-gray-500 mb-2">
+          Impact of extreme scenarios on annual revenue for year {selectedYear}
+        </div>
+        {stressScenarios.map((scenario, index) => (
+          <div key={index} className="flex justify-between items-baseline py-1 px-2 bg-gray-50 rounded">
+            <div>
+              <div className="font-medium">{scenario.name}</div>
+              <div className="text-xs text-gray-500">{scenario.changes}</div>
+            </div>
+            <div className="text-right ml-4">
+              <div className="font-medium">${(scenario.revenue).toFixed(1)}M</div>
+              <div className="text-xs text-red-500">
+                {((scenario.revenue / baseCase - 1) * 100).toFixed(1)}%
+              </div>
             </div>
           </div>
-        </div>
-      ))}
-    </div>
-  );
+        ))}
+      </div>
+    )
+  };
 };
 
 export default StressTestAnalysis;
