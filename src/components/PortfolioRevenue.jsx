@@ -69,7 +69,16 @@ const PortfolioDashboard = () => {
           <CardContent>
             <div className="h-96">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={processedData}>
+                <BarChart data={Object.values(assets).reduce((result, asset, index) => {
+                    if (!visibleAssets[asset.name]) return result;
+                    return result.map(yearData => ({
+                      ...yearData,
+                      [`${asset.name} Contracted`]: (yearData[`${asset.name} Contracted Green`] || 0) + 
+                                                  (yearData[`${asset.name} Contracted Black`] || 0),
+                      [`${asset.name} Merchant`]: (yearData[`${asset.name} Merchant Green`] || 0) + 
+                                                (yearData[`${asset.name} Merchant Black`] || 0)
+                    }));
+                  }, processedData)}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="year" />
                   <YAxis label={{ value: 'Revenue (Million $)', angle: -90, position: 'insideLeft' }} />
@@ -93,6 +102,7 @@ const PortfolioDashboard = () => {
                       </React.Fragment>
                     )
                   )}
+                </BarChart>
                 </BarChart>
               </ResponsiveContainer>
             </div>
