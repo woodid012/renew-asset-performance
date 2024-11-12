@@ -3,10 +3,27 @@ import Papa from 'papaparse';
 import _ from 'lodash';
 
 // Use public directory for both development and production
-const ASSETS_PATH = '/assets.csv';
+const ASSETS_PATH = '/assets_v2.csv';
 const MERCHANT_PRICES_PATH = '/merchant_prices_baseload.csv';
 
 const PortfolioContext = createContext();
+
+// Helper function to transform date from DD/MM/YYYY to YYYY-MM-DD
+const transformDateFormat = (dateStr) => {
+  if (!dateStr) return '';
+  try {
+    const [day, month, year] = dateStr.split('/');
+    if (!day || !month || !year) return dateStr; // Return original if not in expected format
+    
+    // Ensure padding with leading zeros
+    const paddedDay = day.toString().padStart(2, '0');
+    const paddedMonth = month.toString().padStart(2, '0');
+    return `${year}-${paddedMonth}-${paddedDay}`;
+  } catch (error) {
+    console.warn('Error transforming date:', dateStr, error);
+    return dateStr; // Return original string if transformation fails
+  }
+};
 
 export const usePortfolio = () => {
   const context = useContext(PortfolioContext);
@@ -77,7 +94,7 @@ export const PortfolioProvider = ({ children }) => {
               // All rows for an asset have the same base information
               const firstRow = assetRows[0];
               
-              // Transform contract data
+              // Transform contract data with date format conversion
               const contracts = assetRows.map(row => ({
                 id: row.contractId?.toString(),
                 counterparty: row.contractCounterparty,
@@ -90,8 +107,8 @@ export const PortfolioProvider = ({ children }) => {
                 indexation: row.contractIndexation,
                 hasFloor: row.contractHasFloor,
                 floorValue: row.contractFloorValue?.toString() || '',
-                startDate: row.contractStartDate,
-                endDate: row.contractEndDate,
+                startDate: transformDateFormat(row.contractStartDate),
+                endDate: transformDateFormat(row.contractEndDate),
                 term: row.contractTerm?.toString()
               }));
               
