@@ -3,7 +3,7 @@ import Papa from 'papaparse';
 import _ from 'lodash';
 
 // Use public directory for both development and production
-const ASSETS_PATH = '/assets_v2.csv';
+const ASSETS_PATH = '/assets_esp.csv';
 const MERCHANT_PRICES_PATH = '/merchant_prices_baseload.csv';
 
 const PortfolioContext = createContext();
@@ -59,7 +59,8 @@ export const PortfolioProvider = ({ children }) => {
     analysisStartYear: 2024,
     analysisEndYear: 2030,
     volumeVariation: 20,
-    priceVariation: 30
+    greenPriceVariation: 20,
+    blackPriceVariation: 20
   });
 
   // Load assets from CSV

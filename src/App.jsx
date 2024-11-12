@@ -1,13 +1,14 @@
 import React, { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  LayoutDashboard, 
-  FileSpreadsheet, 
-  TrendingUp, 
-  Settings, 
-  Sliders 
-} from "lucide-react";
+import {
+  Building2,
+  BarChart3,
+  AlertTriangle,
+  Sliders,
+  FileCheck,
+  Settings
+} from 'lucide-react';
 
 // Import components for each tab
 import PortfolioInputs from "@/components/PortfolioInputs";
@@ -24,32 +25,33 @@ const App = () => {
   const tabs = [
     {
       id: "inputs",
-      label: "Global",
+      label: "Global Inputs",
       icon: Sliders,
       component: PortfolioInputs,
     },
     {
       id: "dashboard",
-      label: "Asset Dashboard",
-      icon: LayoutDashboard,
+      label: "Asset Definition",
+      icon: Building2,
       component: AssetDashboard,
     },
     {
       id: "revenue",
-      label: "Portfolio Chart",
-      icon: FileSpreadsheet,
+      label: "Portfolio Charts",
+      icon: BarChart3,
       component: PortfolioRevenue,
     },
     {
       id: "risk",
       label: "Risk Analysis",
-      icon: TrendingUp,
+      icon: AlertTriangle,
       component: EarningsRiskAnalysis,
     },
+
     {
       id: "ppa",
-      label: "Export",
-      icon: FileSpreadsheet,
+      label: "Export Audit",
+      icon: FileCheck,
       component: PPASummaryTable,
     },
     {
