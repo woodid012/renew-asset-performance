@@ -31,14 +31,32 @@ const PortfolioDashboard = () => {
       newVisibleAssets[asset.name] = true;
     });
     setVisibleAssets(newVisibleAssets);
-    // Set initial selected asset
     if (Object.keys(assets).length > 0 && !selectedAsset) {
       setSelectedAsset(Object.values(assets)[0].id.toString());
     }
   }, [assets, selectedAsset]);
 
+  // Keep original data processing
   const portfolioData = generatePortfolioData(assets, constants, getMerchantPrice);
-  const processedData = processPortfolioData(portfolioData, assets, visibleAssets);
+  const processedData = processPortfolioData(portfolioData, assets, visibleAssets).map(yearData => {
+    const newData = { ...yearData }; // Keep all original data
+    
+    // Add combined contracted/merchant values for portfolio view
+    Object.values(assets).forEach(asset => {
+      if (visibleAssets[asset.name]) {
+        newData[`${asset.name} Contracted`] = (
+          (yearData[`${asset.name} Contracted Black`] || 0) + 
+          (yearData[`${asset.name} Contracted Green`] || 0)
+        );
+        newData[`${asset.name} Merchant`] = (
+          (yearData[`${asset.name} Merchant Black`] || 0) + 
+          (yearData[`${asset.name} Merchant Green`] || 0)
+        );
+      }
+    });
+
+    return newData;
+  });
 
   const toggleAsset = (assetName) => {
     setVisibleAssets(prev => ({
@@ -69,16 +87,7 @@ const PortfolioDashboard = () => {
           <CardContent>
             <div className="h-96">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={Object.values(assets).reduce((result, asset, index) => {
-                    if (!visibleAssets[asset.name]) return result;
-                    return result.map(yearData => ({
-                      ...yearData,
-                      [`${asset.name} Contracted`]: (yearData[`${asset.name} Contracted Green`] || 0) + 
-                                                  (yearData[`${asset.name} Contracted Black`] || 0),
-                      [`${asset.name} Merchant`]: (yearData[`${asset.name} Merchant Green`] || 0) + 
-                                                (yearData[`${asset.name} Merchant Black`] || 0)
-                    }));
-                  }, processedData)}>
+                <BarChart data={processedData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="year" />
                   <YAxis label={{ value: 'Revenue (Million $)', angle: -90, position: 'insideLeft' }} />
@@ -102,7 +111,6 @@ const PortfolioDashboard = () => {
                       </React.Fragment>
                     )
                   )}
-                </BarChart>
                 </BarChart>
               </ResponsiveContainer>
             </div>
