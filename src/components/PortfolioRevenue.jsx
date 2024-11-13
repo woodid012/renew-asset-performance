@@ -20,6 +20,8 @@ const assetColors = {
   asset5: { base: '#EAB308', faded: '#FDE047' }  // yellow (solar thermal)
 };
 
+const roundNumber = (num) => Number(Number(num).toFixed(2));
+
 const PortfolioDashboard = () => {
   const { assets, constants, getMerchantPrice } = usePortfolio();
   const [visibleAssets, setVisibleAssets] = useState({});
@@ -36,19 +38,28 @@ const PortfolioDashboard = () => {
     }
   }, [assets, selectedAsset]);
 
-  // Keep original data processing
+  // Process data with rounding
   const portfolioData = generatePortfolioData(assets, constants, getMerchantPrice);
   const processedData = processPortfolioData(portfolioData, assets, visibleAssets).map(yearData => {
-    const newData = { ...yearData }; // Keep all original data
+    const newData = { year: yearData.year }; // Start fresh with just the year
+    
+    // Round all numerical values
+    Object.entries(yearData).forEach(([key, value]) => {
+      if (typeof value === 'number') {
+        newData[key] = roundNumber(value);
+      } else {
+        newData[key] = value;
+      }
+    });
     
     // Add combined contracted/merchant values for portfolio view
     Object.values(assets).forEach(asset => {
       if (visibleAssets[asset.name]) {
-        newData[`${asset.name} Contracted`] = (
+        newData[`${asset.name} Contracted`] = roundNumber(
           (yearData[`${asset.name} Contracted Black`] || 0) + 
           (yearData[`${asset.name} Contracted Green`] || 0)
         );
-        newData[`${asset.name} Merchant`] = (
+        newData[`${asset.name} Merchant`] = roundNumber(
           (yearData[`${asset.name} Merchant Black`] || 0) + 
           (yearData[`${asset.name} Merchant Green`] || 0)
         );
@@ -64,6 +75,9 @@ const PortfolioDashboard = () => {
       [assetName]: !prev[assetName]
     }));
   };
+
+  // Custom tooltip formatter to ensure consistent decimal places
+  const tooltipFormatter = (value, name) => [roundNumber(value), name];
 
   if (Object.keys(assets).length === 0) {
     return (
@@ -91,7 +105,7 @@ const PortfolioDashboard = () => {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="year" />
                   <YAxis label={{ value: 'Revenue (Million $)', angle: -90, position: 'insideLeft' }} />
-                  <Tooltip />
+                  <Tooltip formatter={tooltipFormatter} />
                   <Legend />
                   {Object.values(assets).map((asset, index) => 
                     visibleAssets[asset.name] && (
@@ -173,7 +187,7 @@ const PortfolioDashboard = () => {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="year" />
                 <YAxis label={{ value: 'Revenue (Million $)', angle: -90, position: 'insideLeft' }} />
-                <Tooltip />
+                <Tooltip formatter={tooltipFormatter} />
                 <Legend />
                 {/* Contracted Revenue Stack */}
                 <Bar 
@@ -221,7 +235,7 @@ const PortfolioDashboard = () => {
                   domain={[0, 100]}
                   label={{ value: 'Contracted (%)', angle: -90, position: 'insideLeft' }} 
                 />
-                <Tooltip />
+                <Tooltip formatter={tooltipFormatter} />
                 <Legend />
                 <Line 
                   type="monotone" 

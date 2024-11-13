@@ -7,6 +7,9 @@ import Papa from 'papaparse';
 import { Download, Upload } from 'lucide-react';
 import PriceChart from './InputsPriceChart';
 
+const MIN_YEAR = 2000;
+const MAX_YEAR = 2100;
+
 const InputsGlobal = () => {
   const { constants, updateConstants } = usePortfolio();
   const fileInputRef = useRef(null);
@@ -20,15 +23,18 @@ const InputsGlobal = () => {
         Object.values(profileData).forEach(typeData => {
           Object.values(typeData).forEach(stateData => {
             const years = Object.keys(stateData).map(Number);
-            const minYear = Math.min(...years);
-            if (minYear < earliestYear) earliestYear = minYear;
+            const validYears = years.filter(year => year >= MIN_YEAR && year <= MAX_YEAR);
+            if (validYears.length > 0) {
+              const minYear = Math.min(...validYears);
+              if (minYear < earliestYear) earliestYear = minYear;
+            }
           });
         });
       });
 
       // Set defaults
       updateConstants('escalation', 2.5); // Default to 2.5%
-      updateConstants('referenceYear', earliestYear);
+      updateConstants('referenceYear', Math.max(MIN_YEAR, Math.min(MAX_YEAR, earliestYear)));
     }
   }, []);
 
@@ -46,7 +52,7 @@ const InputsGlobal = () => {
 
   const handleReferenceYearChange = (value) => {
     const newValue = parseInt(value);
-    if (!isNaN(newValue)) {
+    if (!isNaN(newValue) && newValue >= MIN_YEAR && newValue <= MAX_YEAR) {
       updateConstants('referenceYear', newValue);
     }
   };
@@ -65,7 +71,11 @@ const InputsGlobal = () => {
             results.data.forEach(row => {
               if (!row.profile || !row.type || !row.state || !row.year || !row.price) return;
               
-              const { profile, type, state, year, price } = row;
+              const year = parseInt(row.year);
+              // Skip records with years outside our valid range
+              if (year < MIN_YEAR || year > MAX_YEAR) return;
+              
+              const { profile, type, state, price } = row;
               if (!newMerchantPrices[profile]) newMerchantPrices[profile] = {};
               if (!newMerchantPrices[profile][type]) newMerchantPrices[profile][type] = {};
               if (!newMerchantPrices[profile][type][state]) newMerchantPrices[profile][type][state] = {};
@@ -85,8 +95,11 @@ const InputsGlobal = () => {
               });
             });
 
+            // Ensure reference year is within bounds
+            const validReferenceYear = Math.max(MIN_YEAR, Math.min(MAX_YEAR, earliestYear));
+
             updateConstants('merchantPrices', newMerchantPrices);
-            updateConstants('referenceYear', earliestYear);
+            updateConstants('referenceYear', validReferenceYear);
             if (!constants.escalation) {
               updateConstants('escalation', 2.5); // Set default escalation if not set
             }
@@ -109,10 +122,14 @@ const InputsGlobal = () => {
       Object.entries(profileData).forEach(([type, typeData]) => {
         Object.entries(typeData).forEach(([state, stateData]) => {
           Object.entries(stateData).forEach(([year, price]) => {
+            const yearNum = parseInt(year);
+            // Skip years outside valid range
+            if (yearNum < MIN_YEAR || yearNum > MAX_YEAR) return;
+            
             // Apply escalation if enabled
             let escalatedPrice = price;
             if (constants.escalation && constants.referenceYear) {
-              const yearDiff = parseInt(year) - constants.referenceYear;
+              const yearDiff = yearNum - constants.referenceYear;
               escalatedPrice = price * Math.pow(1 + constants.escalation / 100, yearDiff);
             }
             
@@ -186,9 +203,11 @@ const InputsGlobal = () => {
               <label className="text-sm font-medium">Reference Year</label>
               <Input
                 type="number"
+                min={MIN_YEAR}
+                max={MAX_YEAR}
                 value={constants.referenceYear ?? ''}
                 onChange={(e) => handleReferenceYearChange(e.target.value)}
-                placeholder="Enter reference year"
+                placeholder={`Enter reference year (${MIN_YEAR}-${MAX_YEAR})`}
               />
               <p className="text-sm text-gray-500">Base year for real price calculations</p>
             </div>

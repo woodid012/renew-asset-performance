@@ -158,9 +158,10 @@ const AssetFormContract = ({ contract, updateContract, removeContract }) => {
             <Input
               value={contract.settlementFormula}
               onChange={(e) => updateContract('settlementFormula', e.target.value)}
-              placeholder="Enter settlement formula"
+              placeholder="=[{Market} - {Strike}] x [{Volume}]} - WIP not used"
             />
           </div>
+          
         </div>
       </CardContent>
     </Card>

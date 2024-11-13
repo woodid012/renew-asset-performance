@@ -25,6 +25,18 @@ const transformDateFormat = (dateStr) => {
   }
 };
 
+// Helper function to extract year from date string (DD/MM/YYYY)
+const getYearFromDate = (dateStr) => {
+  if (!dateStr) return null;
+  try {
+    const [, , year] = dateStr.split('/');
+    return parseInt(year, 10);
+  } catch (error) {
+    console.warn('Error extracting year from date:', dateStr, error);
+    return null;
+  }
+};
+
 export const usePortfolio = () => {
   const context = useContext(PortfolioContext);
   if (!context) {
@@ -110,7 +122,8 @@ export const PortfolioProvider = ({ children }) => {
                 floorValue: row.contractFloorValue?.toString() || '',
                 startDate: transformDateFormat(row.contractStartDate),
                 endDate: transformDateFormat(row.contractEndDate),
-                term: row.contractTerm?.toString()
+                term: row.contractTerm?.toString(),
+                indexationReferenceYear: getYearFromDate(row.contractStartDate) // Add indexation reference year
               }));
               
               // Return the transformed asset structure

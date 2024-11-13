@@ -1,14 +1,14 @@
-assetId,name,state,capacity,type,volumeLossAdjustment,contractId,contractCounterparty,contractType,contractBuyersPercentage,contractShape,contractStrikePrice,contractGreenPrice,contractBlackPrice,contractIndexation,contractHasFloor,contractFloorValue,contractStartDate,contractEndDate,contractTerm
-1,Toro WF,VIC,192,wind,91,1,Kangaroo,black,26,wind,45,,45,3,true,0,4/07/2021,31/12/2028,8
-1,Toro WF,VIC,192,wind,91,2,Wombat,bundled,34,wind,75,25,50,2,true,0,1/07/2022,1/07/2032,10
-1,Toro Wf,VIC,192,wind,91,3,Koala,black,37,wind,46,,46,3,true,0,15/01/2024,31/12/2033,10
-2,Serpiente WF,SA,64,wind,93,1,Dingo,bundled,100,wind,90,40,50,3,true,0,1/07/2024,30/06/2034,10
-3,Lobo WF,NSW,47,wind,93,1,Platypus,bundled,100,wind,90,25,65,3,true,0,31/01/2012,1/07/2026,14
-4,Jaguar WF,VIC,100,wind,99,1,Emu,bundled,42,wind,83,30,53,0,true,0,1/01/2024,31/12/2033,10
-4,Jaguar WF,VIC,100,wind,99,2,Wallaby,bundled,19,wind,58,12,46,0,true,0,1/12/2022,30/11/2032,10
-4,Jaguar WF,VIC,100,wind,99,3,Quokka,green,23,wind,43,43,,3,true,0,1/01/2024,30/06/2028,5
-5,Cóndor WF,VIC,158,wind,94,1,Quokka,bundled,71,wind,57,25,32,3,true,0,1/01/2024,31/08/2035,12
-5,Cóndor WF,VIC,158,wind,94,2,Numbat,green,29,wind,9,9,,0,true,0,1/01/2024,31/12/2030,7
-6,Águila WF,QLD,646,wind,97,1,Tasmanian Devil,bundled,62,wind,54,25,29,3,true,0,6/06/2024,15/06/2034,10
-6,Águila WF,QLD,646,wind,97,2,Echidna,bundled,23,wind,53,25,28,3,true,0,1/04/2025,1/04/2040,15
-7,Puma SF,QLD,387,solar,91,1,Echidna,bundled,100,solar,60,25,35,3,true,0,1/07/2026,1/07/2041,15
+assetId,name,state,capacity,type,volumeLossAdjustment,contractId,contractCounterparty,contractType,contractBuyersPercentage,contractShape,contractStrikePrice,contractGreenPrice,contractBlackPrice,contractIndexation,contractHasFloor,contractFloorValue,contractStartDate,contractEndDate,contractTerm,indexationReferenceYear
+1,Toro WF,VIC,192,wind,91,1,Kangaroo,black,26,wind,45,,45,3,true,0,4/07/2021,31/12/2028,8,2021
+1,Toro WF,VIC,192,wind,91,2,Wombat,bundled,34,wind,75,25,50,2,true,0,1/07/2022,1/07/2032,10,2022
+1,Toro Wf,VIC,192,wind,91,3,Koala,black,37,wind,46,,46,3,true,0,15/01/2024,31/12/2033,10,2024
+2,Serpiente WF,SA,64,wind,93,1,Dingo,bundled,100,wind,90,40,50,3,true,0,1/07/2024,30/06/2034,10,2024
+3,Lobo WF,NSW,47,wind,93,1,Platypus,bundled,100,wind,90,25,65,3,true,0,31/01/2012,1/07/2026,14,2012
+4,Jaguar WF,VIC,100,wind,99,1,Emu,bundled,42,wind,83,30,53,0,true,0,1/01/2024,31/12/2033,10,2024
+4,Jaguar WF,VIC,100,wind,99,2,Wallaby,bundled,19,wind,58,12,46,0,true,0,1/12/2022,30/11/2032,10,2022
+4,Jaguar WF,VIC,100,wind,99,3,Quokka,green,23,wind,43,43,,3,true,0,1/01/2024,30/06/2028,5,2024
+5,Cóndor WF,VIC,158,wind,94,1,Quokka,bundled,71,wind,57,25,32,3,true,0,1/01/2024,31/08/2035,12,2024
+5,Cóndor WF,VIC,158,wind,94,2,Numbat,green,29,wind,9,9,,0,true,0,1/01/2024,31/12/2030,7,2024
+6,Águila WF,QLD,646,wind,97,1,Tasmanian Devil,bundled,62,wind,54,25,29,3,true,0,6/06/2024,15/06/2034,10,2024
+6,Águila WF,QLD,646,wind,97,2,Echidna,bundled,23,wind,53,25,28,3,true,0,1/04/2025,1/04/2040,15,2025
+7,Puma SF,QLD,387,solar,91,1,Echidna,bundled,100,solar,60,25,35,3,true,0,1/07/2026,1/07/2041,15,2026
