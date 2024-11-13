@@ -158,7 +158,7 @@ const InputsGlobal = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex justify-between items-center">
-            <span>Price Inputs (Real Dollars)</span>
+            <span>Inputs ($real)</span>
             <div className="flex gap-2">
               <input
                 type="file"

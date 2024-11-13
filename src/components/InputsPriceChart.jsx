@@ -175,7 +175,7 @@ const PriceChart = () => {
     <Card className="w-full">
       <CardHeader>
         <CardTitle className="flex justify-between items-center">
-          <span>Price Chart (Nominal Dollars)</span>
+          <span>Prices ($nominal)</span>
           <div className="flex items-center gap-4">
             <Button
               variant="outline"

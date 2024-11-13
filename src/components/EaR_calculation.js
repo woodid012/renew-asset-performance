@@ -2,10 +2,14 @@ import { calculateAssetRevenue } from './RevCalculations.jsx';
 
 // Helper function to calculate revenue with variations
 const calculateVariedRevenue = (baseRevenue, volumeChange, greenPriceChange, blackPriceChange) => {
+  // Always apply volume change
   const contractedGreen = baseRevenue.contractedGreen * (1 + volumeChange/100);
   const contractedBlack = baseRevenue.contractedBlack * (1 + volumeChange/100);
-  const merchantGreen = baseRevenue.merchantGreen * (1 + volumeChange/100) * (1 + greenPriceChange/100);
-  const merchantBlack = baseRevenue.merchantBlack * (1 + volumeChange/100) * (1 + blackPriceChange/100);
+  
+  // Apply price changes only to merchant components
+  const merchantGreen = baseRevenue.merchantGreen * (1 + volumeChange/100) * (1 + (greenPriceChange || 0)/100);
+  const merchantBlack = baseRevenue.merchantBlack * (1 + volumeChange/100) * (1 + (blackPriceChange || 0)/100);
+  
   return contractedGreen + contractedBlack + merchantGreen + merchantBlack;
 };
 
@@ -26,10 +30,15 @@ export const generateScenarios = (assets, constants, getMerchantPrice) => {
   for (let i = 0; i < numScenarios; i++) {
     Object.values(assets).forEach(asset => {
       for (let year = constants.analysisStartYear; year <= constants.analysisEndYear; year++) {
-        // Generate independent variations for each risk factor
-        const volumeChange = (Math.random() * 2 - 1) * constants.volumeVariation;
-        const greenPriceChange = (Math.random() * 2 - 1) * (constants.greenPriceVariation || constants.priceVariation);
-        const blackPriceChange = (Math.random() * 2 - 1) * (constants.blackPriceVariation || constants.priceVariation);
+        // Generate variations - handle case where variations might be 0
+        const volumeChange = constants.volumeVariation ? 
+          (Math.random() * 2 - 1) * constants.volumeVariation : 0;
+        
+        const greenPriceChange = constants.greenPriceVariation ? 
+          (Math.random() * 2 - 1) * constants.greenPriceVariation : 0;
+        
+        const blackPriceChange = constants.blackPriceVariation ? 
+          (Math.random() * 2 - 1) * constants.blackPriceVariation : 0;
 
         // Get base revenue components
         const baseRevenue = calculateAssetRevenue(asset, year, constants, getMerchantPrice);
@@ -192,6 +201,12 @@ export const calculateYearlyMetrics = (data, year, assets, constants, getMerchan
     }
   ];
 
+  // Calculate percentages relative to base case
+  const p10Percent = ((combinedScenarios[p10Index].revenue - baseCase) / baseCase * 100).toFixed(1);
+  const p90Percent = ((combinedScenarios[p90Index].revenue - baseCase) / baseCase * 100).toFixed(1);
+  const range = combinedScenarios[p10Index].revenue - combinedScenarios[p90Index].revenue;
+  const rangePercent = ((range / baseCase) * 100).toFixed(1);
+
   return {
     // Monte Carlo statistics
     baseCase,
@@ -200,9 +215,15 @@ export const calculateYearlyMetrics = (data, year, assets, constants, getMerchan
     p10: combinedScenarios[p10Index].revenue,
     min: combinedScenarios[0].revenue,
     max: combinedScenarios[combinedScenarios.length - 1].revenue,
+    range,
     p90Changes: combinedScenarios[p90Index].changes,
     p50Changes: combinedScenarios[p50Index].changes,
     p10Changes: combinedScenarios[p10Index].changes,
+    
+    // Percentage changes
+    p10Percent,
+    p90Percent,
+    rangePercent,
     
     // Stress test results
     stressTests,
