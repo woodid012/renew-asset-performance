@@ -1,7 +1,7 @@
 // PPAOutputs.jsx
 import React from 'react';
 
-const PPAOutputs = () => {
+const PPA-table = () => {
   // Simple static data
   const outputData = [
     {
@@ -38,4 +38,4 @@ const PPAOutputs = () => {
   );
 };
 
-export default PPAOutputs;
+export default PPA-table;
