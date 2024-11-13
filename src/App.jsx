@@ -21,7 +21,7 @@ import EarningsRiskAnalysis from "@/components/EaR_Dashboard";
 import PortfolioSettings from "@/components/PortfolioSettings";
 
 const App = () => {
-  const [activeTab, setActiveTab] = useState("inputs");
+  const [activeTab, setActiveTab] = useState("landingpage");
 
   // Tab configuration
   const tabs = [
