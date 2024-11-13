@@ -3,8 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { usePortfolio } from '@/contexts/PortfolioContext';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Input } from '@/components/ui/input';
-import StressTestAnalysis from './StressTestAnalysis';
-import { createHistogramData } from './earningsRisk';
+import StressTestAnalysis from './EaR_StressTestAnalysis';
+import { createHistogramData } from './EaR_calculation';
 
 const EarningsRiskAnalysis = () => {
   const { assets, constants, updateConstants, getMerchantPrice } = usePortfolio();
@@ -30,6 +30,8 @@ const EarningsRiskAnalysis = () => {
   if (!analysisResults) return null;
 
   const { metrics, histogramData, waterfallData, StressTestResults } = analysisResults;
+
+  // Use waterfallData directly since stress test values should come from StressTestAnalysis
 
   return (
     <div className="space-y-6 p-4">

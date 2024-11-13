@@ -1,13 +1,14 @@
 import React from 'react';
-import { calculateAssetRevenue } from './portfolioUtils.jsx';
-import { generateScenarios, createHistogramData, calculateStatistics } from './earningsRisk';
+import { calculateAssetRevenue } from './RevCalculations';
+import { generateScenarios, createHistogramData, calculateStatistics } from './EaR_calculation';
 
 const StressTestAnalysis = ({ assets, constants, getMerchantPrice, selectedYear }) => {
   if (!assets || Object.keys(assets).length === 0) return null;
 
-  const calculateStressScenario = (volumeChange, greenPriceChange, blackPriceChange) => {
+  // Move calculateStressScenario inside the year loop since it needs the year parameter
+  const calculateStressScenario = (year, volumeChange, greenPriceChange, blackPriceChange) => {
     return Object.values(assets).reduce((total, asset) => {
-      const baseRevenue = calculateAssetRevenue(asset, selectedYear, constants, getMerchantPrice);
+      const baseRevenue = calculateAssetRevenue(asset, year, constants, getMerchantPrice);
       const contractedGreen = baseRevenue.contractedGreen * (1 + volumeChange/100);
       const contractedBlack = baseRevenue.contractedBlack * (1 + volumeChange/100);
       const merchantGreen = baseRevenue.merchantGreen * (1 + volumeChange/100) * (1 + greenPriceChange/100);
@@ -28,63 +29,60 @@ const StressTestAnalysis = ({ assets, constants, getMerchantPrice, selectedYear 
   const range = p10Value - p90Value;
   const rangePercent = ((range / baseCase) * 100).toFixed(1);
 
+  const volumeVar = constants.volumeVariation || 0;
+  const greenVar = constants.greenPriceVariation || constants.priceVariation || 0;
+  const blackVar = constants.blackPriceVariation || constants.priceVariation || 0;
+
   // Calculate waterfall data using Monte Carlo results for each year
   const waterfallData = Array.from(
     { length: constants.analysisEndYear - constants.analysisStartYear + 1 },
     (_, i) => {
       const year = constants.analysisStartYear + i;
       const yearStats = calculateStatistics(scenarios, year, assets, constants, getMerchantPrice);
-      const volumeVar = constants.volumeVariation || 0;
-      const greenVar = constants.greenPriceVariation || constants.priceVariation || 0;
-      const blackVar = constants.blackPriceVariation || constants.priceVariation || 0;
-
+      
       return {
         year,
         baseCase: yearStats.baseCase,
         p10: yearStats.p10,
         p90: yearStats.p90,
-        worstCase: calculateStressScenario(-volumeVar, -greenVar, -blackVar),
-        volumeStress: calculateStressScenario(-volumeVar, 0, 0),
-        priceStress: calculateStressScenario(0, -greenVar, -blackVar)
+        worstCase: calculateStressScenario(year, -volumeVar, -greenVar, -blackVar),
+        volumeStress: calculateStressScenario(year, -volumeVar, 0, 0),
+        priceStress: calculateStressScenario(year, 0, -greenVar, -blackVar)
       };
     }
   );
 
-  // Define stress test scenarios
-  const volumeVar = constants.volumeVariation || 0;
-  const greenVar = constants.greenPriceVariation || constants.priceVariation || 0;
-  const blackVar = constants.blackPriceVariation || constants.priceVariation || 0;
-
+  // Define stress test scenarios for the selected year
   const stressScenarios = [
     {
       name: "Worst Case",
       description: "Maximum adverse changes in all variables",
       changes: `Volume: -${volumeVar}% Green: -${greenVar}% Black: -${blackVar}%`,
-      revenue: calculateStressScenario(-volumeVar, -greenVar, -blackVar)
+      revenue: calculateStressScenario(selectedYear, -volumeVar, -greenVar, -blackVar)
     },
     {
       name: "Volume Stress",
       description: "Only volume decreases",
       changes: `Volume: -${volumeVar}%`,
-      revenue: calculateStressScenario(-volumeVar, 0, 0)
+      revenue: calculateStressScenario(selectedYear, -volumeVar, 0, 0)
     },
     {
       name: "Price Stress",
       description: "Only prices decrease",
       changes: `Green: -${greenVar}% Black: -${blackVar}%`,
-      revenue: calculateStressScenario(0, -greenVar, -blackVar)
+      revenue: calculateStressScenario(selectedYear, 0, -greenVar, -blackVar)
     },
     {
       name: "Green Price Stress",
       description: "Only green price decreases",
       changes: `Green: -${greenVar}%`,
-      revenue: calculateStressScenario(0, -greenVar, 0)
+      revenue: calculateStressScenario(selectedYear, 0, -greenVar, 0)
     },
     {
       name: "Black Price Stress",
       description: "Only black price decreases",
       changes: `Black: -${blackVar}%`,
-      revenue: calculateStressScenario(0, 0, -blackVar)
+      revenue: calculateStressScenario(selectedYear, 0, 0, -blackVar)
     }
   ];
 

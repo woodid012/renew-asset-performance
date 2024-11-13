@@ -15,7 +15,7 @@ import PortfolioInputs from "@/components/InputsGlobal";
 import AssetDashboard from "@/components/AssetDashboard";
 import PortfolioRevenue from "@/components/PortfolioRevenue";
 import PPASummaryTable from "@/components/PPASummaryTable";
-import EarningsRiskAnalysis from "@/components/EarningsRiskAnalysis";
+import EarningsRiskAnalysis from "@/components/EaR_Dashboard";
 import PortfolioSettings from "@/components/PortfolioSettings";
 
 const App = () => {
@@ -62,6 +62,9 @@ const App = () => {
     },
   ];
 
+const date = new Date();
+const formattedDate = `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getFullYear()).slice(-2)}`;
+
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <Card className="mx-auto max-w-7xl">
@@ -69,7 +72,7 @@ const App = () => {
           <div className="flex items-center justify-between mb-8">
             <h1 className="text-3xl font-bold">Portfolio Management</h1>
             <div className="text-sm text-muted-foreground">
-              Last Updated: {new Date().toLocaleDateString()}
+              Last Updated: {formattedDate}
             </div>
           </div>
 

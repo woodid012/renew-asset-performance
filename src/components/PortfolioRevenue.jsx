@@ -8,8 +8,7 @@ import { usePortfolio } from '@/contexts/PortfolioContext';
 import { 
   generatePortfolioData, 
   processPortfolioData, 
-  getAssetColor 
-} from './portfolioUtils';
+} from './RevCalculations';
 
 // Define a renewable-themed color palette
 const assetColors = {

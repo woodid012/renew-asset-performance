@@ -1,5 +1,4 @@
-// PPA_table_O.jsx (Outputs table)
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
@@ -53,7 +52,7 @@ const PPATableOutputs = () => {
     );
   };
 
-  const outputData = generateOutputData();
+  const outputData = useMemo(() => generateOutputData(), [assets, constants]);
 
   const exportToCSV = () => {
     const headers = [

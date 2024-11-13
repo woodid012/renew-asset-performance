@@ -15,8 +15,8 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts }) => {
     if (asset.state && asset.type) {
       const defaultCapacityFactor = constants.capacityFactors?.[asset.type]?.[asset.state];
       if (defaultCapacityFactor) {
-        // Convert decimal to percentage
-        onUpdateAsset('capacityFactor', defaultCapacityFactor * 100);
+        // Convert decimal to percentage and round to whole number
+        onUpdateAsset('capacityFactor', Math.round(defaultCapacityFactor * 100));
       }
     }
   }, [asset.state, asset.type, constants.capacityFactors]);
@@ -130,9 +130,9 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts }) => {
                 type="number"
                 min="0"
                 max="100"
-                step="0.1"
-                value={asset.capacityFactor}
-                onChange={(e) => onUpdateAsset('capacityFactor', e.target.value)}
+                step="1"
+                value={Math.round(Number(asset.capacityFactor))}
+                onChange={(e) => onUpdateAsset('capacityFactor', Math.round(Number(e.target.value)))}
                 placeholder="Capacity Factor"
               />
               <p className="text-xs text-gray-500">Defaults from global settings based on State and Type</p>

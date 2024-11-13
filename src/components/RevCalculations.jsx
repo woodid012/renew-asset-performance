@@ -173,13 +173,3 @@ export const generatePortfolioData = (assets, constants, getMerchantPrice) => {
     return yearData;
   });
 };
-
-export const assetColors = {
-  base: ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#00C49F'],
-  light: ['#9996db', '#a3d9b6', '#ffd47f', '#ff9347', '#00D4AE']
-};
-
-export const getAssetColor = (index) => ({
-  base: assetColors.base[index % assetColors.base.length],
-  light: assetColors.light[index % assetColors.light.length]
-});
