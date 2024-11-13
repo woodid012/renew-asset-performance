@@ -180,7 +180,7 @@ const EarningsRiskAnalysis = () => {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="year" />
                 <YAxis label={{ value: 'Revenue (Million $)', angle: -90, position: 'insideLeft' }} />
-                <Tooltip />
+                <Tooltip formatter={(value) => value.toFixed(1)}/>
                 <Legend />
                 <Line dataKey="p90" stroke="#ff7300" name="P90" dot={false} strokeWidth={2} />
                 <Line dataKey="baseCase" stroke="#8884d8" name="Base Case" dot={false} strokeWidth={2} />
