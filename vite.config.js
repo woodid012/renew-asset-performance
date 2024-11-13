@@ -7,7 +7,8 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
-    }
+    },
+    extensions: ['.js', '.jsx', '.ts', '.tsx']  // Add this line
   },
   optimizeDeps: {
     include: ['papaparse']
@@ -15,7 +16,12 @@ export default defineConfig({
   build: {
     commonjsOptions: {
       include: [/node_modules/]
+    },
+    rollupOptions: {  // Add this section
+      output: {
+        manualChunks: undefined
+      }
     }
   },
-  assetsInclude: ['**/*.csv']  // Add this line to handle CSV files
+  assetsInclude: ['**/*.csv']
 })
