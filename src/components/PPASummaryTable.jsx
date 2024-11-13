@@ -1,8 +1,8 @@
-// PPASummary.jsx
-import React, { useState } from 'react';
+// PPASummaryTable.jsx
+import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import PPAInputs from "@/components/PPAInputs";
-import PPAOutputs from "@/components/PPAOutputs";
+import PPAInputs from "@/components/PPAInputs.jsx";  // Add .jsx extension
+import PPAOutputs from "@/components/PPAOutputs.jsx";  // Add .jsx extension
 
 const PPASummaryTable = () => {
   return (
