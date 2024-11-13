@@ -138,7 +138,7 @@ const EarningsRiskAnalysis = () => {
               >
                 {Array.from(
                   { length: constants.analysisEndYear - constants.analysisStartYear + 1 },
-                  (_, i) => constants.analysisStartYear + i
+                  (_, i) => 2024 + i
                 ).map((year) => (
                   <option key={year} value={year}>
                     {year}

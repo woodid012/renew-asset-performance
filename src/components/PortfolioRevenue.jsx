@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid, ReferenceArea } from 'recharts';
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -124,6 +124,20 @@ const PortfolioDashboard = () => {
                       </React.Fragment>
                     )
                   )}
+                  <ReferenceArea 
+                    x1={2022} 
+                    x2={2023} 
+                    fillOpacity={0.3}
+                    fill="#808080"
+                    strokeOpacity={0.3}
+                    label={{
+                      value: "Actuals\nWIP",
+                      position: "center",
+                      fontSize: 12,
+                      fontWeight: "bold",
+                      fill: "#000000"
+                    }}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -214,6 +228,20 @@ const PortfolioDashboard = () => {
                   fill="#86EFAC"
                   name="Green Merchant"
                 />
+                <ReferenceArea 
+                  x1={2022} 
+                  x2={2023} 
+                  fillOpacity={0.3}
+                  fill="#808080"
+                  strokeOpacity={0.3}
+                  label={{
+                    value: "Actuals\nWIP",
+                    position: "center",
+                    fontSize: 12,
+                    fontWeight: "bold",
+                    fill: "#000000"
+                  }}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -249,6 +277,20 @@ const PortfolioDashboard = () => {
                   stroke="#171717" 
                   name="Black Contracted %"
                   strokeWidth={2}
+                />
+                <ReferenceArea 
+                  x1={2022} 
+                  x2={2023} 
+                  fillOpacity={0.3}
+                  fill="#808080"
+                  strokeOpacity={0.3}
+                  label={{
+                    value: "Actuals\nWIP",
+                    position: "center",
+                    fontSize: 12,
+                    fontWeight: "bold",
+                    fill: "#000000"
+                  }}
                 />
               </LineChart>
             </ResponsiveContainer>

@@ -70,6 +70,7 @@ export const PortfolioProvider = ({ children }) => {
     },
     analysisStartYear: 2024,
     analysisEndYear: 2030,
+    ForecastStartYear: 2024,
     volumeVariation: 20,
     greenPriceVariation: 20,
     blackPriceVariation: 20

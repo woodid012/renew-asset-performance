@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceArea } from 'recharts';
 import { usePortfolio } from '@/contexts/PortfolioContext';
 import { Download } from 'lucide-react';
 
@@ -19,7 +19,9 @@ const PriceChart = () => {
 
   // Function to apply escalation and convert from real to nominal dollars
   const applyEscalation = (realPrice, year) => {
-    if (!realPrice || !constants.referenceYear || !constants.escalation) return realPrice;
+    // Don't apply escalation for actual/historical data (2022-2023)
+    if (!realPrice || year <= 2023) return realPrice;
+    if (!constants.referenceYear || !constants.escalation) return realPrice;
     const yearDiff = year - constants.referenceYear;
     return realPrice * Math.pow(1 + constants.escalation / 100, yearDiff);
   };
@@ -249,6 +251,22 @@ const PriceChart = () => {
                 stroke="#00FF00"
                 strokeWidth={2}
                 dot={false}
+              />
+                          
+              {/* Grey box overlay for 2022-2023 */}
+              <ReferenceArea 
+                  x1={2022} 
+                  x2={2023} 
+                  fillOpacity={0.3}
+                  fill="#808080"
+                  strokeOpacity={0.3}
+                  label={{
+                    value: "Actuals\nWIP",
+                    position: "center",
+                    fontSize: 12,
+                    fontWeight: "bold",
+                    fill: "#000000"
+                  }}
               />
             </LineChart>
           </ResponsiveContainer>

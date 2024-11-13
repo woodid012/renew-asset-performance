@@ -7,10 +7,12 @@ import {
   AlertTriangle,
   Sliders,
   FileCheck,
-  Settings
+  Settings,
+  HelpCircle
 } from 'lucide-react';
 
 // Import components for each tab
+import LandingPage from "@/components/LandingPage";
 import PortfolioInputs from "@/components/InputsGlobal";
 import AssetDashboard from "@/components/AssetDashboard";
 import PortfolioRevenue from "@/components/PortfolioRevenue";
@@ -24,8 +26,14 @@ const App = () => {
   // Tab configuration
   const tabs = [
     {
+      id: "landingpage",
+      label: "Usage",
+      icon: HelpCircle,
+      component: LandingPage,
+    },
+    {
       id: "inputs",
-      label: "Global Inputs",
+      label: "Price Inputs",
       icon: Sliders,
       component: PortfolioInputs,
     },
@@ -47,7 +55,6 @@ const App = () => {
       icon: AlertTriangle,
       component: EarningsRiskAnalysis,
     },
-
     {
       id: "ppa",
       label: "Export Audit",
@@ -62,8 +69,8 @@ const App = () => {
     },
   ];
 
-const date = new Date();
-const formattedDate = `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getFullYear()).slice(-2)}`;
+  const date = new Date();
+  const formattedDate = `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getFullYear()).slice(-2)}`;
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">
@@ -81,15 +88,15 @@ const formattedDate = `${String(date.getDate()).padStart(2, '0')}/${String(date.
             onValueChange={setActiveTab} 
             className="space-y-6"
           >
-            <TabsList className="grid grid-cols-6 w-full gap-2 p-1">
+            <TabsList className="grid w-full grid-cols-7">
               {tabs.map((tab) => (
                 <TabsTrigger
                   key={tab.id}
                   value={tab.id}
-                  className="flex items-center gap-2 px-4 py-2"
+                  className="flex items-center justify-center gap-2 px-1 py-2 text-sm"
                 >
                   <tab.icon className="h-4 w-4" />
-                  <span className="hidden sm:inline">{tab.label}</span>
+                  <span className="hidden sm:inline truncate">{tab.label}</span>
                 </TabsTrigger>
               ))}
             </TabsList>
