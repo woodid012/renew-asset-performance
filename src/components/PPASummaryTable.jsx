@@ -1,7 +1,6 @@
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
-import HelloWorld from './HelloWorld';
 import PPATable from './test_file';
 
 const PPASummaryTable = () => {
@@ -17,7 +16,6 @@ const PPASummaryTable = () => {
       <TabsContent value="outputs">
         <Card>
           <CardContent className="pt-6">
-            <HelloWorld />
             <PPATable />
           </CardContent>
         </Card>
