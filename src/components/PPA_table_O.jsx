@@ -1,11 +1,11 @@
-// test_file.jsx
+// PPA_table_O.jsx (Outputs table)
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
 import { usePortfolio } from '@/contexts/PortfolioContext';
 
-const PPATable = () => {
+const PPATableOutputs = () => {
   const { assets, constants, getMerchantPrice } = usePortfolio();
 
   // Placeholder function to generate sample data
@@ -146,4 +146,4 @@ const PPATable = () => {
   );
 };
 
-export default PPATable;
+export default PPATableOutputs;
