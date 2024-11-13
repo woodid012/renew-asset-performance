@@ -1,4 +1,3 @@
-// portfolioUtils.js
 export const calculateAssetRevenue = (asset, year, constants, getMerchantPrice) => {
   const HOURS_IN_YEAR = constants.HOURS_IN_YEAR;
   const capacityFactor = constants.capacityFactors[asset.type]?.[asset.state] || 0;
@@ -70,12 +69,24 @@ export const calculateAssetRevenue = (asset, year, constants, getMerchantPrice) 
     }
   });
 
-  // Calculate merchant revenue for both green and black separately
+  // Calculate merchant revenue with escalation for both green and black
   const greenMerchantPercentage = Math.max(0, 100 - totalGreenPercentage);
   const blackMerchantPercentage = Math.max(0, 100 - totalBlackPercentage);
   
-  const merchantGreen = (annualGeneration * greenMerchantPercentage/100 * (getMerchantPrice(asset.type, 'green', asset.state, year) || 0)) / 1000000;
-  const merchantBlack = (annualGeneration * blackMerchantPercentage/100 * (getMerchantPrice(asset.type, 'black', asset.state, year) || 0)) / 1000000;
+  // Apply escalation to merchant prices
+  const applyEscalation = (basePrice) => {
+    if (!basePrice || !constants.referenceYear || !constants.escalation) return basePrice;
+    const yearDiff = year - constants.referenceYear;
+    return basePrice * Math.pow(1 + constants.escalation / 100, yearDiff);
+  };
+
+  // Get base merchant prices and apply escalation
+  const merchantGreenPrice = applyEscalation(getMerchantPrice(asset.type, 'green', asset.state, year) || 0);
+  const merchantBlackPrice = applyEscalation(getMerchantPrice(asset.type, 'black', asset.state, year) || 0);
+  
+  // Calculate merchant revenues with escalated prices
+  const merchantGreen = (annualGeneration * greenMerchantPercentage/100 * merchantGreenPrice) / 1000000;
+  const merchantBlack = (annualGeneration * blackMerchantPercentage/100 * merchantBlackPrice) / 1000000;
 
   return {
     total: contractedGreen + contractedBlack + merchantGreen + merchantBlack,
@@ -142,7 +153,6 @@ export const processPortfolioData = (portfolioData, assets, visibleAssets) => {
   });
 };
 
-// Keep other utility functions the same
 export const generatePortfolioData = (assets, constants, getMerchantPrice) => {
   const years = Array.from(
     {length: constants.analysisEndYear - constants.analysisStartYear + 1}, 

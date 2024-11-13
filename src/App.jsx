@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 
 // Import components for each tab
-import PortfolioInputs from "@/components/PortfolioInputs";
+import PortfolioInputs from "@/components/InputsGlobal";
 import AssetDashboard from "@/components/AssetDashboard";
 import PortfolioRevenue from "@/components/PortfolioRevenue";
 import PPASummaryTable from "@/components/PPASummaryTable";
