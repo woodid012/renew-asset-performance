@@ -1,8 +1,8 @@
 // PPASummary.jsx
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import PPAInputs from './PPAInputs';
-import PPAOutputs from './PPAOutputs';
+import PPAInputs from "@/components/PPAInputs";
+import PPAOutputs from "@/components/PPAOutputs";
 
 const PPASummaryTable = () => {
   return (
