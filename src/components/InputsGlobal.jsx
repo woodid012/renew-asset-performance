@@ -140,52 +140,6 @@ const InputsGlobal = () => {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Capacity Factors</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-5 gap-4">
-            <div className="font-medium">Technology</div>
-            {states.map(state => (
-              <div key={`header-${state}`} className="font-medium text-center">{state}</div>
-            ))}
-            
-            {/* Solar Capacity Factors */}
-            <div className="font-medium">Solar</div>
-            {states.map(state => (
-              <div key={`solar-${state}`}>
-                <Input
-                  type="number"
-                  min="0"
-                  max="1"
-                  step="0.01"
-                  value={constants.capacityFactors?.solar?.[state] ?? ''}
-                  onChange={(e) => handleCapacityFactorChange('solar', state, e.target.value)}
-                  className="text-center"
-                />
-              </div>
-            ))}
-
-            {/* Wind Capacity Factors */}
-            <div className="font-medium">Wind</div>
-            {states.map(state => (
-              <div key={`wind-${state}`}>
-                <Input
-                  type="number"
-                  min="0"
-                  max="1"
-                  step="0.01"
-                  value={constants.capacityFactors?.wind?.[state] ?? ''}
-                  onChange={(e) => handleCapacityFactorChange('wind', state, e.target.value)}
-                  className="text-center"
-                />
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
           <CardTitle className="flex justify-between items-center">
             <span>Price Inputs (Real Dollars)</span>
             <div className="flex gap-2">
