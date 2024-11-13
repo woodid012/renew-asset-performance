@@ -218,7 +218,7 @@ const InputsGlobal = () => {
         <CardContent>
           <div className="mb-4 grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Real Price Escalation Rate (%)</label>
+              <label className="text-sm font-medium">Indexation (%)</label>
               <Input
                 type="number"
                 step="0.1"
@@ -226,7 +226,7 @@ const InputsGlobal = () => {
                 onChange={(e) => handleEscalationChange(e.target.value)}
                 placeholder="Enter escalation rate"
               />
-              <p className="text-sm text-gray-500">Annual real price change relative to CPI</p>
+              <p className="text-sm text-gray-500">Applied indexation to real pricing</p>
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Reference Year</label>
