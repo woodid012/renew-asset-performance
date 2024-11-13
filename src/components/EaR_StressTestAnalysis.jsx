@@ -1,3 +1,4 @@
+// EaR_StressTestAnalysis.jsx
 import React from 'react';
 import { calculateAssetRevenue } from './RevCalculations';
 import { generateScenarios, createHistogramData, calculateYearlyMetrics } from './EaR_calculation';
@@ -38,7 +39,7 @@ const StressTestAnalysis = ({ assets, constants, getMerchantPrice, selectedYear 
     { length: constants.analysisEndYear - constants.analysisStartYear + 1 },
     (_, i) => {
       const year = constants.analysisStartYear + i;
-      const yearStats = calculateStatistics(scenarios, year, assets, constants, getMerchantPrice);
+      const yearStats = calculateYearlyMetrics(scenarios, year, assets, constants, getMerchantPrice);
       
       return {
         year,
