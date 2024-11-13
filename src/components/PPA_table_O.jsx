@@ -1,9 +1,9 @@
-// PPA_table_O.jsx
 import React, { useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
 import { usePortfolio } from '@/contexts/PortfolioContext';
+import { calculateAssetRevenue } from './RevCalculations';
 
 const PPATableOutputs = () => {
   const { assets, constants, getMerchantPrice } = usePortfolio();
@@ -15,33 +15,80 @@ const PPATableOutputs = () => {
 
     Object.values(assets).forEach(asset => {
       for (let year = startYear; year <= endYear; year++) {
-        // Contracted outputs
+        const assetRevenue = calculateAssetRevenue(asset, year, constants, getMerchantPrice);
+        
+        // Handle contracted outputs
         asset.contracts.forEach(contract => {
+          const startYear = new Date(contract.startDate).getFullYear();
+          const endYear = new Date(contract.endDate).getFullYear();
+          
+          if (year >= startYear && year <= endYear) {
+            const buyersPercentage = parseFloat(contract.buyersPercentage) || 0;
+            const contractedVolume = assetRevenue.annualGeneration * (buyersPercentage / 100);
+            
+            // Calculate contract-specific revenue and price
+            let revenue = 0;
+            let price = 0;
+            
+            if (contract.type === 'bundled') {
+              revenue = (assetRevenue.contractedGreen + assetRevenue.contractedBlack) * 
+                       (buyersPercentage / assetRevenue.greenPercentage);
+              price = revenue * 1000000 / contractedVolume; // Convert back from $M to $/MWh
+            } else if (contract.type === 'green') {
+              revenue = assetRevenue.contractedGreen * (buyersPercentage / assetRevenue.greenPercentage);
+              price = revenue * 1000000 / contractedVolume;
+            } else if (contract.type === 'black') {
+              revenue = assetRevenue.contractedBlack * (buyersPercentage / assetRevenue.blackPercentage);
+              price = revenue * 1000000 / contractedVolume;
+            }
+
+            outputData.push({
+              year,
+              assetName: asset.name,
+              state: asset.state,
+              contractId: contract.id || 'Contract',
+              category: 'Contracted',
+              type: contract.type,
+              volume: Math.round(contractedVolume),
+              price: price.toFixed(2),
+              revenue: revenue.toFixed(2)
+            });
+          }
+        });
+
+        // Handle merchant outputs
+        const merchantGreenVolume = assetRevenue.annualGeneration * 
+                                  ((100 - assetRevenue.greenPercentage) / 100);
+        const merchantBlackVolume = assetRevenue.annualGeneration * 
+                                  ((100 - assetRevenue.blackPercentage) / 100);
+
+        if (merchantGreenVolume > 0) {
           outputData.push({
             year,
             assetName: asset.name,
             state: asset.state,
-            contractId: contract.id || 'Merchant',
-            category: 'Contracted',
-            type: contract.type,
-            volume: Math.round(Math.random() * 1000000),
-            price: (Math.random() * 100).toFixed(2),
-            revenue: (Math.random() * 100).toFixed(2)
+            contractId: 'Merchant',
+            category: 'Merchant',
+            type: 'green',
+            volume: Math.round(merchantGreenVolume),
+            price: ((assetRevenue.merchantGreen * 1000000) / merchantGreenVolume).toFixed(2),
+            revenue: assetRevenue.merchantGreen.toFixed(2)
           });
-        });
+        }
 
-        // Merchant outputs
-        outputData.push({
-          year,
-          assetName: asset.name,
-          state: asset.state,
-          contractId: 'Merchant',
-          category: 'Merchant',
-          type: 'merchant',
-          volume: Math.round(Math.random() * 500000),
-          price: (Math.random() * 80).toFixed(2),
-          revenue: (Math.random() * 50).toFixed(2)
-        });
+        if (merchantBlackVolume > 0) {
+          outputData.push({
+            year,
+            assetName: asset.name,
+            state: asset.state,
+            contractId: 'Merchant',
+            category: 'Merchant',
+            type: 'black',
+            volume: Math.round(merchantBlackVolume),
+            price: ((assetRevenue.merchantBlack * 1000000) / merchantBlackVolume).toFixed(2),
+            revenue: assetRevenue.merchantBlack.toFixed(2)
+          });
+        }
       }
     });
 
@@ -123,7 +170,7 @@ const PPATableOutputs = () => {
             <tbody className="divide-y divide-gray-200">
               {outputData.map((row, index) => (
                 <tr 
-                  key={`${row.year}-${row.assetName}-${row.contractId}`}
+                  key={`${row.year}-${row.assetName}-${row.contractId}-${row.type}`}
                   className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
                 >
                   <td className="px-4 py-3 text-sm text-gray-900">{row.year}</td>

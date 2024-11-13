@@ -67,24 +67,41 @@ const PPATableInputs = () => {
           }
         });
 
-        // Calculate merchant exposure
-        const contractedPercentage = asset.contracts.reduce((sum, contract) => {
+        // Calculate merchant exposure for both green and black separately
+        const contractedGreenPercentage = asset.contracts.reduce((sum, contract) => {
           const contractStart = new Date(contract.startDate).getFullYear();
           const contractEnd = new Date(contract.endDate).getFullYear();
           if (year >= contractStart && year <= contractEnd) {
-            return sum + parseFloat(contract.buyersPercentage);
+            // Count bundled and green contracts towards green percentage
+            if (contract.type === 'bundled' || contract.type === 'green') {
+              return sum + parseFloat(contract.buyersPercentage);
+            }
           }
           return sum;
         }, 0);
 
-        const merchantPercentage = 100 - contractedPercentage;
-        if (merchantPercentage > 0) {
-          const merchantVolume = annualGeneration * (merchantPercentage / 100);
-          const merchantMW = asset.capacity * (merchantPercentage / 100);
-          const baseBlackPrice = getMerchantPrice(asset.type, 'black', asset.state, year);
+        const contractedBlackPercentage = asset.contracts.reduce((sum, contract) => {
+          const contractStart = new Date(contract.startDate).getFullYear();
+          const contractEnd = new Date(contract.endDate).getFullYear();
+          if (year >= contractStart && year <= contractEnd) {
+            // Count bundled and black contracts towards black percentage
+            if (contract.type === 'bundled' || contract.type === 'black') {
+              return sum + parseFloat(contract.buyersPercentage);
+            }
+          }
+          return sum;
+        }, 0);
+
+        const merchantGreenPercentage = 100 - contractedGreenPercentage;
+        const merchantBlackPercentage = 100 - contractedBlackPercentage;
+
+        // Add green merchant entry if there's any uncontracted green volume
+        if (merchantGreenPercentage > 0) {
+          const merchantGreenVolume = annualGeneration * (merchantGreenPercentage / 100);
+          const merchantGreenMW = asset.capacity * (merchantGreenPercentage / 100);
+          
           const baseGreenPrice = getMerchantPrice(asset.type, 'green', asset.state, year);
-          const baseMerchantPrice = baseBlackPrice + baseGreenPrice;
-          const escalatedMerchantPrice = applyEscalation(baseMerchantPrice, year);
+          const escalatedGreenPrice = applyEscalation(baseGreenPrice, year);
 
           yearlyData.push({
             year,
@@ -92,14 +109,39 @@ const PPATableInputs = () => {
             state: asset.state,
             type: asset.type,
             ppaNumber: 'Merchant',
-            contractType: 'merchant',
-            buyerPercentage: merchantPercentage,
-            basePrice: baseMerchantPrice.toFixed(2),
+            contractType: 'green',
+            buyerPercentage: merchantGreenPercentage,
+            basePrice: baseGreenPrice.toFixed(2),
             indexation: constants.escalation,
-            indexedPrice: escalatedMerchantPrice.toFixed(2),
+            indexedPrice: escalatedGreenPrice.toFixed(2),
             term: `${year}`,
-            volume: Math.round(merchantVolume),
-            equivalentMW: merchantMW.toFixed(1)
+            volume: Math.round(merchantGreenVolume),
+            equivalentMW: merchantGreenMW.toFixed(1)
+          });
+        }
+
+        // Add black merchant entry if there's any uncontracted black volume
+        if (merchantBlackPercentage > 0) {
+          const merchantBlackVolume = annualGeneration * (merchantBlackPercentage / 100);
+          const merchantBlackMW = asset.capacity * (merchantBlackPercentage / 100);
+          
+          const baseBlackPrice = getMerchantPrice(asset.type, 'black', asset.state, year);
+          const escalatedBlackPrice = applyEscalation(baseBlackPrice, year);
+
+          yearlyData.push({
+            year,
+            assetName: asset.name,
+            state: asset.state,
+            type: asset.type,
+            ppaNumber: 'Merchant',
+            contractType: 'black',
+            buyerPercentage: merchantBlackPercentage,
+            basePrice: baseBlackPrice.toFixed(2),
+            indexation: constants.escalation,
+            indexedPrice: escalatedBlackPrice.toFixed(2),
+            term: `${year}`,
+            volume: Math.round(merchantBlackVolume),
+            equivalentMW: merchantBlackMW.toFixed(1)
           });
         }
       });
@@ -192,7 +234,7 @@ const PPATableInputs = () => {
             <tbody className="divide-y divide-gray-200">
               {tableData.map((row, index) => (
                 <tr 
-                  key={`${row.year}-${row.assetName}-${row.ppaNumber}`}
+                  key={`${row.year}-${row.assetName}-${row.ppaNumber}-${row.contractType}`}
                   className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
                 >
                   <td className="px-4 py-3 text-sm text-gray-900">{row.year}</td>
