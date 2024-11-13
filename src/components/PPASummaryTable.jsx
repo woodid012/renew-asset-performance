@@ -1,8 +1,8 @@
 // PPASummaryTable.jsx
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import PPAInputs from "./PPAInputs";  // Changed to relative import
-import PPAOutputs from "./PPAOutputs";  // Changed to relative import
+import PPAInputs from "@/components/PPAInputs";  // Full path with @ alias
+import PPAOutputs from "@/components/PPAOutputs";  // Full path with @ alias
 
 const PPASummaryTable = () => {
   return (
