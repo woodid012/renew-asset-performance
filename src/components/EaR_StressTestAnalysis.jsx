@@ -1,6 +1,6 @@
 import React from 'react';
 import { calculateAssetRevenue } from './RevCalculations';
-import { generateScenarios, createHistogramData, calculateStatistics } from './EaR_calculation';
+import { generateScenarios, createHistogramData, calculateYearlyMetrics } from './EaR_calculation';
 
 const StressTestAnalysis = ({ assets, constants, getMerchantPrice, selectedYear }) => {
   if (!assets || Object.keys(assets).length === 0) return null;
@@ -21,7 +21,7 @@ const StressTestAnalysis = ({ assets, constants, getMerchantPrice, selectedYear 
   const scenarios = generateScenarios(assets, constants, getMerchantPrice);
   
   // Calculate base case and key metrics for selected year
-  const stats = calculateStatistics(scenarios, selectedYear, assets, constants, getMerchantPrice);
+  const stats = calculateYearlyMetrics(scenarios, selectedYear, assets, constants, getMerchantPrice);
   const baseCase = stats.baseCase;
   const p50Value = stats.p50;
   const p10Value = stats.p10;
