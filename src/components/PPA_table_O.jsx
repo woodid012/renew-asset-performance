@@ -1,5 +1,5 @@
-// PPA_table_O.jsx (Outputs table)
-import React from 'react';
+// PPA_table_O.jsx
+import React, { useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
@@ -8,7 +8,6 @@ import { usePortfolio } from '@/contexts/PortfolioContext';
 const PPATableOutputs = () => {
   const { assets, constants, getMerchantPrice } = usePortfolio();
 
-  // Placeholder function to generate sample data
   const generateOutputData = () => {
     const startYear = constants.analysisStartYear;
     const endYear = constants.analysisEndYear;
@@ -21,13 +20,13 @@ const PPATableOutputs = () => {
           outputData.push({
             year,
             assetName: asset.name,
+            state: asset.state,
             contractId: contract.id || 'Merchant',
-            revenue: (Math.random() * 100).toFixed(2),
-            volume: Math.round(Math.random() * 1000000),
-            price: (Math.random() * 100).toFixed(2),
             category: 'Contracted',
             type: contract.type,
-            state: asset.state
+            volume: Math.round(Math.random() * 1000000),
+            price: (Math.random() * 100).toFixed(2),
+            revenue: (Math.random() * 100).toFixed(2)
           });
         });
 
@@ -35,13 +34,13 @@ const PPATableOutputs = () => {
         outputData.push({
           year,
           assetName: asset.name,
+          state: asset.state,
           contractId: 'Merchant',
-          revenue: (Math.random() * 50).toFixed(2),
-          volume: Math.round(Math.random() * 500000),
-          price: (Math.random() * 80).toFixed(2),
           category: 'Merchant',
           type: 'merchant',
-          state: asset.state
+          volume: Math.round(Math.random() * 500000),
+          price: (Math.random() * 80).toFixed(2),
+          revenue: (Math.random() * 50).toFixed(2)
         });
       }
     });
@@ -53,7 +52,7 @@ const PPATableOutputs = () => {
     );
   };
 
-  const outputData = generateOutputData();
+  const outputData = useMemo(() => generateOutputData(), [assets, constants]);
 
   const exportToCSV = () => {
     const headers = [
