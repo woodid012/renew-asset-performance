@@ -1,97 +1,38 @@
 // PPAOutputs.jsx
-import React, { useMemo } from 'react';
+import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
-import { usePortfolio } from '@/contexts/PortfolioContext';
 
 const PPAOutputs = () => {
-  const { assets, constants, getMerchantPrice } = usePortfolio();
-
-  // Placeholder function to generate sample data
-  const generateOutputData = () => {
-    const startYear = constants.analysisStartYear;
-    const endYear = constants.analysisEndYear;
-    const outputData = [];
-
-    Object.values(assets).forEach(asset => {
-      for (let year = startYear; year <= endYear; year++) {
-        // Contracted outputs
-        asset.contracts.forEach(contract => {
-          outputData.push({
-            year,
-            assetName: asset.name,
-            contractId: contract.id || 'Merchant',
-            revenue: (Math.random() * 100).toFixed(2),
-            volume: Math.round(Math.random() * 1000000),
-            price: (Math.random() * 100).toFixed(2),
-            category: 'Contracted',
-            type: contract.type,
-            state: asset.state
-          });
-        });
-
-        // Merchant outputs
-        outputData.push({
-          year,
-          assetName: asset.name,
-          contractId: 'Merchant',
-          revenue: (Math.random() * 50).toFixed(2),
-          volume: Math.round(Math.random() * 500000),
-          price: (Math.random() * 80).toFixed(2),
-          category: 'Merchant',
-          type: 'merchant',
-          state: asset.state
-        });
-      }
-    });
-
-    return outputData.sort((a, b) => 
-      a.year - b.year || 
-      a.assetName.localeCompare(b.assetName) || 
-      a.contractId.localeCompare(b.contractId)
-    );
-  };
-
-  const outputData = useMemo(() => generateOutputData(), [assets, constants]);
+  // Sample static data
+  const outputData = [
+    {
+      year: 2024,
+      assetName: "Solar Project 1",
+      state: "CA",
+      contractId: "PPA-001",
+      category: "Contracted",
+      type: "solar",
+      volume: 100000,
+      price: "75.00",
+      revenue: "7.50"
+    },
+    {
+      year: 2024,
+      assetName: "Wind Project 1",
+      state: "TX",
+      contractId: "Merchant",
+      category: "Merchant",
+      type: "wind",
+      volume: 50000,
+      price: "45.00",
+      revenue: "2.25"
+    }
+  ];
 
   const exportToCSV = () => {
-    const headers = [
-      'Year',
-      'Asset Name',
-      'State',
-      'Contract ID',
-      'Category',
-      'Type',
-      'Volume (MWh)',
-      'Price ($/MWh)',
-      'Revenue ($M)'
-    ];
-
-    const csvData = outputData.map(row => [
-      row.year,
-      row.assetName,
-      row.state,
-      row.contractId,
-      row.category,
-      row.type,
-      row.volume,
-      row.price,
-      row.revenue
-    ]);
-
-    csvData.unshift(headers);
-    const csvString = csvData.map(row => row.join(',')).join('\n');
-    
-    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `ppa_outputs_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    console.log('Export to CSV clicked');
   };
 
   return (

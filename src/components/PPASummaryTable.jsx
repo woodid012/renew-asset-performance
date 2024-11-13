@@ -2,6 +2,7 @@ import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import PPAOutputs from './PPAOutputs';
+import HelloWorld from './HelloWorld';
 
 const PPASummaryTable = () => {
   return (
@@ -16,7 +17,10 @@ const PPASummaryTable = () => {
       <TabsContent value="outputs">
         <Card>
           <CardContent className="pt-6">
-            <PPAOutputs />
+            <HelloWorld />
+            <div className="mt-6">
+              <PPAOutputs />
+            </div>
           </CardContent>
         </Card>
       </TabsContent>
