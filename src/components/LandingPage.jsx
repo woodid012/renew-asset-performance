@@ -76,9 +76,8 @@ const LandingPage = () => {
   return (
     <div className="p-6 max-w-6xl mx-auto">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Portfolio Analysis Tool</h1>
         <p className="text-lg text-gray-600">
-          Welcome to the Portfolio Analysis Dashboard. Use the tabs above to navigate through different aspects of your portfolio analysis.
+          Use the tabs above to navigate through different aspects of your portfolio analysis.
         </p>
       </div>
 
@@ -102,13 +101,6 @@ const LandingPage = () => {
         ))}
       </div>
 
-      <div className="mt-8 p-4 bg-blue-50 rounded-lg">
-        <h3 className="text-lg font-semibold mb-2">Getting Started</h3>
-        <p className="text-gray-600">
-          Begin by configuring your price inputs in the "Price Inputs" tab, then proceed to define your assets and contracts. 
-          Use the Portfolio Charts to visualize your data, and the Risk Analysis tab to evaluate potential scenarios.
-        </p>
-      </div>
     </div>
   );
 };
