@@ -91,7 +91,7 @@ const EarningsRiskAnalysis = () => {
       <div className="grid grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Output Risk Metrics</CardTitle>
+            <CardTitle>Output Risk Metrics ({selectedYear})</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
