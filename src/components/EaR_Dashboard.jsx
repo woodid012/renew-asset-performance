@@ -154,7 +154,7 @@ const EarningsRiskAnalysis = () => {
             <YearSelector
               selectedYear={selectedYear}
               onChange={setSelectedYear}
-              startYear={constants.analysisStartYear}
+              startYear={constants.ForecastStartYear}
               endYear={constants.analysisEndYear}
             />
             <div className="h-72">
