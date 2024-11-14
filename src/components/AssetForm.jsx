@@ -100,15 +100,8 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts }) => {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Capacity (MW)</label>
-              <Input
-                type="number"
-                value={asset.capacity}
-                onChange={(e) => onUpdateAsset('capacity', e.target.value)}
-                placeholder="Capacity"
-              />
-            </div>
+
+           
             <div className="space-y-2">
               <label className="text-sm font-medium">Type</label>
               <Select
@@ -124,6 +117,25 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts }) => {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Capacity (MW)</label>
+              <Input
+                type="number"
+                value={asset.capacity}
+                onChange={(e) => onUpdateAsset('capacity', e.target.value)}
+                placeholder="Capacity"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Asset Start Date</label>
+              <Input
+                type="date"
+                value={asset.assetStartDate}
+                onChange={(e) => onUpdateAsset('assetStartDate', e.target.value)}
+                placeholder="Asset Start Date"
+              />
+            </div>
+            <div></div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Capacity Factor (%)</label>
               <Input

@@ -1,4 +1,19 @@
 export const calculateAssetRevenue = (asset, year, constants, getMerchantPrice) => {
+  // Check if current year is before asset start date
+  const assetStartYear = new Date(asset.assetStartDate).getFullYear();
+  if (year < assetStartYear) {
+    return {
+      total: 0,
+      contractedGreen: 0,
+      contractedBlack: 0,
+      merchantGreen: 0,
+      merchantBlack: 0,
+      greenPercentage: 0,
+      blackPercentage: 0,
+      annualGeneration: 0
+    };
+  }
+
   const HOURS_IN_YEAR = constants.HOURS_IN_YEAR;
   const capacityFactor = constants.capacityFactors[asset.type]?.[asset.state] || 0;
   const capacity = parseFloat(asset.capacity) || 0;

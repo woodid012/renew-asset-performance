@@ -19,6 +19,7 @@ const AssetDashboard = () => {
         id: newId,
         name: `Default Asset ${assetNumber}`,
         state: 'NSW',
+        assetStartDate: '', // Add default empty assetStartDate
         capacity: '100',
         type: 'solar',
         volumeLossAdjustment: '100',

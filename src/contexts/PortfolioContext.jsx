@@ -37,15 +37,16 @@ const getYearFromDate = (dateStr) => {
   }
 };
 
-export const usePortfolio = () => {
+// Export the hook
+export function usePortfolio() {
   const context = useContext(PortfolioContext);
   if (!context) {
     throw new Error('usePortfolio must be used within a PortfolioProvider');
   }
   return context;
-};
+}
 
-export const PortfolioProvider = ({ children }) => {
+export function PortfolioProvider({ children }) {
   const [assets, setAssets] = useState({});
   const [constants, setConstants] = useState({
     HOURS_IN_YEAR: 8760,
@@ -124,14 +125,15 @@ export const PortfolioProvider = ({ children }) => {
                 startDate: transformDateFormat(row.contractStartDate),
                 endDate: transformDateFormat(row.contractEndDate),
                 term: row.contractTerm?.toString(),
-                indexationReferenceYear: getYearFromDate(row.contractStartDate) // Add indexation reference year
+                indexationReferenceYear: getYearFromDate(row.contractStartDate)
               }));
               
-              // Return the transformed asset structure
+              // Return the transformed asset structure with assetStartDate
               return {
                 id: firstRow.assetId?.toString(),
                 name: firstRow.name,
                 state: firstRow.state,
+                assetStartDate: transformDateFormat(firstRow.assetStartDate), // Add the new field
                 capacity: firstRow.capacity,
                 type: firstRow.type,
                 volumeLossAdjustment: firstRow.volumeLossAdjustment,
@@ -276,6 +278,7 @@ export const PortfolioProvider = ({ children }) => {
       {children}
     </PortfolioContext.Provider>
   );
-};
+}
 
+// Export the context and provider
 export default PortfolioProvider;
