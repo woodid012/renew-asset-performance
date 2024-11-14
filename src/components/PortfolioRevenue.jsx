@@ -125,8 +125,8 @@ const PortfolioDashboard = () => {
                     )
                   )}
                   <ReferenceArea 
-                    x1={2022} 
-                    x2={2023} 
+                    x1={constants.analysisStartYear} 
+                    x2={constants.ForecastStartYear-1} 
                     fillOpacity={0.3}
                     fill="#808080"
                     strokeOpacity={0.3}
@@ -229,8 +229,8 @@ const PortfolioDashboard = () => {
                   name="Green Merchant"
                 />
                 <ReferenceArea 
-                  x1={2022} 
-                  x2={2023} 
+                  x1={constants.analysisStartYear} 
+                  x2={constants.ForecastStartYear-1}  
                   fillOpacity={0.3}
                   fill="#808080"
                   strokeOpacity={0.3}
@@ -279,8 +279,8 @@ const PortfolioDashboard = () => {
                   strokeWidth={2}
                 />
                 <ReferenceArea 
-                  x1={2022} 
-                  x2={2023} 
+                  x1={constants.analysisStartYear} 
+                  x2={constants.ForecastStartYear-1} 
                   fillOpacity={0.3}
                   fill="#808080"
                   strokeOpacity={0.3}

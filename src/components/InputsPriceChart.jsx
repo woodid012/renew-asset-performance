@@ -19,8 +19,8 @@ const PriceChart = () => {
 
   // Function to apply escalation and convert from real to nominal dollars
   const applyEscalation = (realPrice, year) => {
-    // Don't apply escalation for actual/historical data (2022-2023)
-    if (!realPrice || year <= 2023) return realPrice;
+    // Don't apply escalation for actual/historical data
+    if (!realPrice || year < constants.ForecastStartYear) return realPrice;
     if (!constants.referenceYear || !constants.escalation) return realPrice;
     const yearDiff = year - constants.referenceYear;
     return realPrice * Math.pow(1 + constants.escalation / 100, yearDiff);
@@ -252,10 +252,9 @@ const PriceChart = () => {
                 dot={false}
               />
                           
-              {/* Grey box overlay for 2022-2023 */}
               <ReferenceArea 
-                  x1={2022} 
-                  x2={2023} 
+                  x1={constants.analysisStartYear} 
+                  x2={constants.ForecastStartYear-1} 
                   fillOpacity={0.3}
                   fill="#808080"
                   strokeOpacity={0.3}
