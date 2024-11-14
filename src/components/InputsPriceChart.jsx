@@ -177,7 +177,6 @@ const PriceChart = () => {
     <Card className="w-full">
       <CardHeader>
         <CardTitle className="flex justify-between items-center">
-          <span>Prices ($nominal)</span>
           <div className="flex items-center gap-4">
             <Button
               variant="outline"
