@@ -1,25 +1,83 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { usePortfolio } from '@/contexts/PortfolioContext';
 import AssetFormContract from './AssetFormContract';
+import Papa from 'papaparse';
 
 const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts }) => {
   const { constants } = usePortfolio();
+  const [renewablesData, setRenewablesData] = useState([]);
 
-  // Effect to update capacity factor when state or type changes
+  useEffect(() => {
+    const loadRenewablesData = async () => {
+      try {
+        const response = await fetch('/renewables_registration_data.csv');
+        const csvText = await response.text();
+        
+        const result = Papa.parse(csvText, {
+          header: true,
+          skipEmptyLines: true
+        });
+        
+        const processed = result.data.map(row => ({
+          id: row.DUID,
+          name: row['Station Name'],
+          state: row.Region.substring(0, row.Region.length - 1),
+          capacity: parseFloat(row['Reg Cap generation (MW)']),
+          type: row['Fuel Source - Primary'].toLowerCase(),
+          mlf: row['2024-25 MLF'] ? parseFloat(row['2024-25 MLF']) * 100 : null, // Convert to percentage
+          startDate: row['StartDate'] ? formatDate(row['StartDate']) : '' // Format date if exists
+        }));
+        
+        setRenewablesData(processed);
+      } catch (error) {
+        console.error('Error loading renewables data:', error);
+      }
+    };
+
+    loadRenewablesData();
+  }, []);
+
+  // Helper function to format date from DD/MM/YYYY to YYYY-MM-DD
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    const [day, month, year] = dateStr.split('/');
+    if (!day || !month || !year) return '';
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  };
+
   useEffect(() => {
     if (asset.state && asset.type) {
       const defaultCapacityFactor = constants.capacityFactors?.[asset.type]?.[asset.state];
       if (defaultCapacityFactor) {
-        // Convert decimal to percentage and round to whole number
         onUpdateAsset('capacityFactor', Math.round(defaultCapacityFactor * 100));
       }
     }
   }, [asset.state, asset.type, constants.capacityFactors]);
+
+  const handleRenewableSelection = (selectedRenewableId) => {
+    const selectedRenewable = renewablesData.find(r => r.id === selectedRenewableId);
+    if (selectedRenewable) {
+      onUpdateAsset('name', selectedRenewable.name);
+      onUpdateAsset('state', selectedRenewable.state);
+      onUpdateAsset('capacity', String(selectedRenewable.capacity));
+      onUpdateAsset('type', selectedRenewable.type);
+      
+      // Set volumeLossAdjustment from MLF if available
+      if (selectedRenewable.mlf) {
+        onUpdateAsset('volumeLossAdjustment', selectedRenewable.mlf.toFixed(2));
+      }
+      
+      // Set startDate if available
+      if (selectedRenewable.startDate) {
+        onUpdateAsset('assetStartDate', selectedRenewable.startDate);
+      }
+    }
+  };
 
   const addContract = () => {
     const newContract = {
@@ -75,6 +133,27 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts }) => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2 space-y-2">
+              <label className="text-sm font-medium">Populate from Existing Renewable</label>
+              <Select onValueChange={handleRenewableSelection}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select an existing renewable" />
+                </SelectTrigger>
+                <SelectContent className="max-h-[300px]">
+                  <SelectGroup>
+                    <SelectLabel>Select Asset</SelectLabel>
+                    {renewablesData
+                      .sort((a, b) => a.name.localeCompare(b.name))
+                      .map(renewable => (
+                        <SelectItem key={renewable.id} value={renewable.id}>
+                          {renewable.name} ({renewable.capacity} MW, {renewable.type.charAt(0).toUpperCase() + renewable.type.slice(1)})
+                        </SelectItem>
+                      ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="space-y-2">
               <label className="text-sm font-medium">Name</label>
               <Input
@@ -101,7 +180,6 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts }) => {
               </Select>
             </div>
 
-           
             <div className="space-y-2">
               <label className="text-sm font-medium">Type</label>
               <Select
