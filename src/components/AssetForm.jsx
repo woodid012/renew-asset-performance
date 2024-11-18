@@ -11,6 +11,15 @@ import Papa from 'papaparse';
 const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts }) => {
   const { constants } = usePortfolio();
   const [renewablesData, setRenewablesData] = useState([]);
+  const [selectedRenewable, setSelectedRenewable] = useState(null);
+  const [outOfSync, setOutOfSync] = useState({
+    name: false,
+    state: false,
+    capacity: false,
+    type: false,
+    volumeLossAdjustment: false,
+    assetStartDate: false,
+  });
 
   useEffect(() => {
     const loadRenewablesData = async () => {
@@ -29,8 +38,8 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts }) => {
           state: row.Region.substring(0, row.Region.length - 1),
           capacity: parseFloat(row['Reg Cap generation (MW)']),
           type: row['Fuel Source - Primary'].toLowerCase(),
-          mlf: row['2024-25 MLF'] ? parseFloat(row['2024-25 MLF']) * 100 : null, // Convert to percentage
-          startDate: row['StartDate'] ? formatDate(row['StartDate']) : '' // Format date if exists
+          mlf: row['2024-25 MLF'] ? parseFloat(row['2024-25 MLF']) * 100 : null,
+          startDate: row['StartDate'] ? formatDate(row['StartDate']) : ''
         }));
         
         setRenewablesData(processed);
@@ -59,22 +68,37 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts }) => {
     }
   }, [asset.state, asset.type, constants.capacityFactors]);
 
-  const handleRenewableSelection = (selectedRenewableId) => {
-    const selectedRenewable = renewablesData.find(r => r.id === selectedRenewableId);
+  // Check if values are out of sync with selected renewable
+  useEffect(() => {
     if (selectedRenewable) {
-      onUpdateAsset('name', selectedRenewable.name);
-      onUpdateAsset('state', selectedRenewable.state);
-      onUpdateAsset('capacity', String(selectedRenewable.capacity));
-      onUpdateAsset('type', selectedRenewable.type);
+      setOutOfSync({
+        name: asset.name !== selectedRenewable.name,
+        state: asset.state !== selectedRenewable.state,
+        capacity: String(asset.capacity) !== String(selectedRenewable.capacity),
+        type: asset.type !== selectedRenewable.type,
+        volumeLossAdjustment: selectedRenewable.mlf && 
+          String(asset.volumeLossAdjustment) !== String(selectedRenewable.mlf.toFixed(2)),
+        assetStartDate: selectedRenewable.startDate && 
+          asset.assetStartDate !== selectedRenewable.startDate,
+      });
+    }
+  }, [asset, selectedRenewable]);
+
+  const handleRenewableSelection = (selectedRenewableId) => {
+    const selected = renewablesData.find(r => r.id === selectedRenewableId);
+    if (selected) {
+      setSelectedRenewable(selected);
+      onUpdateAsset('name', selected.name);
+      onUpdateAsset('state', selected.state);
+      onUpdateAsset('capacity', String(selected.capacity));
+      onUpdateAsset('type', selected.type);
       
-      // Set volumeLossAdjustment from MLF if available
-      if (selectedRenewable.mlf) {
-        onUpdateAsset('volumeLossAdjustment', selectedRenewable.mlf.toFixed(2));
+      if (selected.mlf) {
+        onUpdateAsset('volumeLossAdjustment', selected.mlf.toFixed(2));
       }
       
-      // Set startDate if available
-      if (selectedRenewable.startDate) {
-        onUpdateAsset('assetStartDate', selectedRenewable.startDate);
+      if (selected.startDate) {
+        onUpdateAsset('assetStartDate', selected.startDate);
       }
     }
   };
@@ -134,7 +158,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts }) => {
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2 space-y-2">
-              <label className="text-sm font-medium">Populate from Existing Renewable</label>
+              <label className="text-sm font-medium">Populate with existing renewable asset</label>
               <Select onValueChange={handleRenewableSelection}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select an existing renewable" />
@@ -160,6 +184,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts }) => {
                 value={asset.name}
                 onChange={(e) => onUpdateAsset('name', e.target.value)}
                 placeholder="Asset Name"
+                className={outOfSync.name ? "text-red-500" : ""}
               />
             </div>
             <div className="space-y-2">
@@ -168,7 +193,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts }) => {
                 value={asset.state}
                 onValueChange={(value) => onUpdateAsset('state', value)}
               >
-                <SelectTrigger>
+                <SelectTrigger className={outOfSync.state ? "text-red-500" : ""}>
                   <SelectValue placeholder="Select State" />
                 </SelectTrigger>
                 <SelectContent>
@@ -186,7 +211,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts }) => {
                 value={asset.type}
                 onValueChange={(value) => onUpdateAsset('type', value)}
               >
-                <SelectTrigger>
+                <SelectTrigger className={outOfSync.type ? "text-red-500" : ""}>
                   <SelectValue placeholder="Select Type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -202,6 +227,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts }) => {
                 value={asset.capacity}
                 onChange={(e) => onUpdateAsset('capacity', e.target.value)}
                 placeholder="Capacity"
+                className={outOfSync.capacity ? "text-red-500" : ""}
               />
             </div>
             <div className="space-y-2">
@@ -211,6 +237,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts }) => {
                 value={asset.assetStartDate}
                 onChange={(e) => onUpdateAsset('assetStartDate', e.target.value)}
                 placeholder="Asset Start Date"
+                className={outOfSync.assetStartDate ? "text-red-500" : ""}
               />
             </div>
             <div></div>
@@ -237,6 +264,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts }) => {
                 value={asset.volumeLossAdjustment}
                 onChange={(e) => onUpdateAsset('volumeLossAdjustment', e.target.value)}
                 placeholder="Volume Loss Adjustment"
+                className={outOfSync.volumeLossAdjustment ? "text-red-500" : ""}
               />
               <p className="text-xs text-gray-500">Includes MLF and degradation</p>
             </div>

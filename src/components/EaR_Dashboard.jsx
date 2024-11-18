@@ -195,10 +195,8 @@ const EarningsRiskAnalysis = () => {
                 <YAxis label={{ value: 'Revenue (Million $)', angle: -90, position: 'insideLeft' }} />
                 <Tooltip formatter={(value) => value.toFixed(1)}/>
                 <Legend />
-                <Line dataKey="p90" stroke="#ff7300" name="P90" dot={false} strokeWidth={2} />
                 <Line dataKey="baseCase" stroke="#8884d8" name="Base Case" dot={false} strokeWidth={2} />
-                <Line dataKey="p10" stroke="#82ca9d" name="P10" dot={false} strokeWidth={2} />
-                <Line dataKey="worstCase" stroke="#ff0000" name="Worst Case" dot={false} strokeWidth={2} strokeDasharray="5 5" />
+                <Line dataKey="worstCase" stroke="#ff0000" name="Combined Downside Case" dot={false} strokeWidth={2} strokeDasharray="5 5" />
                 <Line dataKey="volumeStress" stroke="#FFA500" name="Volume Stress" dot={false} strokeWidth={2} strokeDasharray="5 5" />
                 <Line dataKey="priceStress" stroke="#800080" name="Price Stress" dot={false} strokeWidth={2} strokeDasharray="5 5" />
                 <ReferenceArea 
