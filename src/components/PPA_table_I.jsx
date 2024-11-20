@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
 import { usePortfolio } from '@/contexts/PortfolioContext';
 
-const PPATableInputs = () => {
+const PPATableInputs = ({ yearLimit }) => {
   const { assets, constants, getMerchantPrice } = usePortfolio();
 
   const calculateAnnualGeneration = (asset) => {
@@ -20,10 +20,14 @@ const PPATableInputs = () => {
 
   const generateYearlyData = () => {
     const startYear = constants.analysisStartYear;
-    const endYear = constants.analysisEndYear;
+    const endYear = yearLimit 
+      ? startYear + yearLimit - 1 
+      : constants.analysisEndYear;
     const yearlyData = [];
 
+    // Rest of your generateYearlyData function remains the same, just using the new endYear
     for (let year = startYear; year <= endYear; year++) {
+      // ... (rest of your existing generateYearlyData code)
       Object.values(assets).forEach(asset => {
         const annualGeneration = calculateAnnualGeneration(asset);
 
@@ -72,7 +76,6 @@ const PPATableInputs = () => {
           const contractStart = new Date(contract.startDate).getFullYear();
           const contractEnd = new Date(contract.endDate).getFullYear();
           if (year >= contractStart && year <= contractEnd) {
-            // Count bundled and green contracts towards green percentage
             if (contract.type === 'bundled' || contract.type === 'green') {
               return sum + parseFloat(contract.buyersPercentage);
             }
@@ -84,7 +87,6 @@ const PPATableInputs = () => {
           const contractStart = new Date(contract.startDate).getFullYear();
           const contractEnd = new Date(contract.endDate).getFullYear();
           if (year >= contractStart && year <= contractEnd) {
-            // Count bundled and black contracts towards black percentage
             if (contract.type === 'bundled' || contract.type === 'black') {
               return sum + parseFloat(contract.buyersPercentage);
             }
@@ -95,7 +97,7 @@ const PPATableInputs = () => {
         const merchantGreenPercentage = 100 - contractedGreenPercentage;
         const merchantBlackPercentage = 100 - contractedBlackPercentage;
 
-        // Add green merchant entry if there's any uncontracted green volume
+        // Add merchant entries if there's any uncontracted volume
         if (merchantGreenPercentage > 0) {
           const merchantGreenVolume = annualGeneration * (merchantGreenPercentage / 100);
           const merchantGreenMW = asset.capacity * (merchantGreenPercentage / 100);
@@ -120,7 +122,6 @@ const PPATableInputs = () => {
           });
         }
 
-        // Add black merchant entry if there's any uncontracted black volume
         if (merchantBlackPercentage > 0) {
           const merchantBlackVolume = annualGeneration * (merchantBlackPercentage / 100);
           const merchantBlackMW = asset.capacity * (merchantBlackPercentage / 100);
@@ -154,8 +155,9 @@ const PPATableInputs = () => {
     );
   };
 
-  const tableData = useMemo(() => generateYearlyData(), [assets, constants]);
+  const tableData = useMemo(() => generateYearlyData(), [assets, constants, yearLimit]);
 
+  // Rest of your component remains the same
   const exportToCSV = () => {
     const headers = [
       'Year',
