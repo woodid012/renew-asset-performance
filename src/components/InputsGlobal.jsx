@@ -206,20 +206,7 @@ const InputsGlobal = () => {
             </Select>
           </div>
 
-          <div className="space-y-2">
-            <label className="block text-sm font-medium mb-2">Time Interval Summary</label>
-            <Select
-              value={constants.priceAggregation}
-              onValueChange={value => updateConstants('priceAggregation', value)}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select aggregation period" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="yearly">Yearly</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+
         </div>
       </CardContent>
       </Card>

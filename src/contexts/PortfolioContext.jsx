@@ -49,19 +49,20 @@ function PortfolioProviderInner({ children }) {
   const [assets, setAssets] = useState({});
   const [constants, setConstants] = useState({
     HOURS_IN_YEAR: 8760,
-    capacityFactors: {
-      solar: {
-        NSW: 0.28,
-        VIC: 0.25,
-        QLD: 0.29,
-        SA: 0.27
+    capacityFactors: { solar: { NSW: 0.28, VIC: 0.25, QLD: 0.29, SA: 0.27 }, wind: { NSW: 0.35, VIC: 0.38, QLD: 0.32, SA: 0.40 } },
+    capacityFactors_qtr: { 
+      solar: { 
+        NSW: { Q1: 0.32, Q2: 0.26, Q3: 0.24, Q4: 0.30 }, 
+        VIC: { Q1: 0.29, Q2: 0.23, Q3: 0.21, Q4: 0.27 }, 
+        QLD: { Q1: 0.33, Q2: 0.28, Q3: 0.25, Q4: 0.30 }, 
+        SA:  { Q1: 0.31, Q2: 0.25, Q3: 0.23, Q4: 0.29 } 
       },
-      wind: {
-        NSW: 0.35,
-        VIC: 0.38,
-        QLD: 0.32,
-        SA: 0.40
-      }
+      wind: { 
+        NSW: { Q1: 0.32, Q2: 0.35, Q3: 0.38, Q4: 0.35 }, 
+        VIC: { Q1: 0.35, Q2: 0.38, Q3: 0.42, Q4: 0.37 }, 
+        QLD: { Q1: 0.29, Q2: 0.32, Q3: 0.35, Q4: 0.32 }, 
+        SA:  { Q1: 0.37, Q2: 0.40, Q3: 0.44, Q4: 0.39 } 
+      } 
     },
     merchantPrices: merchantPrices, // Include merchant prices in constants for backward compatibility
     analysisStartYear: 2026,

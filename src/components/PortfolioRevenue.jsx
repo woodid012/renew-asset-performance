@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid, ReferenceArea } from 'recharts';
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -12,34 +12,103 @@ import {
 
 // Define a renewable-themed color palette
 const assetColors = {
-  asset1: { base: '#22C55E', faded: '#86EFAC' }, // vibrant green (solar)
-  asset2: { base: '#0EA5E9', faded: '#7DD3FC' }, // bright blue (wind)
-  asset3: { base: '#F97316', faded: '#FDBA74' }, // bright orange (biomass)
-  asset4: { base: '#06B6D4', faded: '#67E8F9' }, // cyan (hydro)
-  asset5: { base: '#EAB308', faded: '#FDE047' }  // yellow (solar thermal)
+  asset1: { base: '#22C55E', faded: '#86EFAC' },
+  asset2: { base: '#0EA5E9', faded: '#7DD3FC' },
+  asset3: { base: '#F97316', faded: '#FDBA74' },
+  asset4: { base: '#06B6D4', faded: '#67E8F9' },
+  asset5: { base: '#EAB308', faded: '#FDE047' }
 };
 
 const roundNumber = (num) => Number(Number(num).toFixed(2));
+
+// Generate time intervals based on start and end years
+const generateTimeIntervals = (startYear, endYear, intervalType) => {
+  const intervals = [];
+  for (let year = startYear; year <= endYear; year++) {
+    if (intervalType === 'yearly') {
+      intervals.push(year.toString());
+    } else if (intervalType === 'quarterly') {
+      for (let quarter = 1; quarter <= 4; quarter++) {
+        intervals.push(`${year}-Q${quarter}`);
+      }
+    } else if (intervalType === 'monthly') {
+      for (let month = 1; month <= 12; month++) {
+        const monthStr = month.toString().padStart(2, '0');
+        intervals.push(`${monthStr}/01/${year}`);
+      }
+    }
+  }
+  return intervals;
+};
+
+// Shared X-axis configuration
+const getXAxisConfig = (intervalType) => ({
+  tickFormatter: (value) => {
+    if (intervalType === 'yearly') {
+      return value;
+    } else if (intervalType === 'quarterly') {
+      const [yearPart, quarter] = value.split('-');
+      return quarter === 'Q1' ? yearPart : '';
+    } else if (intervalType === 'monthly') {
+      const [month] = value.split('/');
+      return month === '01' ? value.split('/')[2] : '';
+    }
+  },
+  interval: 0,
+  axisLine: { strokeWidth: 2 },
+  tick: { fontSize: 12 },
+  tickLine: { strokeWidth: 2 },
+  minorTick: true,
+  minorTickSize: 4,
+  minorTickLine: { strokeWidth: 1 },
+  dy: 10
+});
+
+// Shared tooltip formatter
+const getTooltipFormatter = (intervalType) => (label) => {
+  if (intervalType === 'quarterly') {
+    const [year, quarter] = label.split('-');
+    return `${quarter} ${year}`;
+  }
+  if (intervalType === 'monthly') {
+    const [month, , year] = label.split('/');
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                       'July', 'August', 'September', 'October', 'November', 'December'];
+    return `${monthNames[parseInt(month) - 1]} ${year}`;
+  }
+  return `Year ${label}`;
+};
 
 const PortfolioDashboard = () => {
   const { assets, constants, getMerchantPrice } = usePortfolio();
   const [visibleAssets, setVisibleAssets] = useState({});
   const [selectedAsset, setSelectedAsset] = useState(null);
-  
+  const [intervalType, setIntervalType] = useState('yearly');
+
+  // Generate time intervals based on selected type
+  const timeIntervals = useMemo(() => 
+    generateTimeIntervals(
+      constants.analysisStartYear, 
+      constants.analysisEndYear, 
+      intervalType
+    ),
+    [constants.analysisStartYear, constants.analysisEndYear, intervalType]
+  );
+
   // Pre-calculate portfolio data using useMemo
   const portfolioData = useMemo(() => 
-    generatePortfolioData(assets, constants, getMerchantPrice),
-    [assets, constants, getMerchantPrice]
+    generatePortfolioData(assets, timeIntervals, constants, getMerchantPrice),
+    [assets, timeIntervals, constants, getMerchantPrice]
   );
 
   // Pre-calculate processed data with useMemo
   const processedData = useMemo(() => {
     const rawData = processPortfolioData(portfolioData, assets, visibleAssets);
-    return rawData.map(yearData => {
-      const newData = { year: yearData.year };
+    return rawData.map(periodData => {
+      const newData = { timeInterval: periodData.timeInterval };
       
       // Round all numerical values
-      Object.entries(yearData).forEach(([key, value]) => {
+      Object.entries(periodData).forEach(([key, value]) => {
         if (typeof value === 'number') {
           newData[key] = roundNumber(value);
         } else {
@@ -51,12 +120,12 @@ const PortfolioDashboard = () => {
       Object.values(assets).forEach(asset => {
         if (visibleAssets[asset.name]) {
           newData[`${asset.name} Contracted`] = roundNumber(
-            (yearData[`${asset.name} Contracted Black`] || 0) + 
-            (yearData[`${asset.name} Contracted Green`] || 0)
+            (periodData[`${asset.name} Contracted Black`] || 0) + 
+            (periodData[`${asset.name} Contracted Green`] || 0)
           );
           newData[`${asset.name} Merchant`] = roundNumber(
-            (yearData[`${asset.name} Merchant Black`] || 0) + 
-            (yearData[`${asset.name} Merchant Green`] || 0)
+            (periodData[`${asset.name} Merchant Black`] || 0) + 
+            (periodData[`${asset.name} Merchant Green`] || 0)
           );
         }
       });
@@ -86,11 +155,6 @@ const PortfolioDashboard = () => {
   // Custom tooltip formatter to ensure consistent decimal places
   const tooltipFormatter = (value, name) => [roundNumber(value), name];
 
-  // Disable animations for all charts
-  const chartAnimationConfig = {
-    isAnimationActive: false
-  };
-
   if (Object.keys(assets).length === 0) {
     return (
       <div className="p-4">
@@ -103,8 +167,31 @@ const PortfolioDashboard = () => {
     );
   }
 
+  const xAxisConfig = getXAxisConfig(intervalType);
+  const tooltipLabelFormatter = getTooltipFormatter(intervalType);
+
   return (
     <div className="space-y-6 p-4">
+      {/* Interval Selection at the top */}
+      <Card>
+        <CardContent className="py-4">
+          <div className="flex justify-end">
+            <Select 
+              value={intervalType} 
+              onValueChange={setIntervalType}
+            >
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Select Interval" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="yearly">Yearly</SelectItem>
+                <SelectItem value="quarterly">Quarterly</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-12 gap-4">
         <Card className="col-span-9">
           <CardHeader>
@@ -115,9 +202,12 @@ const PortfolioDashboard = () => {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={processedData}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="year" />
+                  <XAxis dataKey="timeInterval" {...xAxisConfig} />
                   <YAxis label={{ value: 'Revenue (Million $)', angle: -90, position: 'insideLeft' }} />
-                  <Tooltip formatter={tooltipFormatter} />
+                  <Tooltip 
+                    formatter={tooltipFormatter}
+                    labelFormatter={tooltipLabelFormatter}
+                  />
                   <Legend />
                   {Object.values(assets).map((asset, index) => 
                     visibleAssets[asset.name] && (
@@ -127,14 +217,14 @@ const PortfolioDashboard = () => {
                           stackId="stack"
                           fill={Object.values(assetColors)[index % 5].base}
                           name={`${asset.name} Contracted`}
-                          {...chartAnimationConfig}
+                          isAnimationActive={false}
                         />
                         <Bar 
                           dataKey={`${asset.name} Merchant`}
                           stackId="stack"
                           fill={Object.values(assetColors)[index % 5].faded}
                           name={`${asset.name} Merchant`}
-                          {...chartAnimationConfig}
+                          isAnimationActive={false}
                         />
                       </React.Fragment>
                     )
@@ -199,37 +289,40 @@ const PortfolioDashboard = () => {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={processedData}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="year" />
+                <XAxis dataKey="timeInterval" {...xAxisConfig} />
                 <YAxis label={{ value: 'Revenue (Million $)', angle: -90, position: 'insideLeft' }} />
-                <Tooltip formatter={tooltipFormatter} />
+                <Tooltip 
+                  formatter={tooltipFormatter}
+                  labelFormatter={tooltipLabelFormatter}
+                />
                 <Legend />
                 <Bar 
                   dataKey={`${assets[selectedAsset]?.name} Contracted Black`} 
                   stackId="a"
                   fill="#171717"
                   name="Black Contracted"
-                  {...chartAnimationConfig}
+                  isAnimationActive={false}
                 />
                 <Bar 
                   dataKey={`${assets[selectedAsset]?.name} Contracted Green`} 
                   stackId="a"
                   fill="#16A34A"
                   name="Green Contracted"
-                  {...chartAnimationConfig}
+                  isAnimationActive={false}
                 />
                 <Bar 
                   dataKey={`${assets[selectedAsset]?.name} Merchant Black`} 
                   stackId="a"
                   fill="#737373"
                   name="Black Merchant"
-                  {...chartAnimationConfig}
+                  isAnimationActive={false}
                 />
                 <Bar 
                   dataKey={`${assets[selectedAsset]?.name} Merchant Green`} 
                   stackId="a"
                   fill="#86EFAC"
                   name="Green Merchant"
-                  {...chartAnimationConfig}
+                  isAnimationActive={false}
                 />
               </BarChart>
             </ResponsiveContainer>
@@ -246,12 +339,15 @@ const PortfolioDashboard = () => {
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={processedData}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="year" />
+                <XAxis dataKey="timeInterval" {...xAxisConfig} />
                 <YAxis 
                   domain={[0, 100]}
                   label={{ value: 'Contracted (%)', angle: -90, position: 'insideLeft' }} 
                 />
-                <Tooltip formatter={tooltipFormatter} />
+                <Tooltip 
+                  formatter={tooltipFormatter}
+                  labelFormatter={tooltipLabelFormatter}
+                />
                 <Legend />
                 <Line 
                   type="monotone" 
@@ -259,7 +355,7 @@ const PortfolioDashboard = () => {
                   stroke="#16A34A" 
                   name="Green Contracted %"
                   strokeWidth={2}
-                  {...chartAnimationConfig}
+                  isAnimationActive={false}
                 />
                 <Line 
                   type="monotone" 
@@ -267,7 +363,7 @@ const PortfolioDashboard = () => {
                   stroke="#171717" 
                   name="Black Contracted %"
                   strokeWidth={2}
-                  {...chartAnimationConfig}
+                  isAnimationActive={false}
                 />
               </LineChart>
             </ResponsiveContainer>
