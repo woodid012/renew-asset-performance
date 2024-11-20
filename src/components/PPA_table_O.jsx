@@ -5,12 +5,15 @@ import { Download } from 'lucide-react';
 import { usePortfolio } from '@/contexts/PortfolioContext';
 import { calculateAssetRevenue } from './RevCalculations';
 
-const PPATableOutputs = () => {
+const PPATableOutputs = ({ yearLimit }) => {
   const { assets, constants, getMerchantPrice } = usePortfolio();
 
   const generateOutputData = () => {
     const startYear = constants.analysisStartYear;
-    const endYear = constants.analysisEndYear;
+    // Modify the endYear based on yearLimit if provided
+    const endYear = yearLimit 
+      ? startYear + yearLimit - 1 
+      : constants.analysisEndYear;
     const outputData = [];
 
     Object.values(assets).forEach(asset => {
@@ -99,7 +102,7 @@ const PPATableOutputs = () => {
     );
   };
 
-  const outputData = useMemo(() => generateOutputData(), [assets, constants]);
+  const outputData = useMemo(() => generateOutputData(), [assets, constants, yearLimit]);
 
   const exportToCSV = () => {
     const headers = [
