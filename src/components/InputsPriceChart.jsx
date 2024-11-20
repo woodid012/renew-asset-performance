@@ -9,7 +9,7 @@ const PriceChart = () => {
   const [selectedRegion, setSelectedRegion] = useState('NSW');
   const [chartData, setChartData] = useState([]);
   const [yAxisDomain, setYAxisDomain] = useState([0, 100]);
-  const [interval, setInterval] = useState('monthly');
+  const [interval, setInterval] = useState('quarterly');
   const [globalPriceRange, setGlobalPriceRange] = useState({ min: Infinity, max: -Infinity });
 
   const states = ['NSW', 'QLD', 'SA', 'VIC'];

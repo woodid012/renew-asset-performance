@@ -4,7 +4,7 @@ import _ from 'lodash';
 import { MerchantPriceProvider, useMerchantPrices } from './MerchantPriceProvider';
 
 // Constants
-const ASSETS_PATH = '/assets_esp.csv';
+const ASSETS_PATH = '/assets_aula.csv';
 
 // Date helper functions
 const transformDateFormat = (dateStr) => {
@@ -64,8 +64,8 @@ function PortfolioProviderInner({ children }) {
       }
     },
     merchantPrices: merchantPrices, // Include merchant prices in constants for backward compatibility
-    analysisStartYear: 2024,
-    analysisEndYear: 2030,
+    analysisStartYear: 2026,
+    analysisEndYear: 2045,
     ForecastStartYear: 2024,
     volumeVariation: 20,
     greenPriceVariation: 20,

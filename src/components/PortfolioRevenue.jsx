@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid, ReferenceArea } from 'recharts';
 import { Checkbox } from "@/components/ui/checkbox"
@@ -26,6 +26,45 @@ const PortfolioDashboard = () => {
   const [visibleAssets, setVisibleAssets] = useState({});
   const [selectedAsset, setSelectedAsset] = useState(null);
   
+  // Pre-calculate portfolio data using useMemo
+  const portfolioData = useMemo(() => 
+    generatePortfolioData(assets, constants, getMerchantPrice),
+    [assets, constants, getMerchantPrice]
+  );
+
+  // Pre-calculate processed data with useMemo
+  const processedData = useMemo(() => {
+    const rawData = processPortfolioData(portfolioData, assets, visibleAssets);
+    return rawData.map(yearData => {
+      const newData = { year: yearData.year };
+      
+      // Round all numerical values
+      Object.entries(yearData).forEach(([key, value]) => {
+        if (typeof value === 'number') {
+          newData[key] = roundNumber(value);
+        } else {
+          newData[key] = value;
+        }
+      });
+      
+      // Add combined contracted/merchant values for portfolio view
+      Object.values(assets).forEach(asset => {
+        if (visibleAssets[asset.name]) {
+          newData[`${asset.name} Contracted`] = roundNumber(
+            (yearData[`${asset.name} Contracted Black`] || 0) + 
+            (yearData[`${asset.name} Contracted Green`] || 0)
+          );
+          newData[`${asset.name} Merchant`] = roundNumber(
+            (yearData[`${asset.name} Merchant Black`] || 0) + 
+            (yearData[`${asset.name} Merchant Green`] || 0)
+          );
+        }
+      });
+
+      return newData;
+    });
+  }, [portfolioData, assets, visibleAssets]);
+
   useEffect(() => {
     const newVisibleAssets = {};
     Object.values(assets).forEach(asset => {
@@ -37,37 +76,6 @@ const PortfolioDashboard = () => {
     }
   }, [assets, selectedAsset]);
 
-  // Process data with rounding
-  const portfolioData = generatePortfolioData(assets, constants, getMerchantPrice);
-  const processedData = processPortfolioData(portfolioData, assets, visibleAssets).map(yearData => {
-    const newData = { year: yearData.year }; // Start fresh with just the year
-    
-    // Round all numerical values
-    Object.entries(yearData).forEach(([key, value]) => {
-      if (typeof value === 'number') {
-        newData[key] = roundNumber(value);
-      } else {
-        newData[key] = value;
-      }
-    });
-    
-    // Add combined contracted/merchant values for portfolio view
-    Object.values(assets).forEach(asset => {
-      if (visibleAssets[asset.name]) {
-        newData[`${asset.name} Contracted`] = roundNumber(
-          (yearData[`${asset.name} Contracted Black`] || 0) + 
-          (yearData[`${asset.name} Contracted Green`] || 0)
-        );
-        newData[`${asset.name} Merchant`] = roundNumber(
-          (yearData[`${asset.name} Merchant Black`] || 0) + 
-          (yearData[`${asset.name} Merchant Green`] || 0)
-        );
-      }
-    });
-
-    return newData;
-  });
-
   const toggleAsset = (assetName) => {
     setVisibleAssets(prev => ({
       ...prev,
@@ -77,6 +85,11 @@ const PortfolioDashboard = () => {
 
   // Custom tooltip formatter to ensure consistent decimal places
   const tooltipFormatter = (value, name) => [roundNumber(value), name];
+
+  // Disable animations for all charts
+  const chartAnimationConfig = {
+    isAnimationActive: false
+  };
 
   if (Object.keys(assets).length === 0) {
     return (
@@ -114,30 +127,18 @@ const PortfolioDashboard = () => {
                           stackId="stack"
                           fill={Object.values(assetColors)[index % 5].base}
                           name={`${asset.name} Contracted`}
+                          {...chartAnimationConfig}
                         />
                         <Bar 
                           dataKey={`${asset.name} Merchant`}
                           stackId="stack"
                           fill={Object.values(assetColors)[index % 5].faded}
                           name={`${asset.name} Merchant`}
+                          {...chartAnimationConfig}
                         />
                       </React.Fragment>
                     )
                   )}
-                  <ReferenceArea 
-                    x1={constants.analysisStartYear} 
-                    x2={constants.ForecastStartYear-1} 
-                    fillOpacity={0.3}
-                    fill="#808080"
-                    strokeOpacity={0.3}
-                    label={{
-                      value: "Actuals\nWIP",
-                      position: "center",
-                      fontSize: 12,
-                      fontWeight: "bold",
-                      fill: "#000000"
-                    }}
-                  />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -202,45 +203,33 @@ const PortfolioDashboard = () => {
                 <YAxis label={{ value: 'Revenue (Million $)', angle: -90, position: 'insideLeft' }} />
                 <Tooltip formatter={tooltipFormatter} />
                 <Legend />
-                {/* Contracted Revenue Stack */}
                 <Bar 
                   dataKey={`${assets[selectedAsset]?.name} Contracted Black`} 
                   stackId="a"
                   fill="#171717"
                   name="Black Contracted"
+                  {...chartAnimationConfig}
                 />
                 <Bar 
                   dataKey={`${assets[selectedAsset]?.name} Contracted Green`} 
                   stackId="a"
                   fill="#16A34A"
                   name="Green Contracted"
+                  {...chartAnimationConfig}
                 />
-                {/* Merchant Revenue Stack */}
                 <Bar 
                   dataKey={`${assets[selectedAsset]?.name} Merchant Black`} 
                   stackId="a"
                   fill="#737373"
                   name="Black Merchant"
+                  {...chartAnimationConfig}
                 />
                 <Bar 
                   dataKey={`${assets[selectedAsset]?.name} Merchant Green`} 
                   stackId="a"
                   fill="#86EFAC"
                   name="Green Merchant"
-                />
-                <ReferenceArea 
-                  x1={constants.analysisStartYear} 
-                  x2={constants.ForecastStartYear-1}  
-                  fillOpacity={0.3}
-                  fill="#808080"
-                  strokeOpacity={0.3}
-                  label={{
-                    value: "Actuals\nWIP",
-                    position: "center",
-                    fontSize: 12,
-                    fontWeight: "bold",
-                    fill: "#000000"
-                  }}
+                  {...chartAnimationConfig}
                 />
               </BarChart>
             </ResponsiveContainer>
@@ -270,6 +259,7 @@ const PortfolioDashboard = () => {
                   stroke="#16A34A" 
                   name="Green Contracted %"
                   strokeWidth={2}
+                  {...chartAnimationConfig}
                 />
                 <Line 
                   type="monotone" 
@@ -277,20 +267,7 @@ const PortfolioDashboard = () => {
                   stroke="#171717" 
                   name="Black Contracted %"
                   strokeWidth={2}
-                />
-                <ReferenceArea 
-                  x1={constants.analysisStartYear} 
-                  x2={constants.ForecastStartYear-1} 
-                  fillOpacity={0.3}
-                  fill="#808080"
-                  strokeOpacity={0.3}
-                  label={{
-                    value: "Actuals\nWIP",
-                    position: "center",
-                    fontSize: 12,
-                    fontWeight: "bold",
-                    fill: "#000000"
-                  }}
+                  {...chartAnimationConfig}
                 />
               </LineChart>
             </ResponsiveContainer>
