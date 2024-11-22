@@ -19,7 +19,7 @@ const AssetDashboard = () => {
         id: newId,
         name: `Default Asset ${assetNumber}`,
         state: 'NSW',
-        assetStartDate: '', // Add default empty assetStartDate
+        assetStartDate: '2024-01-01',
         capacity: '100',
         type: 'solar',
         volumeLossAdjustment: '100',
@@ -78,20 +78,22 @@ const AssetDashboard = () => {
               <TabsTrigger
                 key={asset.id}
                 value={asset.id}
-                className="flex-grow relative"
+                className="flex-grow relative group"
               >
-                {asset.name}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (confirm('Are you sure you want to remove this asset?')) {
-                      removeAsset(asset.id);
-                    }
-                  }}
-                  className="absolute right-2 hover:text-red-500"
-                >
-                  <X className="h-4 w-4" />
-                </button>
+                <span className="flex items-center justify-center w-full">
+                  {asset.name}
+                  <span
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (confirm('Are you sure you want to remove this asset?')) {
+                        removeAsset(asset.id);
+                      }
+                    }}
+                    className="absolute right-2 hover:text-red-500 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X className="h-4 w-4" />
+                  </span>
+                </span>
               </TabsTrigger>
             ))}
           </TabsList>

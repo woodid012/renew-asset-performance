@@ -36,12 +36,35 @@ export const calculateAssetRevenue = (asset, timeInterval, constants, getMerchan
   const HOURS_IN_YEAR = constants.HOURS_IN_YEAR;
   let capacityFactor;
   
-  // Use quarterly capacity factors if quarter is specified
-  if (quarter && constants.capacityFactors_qtr) {
-    capacityFactor = constants.capacityFactors_qtr[asset.type]?.[asset.state]?.[`Q${quarter}`] || 
-                     constants.capacityFactors[asset.type]?.[asset.state] || 0;
+  // Use asset's quarterly capacity factors if quarter is specified
+  if (quarter) {
+    // Try to get the asset's stored quarterly capacity factor
+    const quarterKey = `qualrtyCapacityFactor_q${quarter}`;
+    const storedQuarterlyFactor = asset[quarterKey];
+    
+    if (storedQuarterlyFactor !== undefined && storedQuarterlyFactor !== '') {
+      // Convert from percentage to decimal
+      capacityFactor = parseFloat(storedQuarterlyFactor) / 100;
+    } else {
+      // Fallback to constants if asset doesn't have the quarterly factor
+      capacityFactor = constants.capacityFactors_qtr[asset.type]?.[asset.state]?.[`Q${quarter}`] || 
+                       constants.capacityFactors[asset.type]?.[asset.state] || 0;
+    }
   } else {
-    capacityFactor = constants.capacityFactors[asset.type]?.[asset.state] || 0;
+    // For annual calculations, average the quarterly factors if available
+    const quarters = ['q1', 'q2', 'q3', 'q4'];
+    const availableFactors = quarters
+      .map(q => asset[`qualrtyCapacityFactor_${q}`])
+      .filter(factor => factor !== undefined && factor !== '')
+      .map(factor => parseFloat(factor) / 100);
+
+    if (availableFactors.length === 4) {
+      // If we have all quarterly factors, use their average
+      capacityFactor = availableFactors.reduce((sum, factor) => sum + factor, 0) / 4;
+    } else {
+      // Fallback to constants if we don't have all quarterly factors
+      capacityFactor = constants.capacityFactors[asset.type]?.[asset.state] || 0;
+    }
   }
 
   const capacity = parseFloat(asset.capacity) || 0;
@@ -56,9 +79,9 @@ export const calculateAssetRevenue = (asset, timeInterval, constants, getMerchan
   }
 
   const periodGeneration = capacity * volumeLossAdjustment / 100 * HOURS_IN_YEAR * capacityFactor * periodAdjustment;
-  const annualGeneration = capacity * volumeLossAdjustment / 100 * HOURS_IN_YEAR * capacityFactor; // Keep full annual for contract calcs
+  const annualGeneration = capacity * volumeLossAdjustment / 100 * HOURS_IN_YEAR * capacityFactor;
 
-  // Contract calculations remain yearly-based
+  // Rest of the calculation remains the same...
   const activeContracts = asset.contracts.filter(contract => {
     const startYear = new Date(contract.startDate).getFullYear();
     const endYear = new Date(contract.endDate).getFullYear();
@@ -95,7 +118,6 @@ export const calculateAssetRevenue = (asset, timeInterval, constants, getMerchan
         }
       }
 
-      // Apply period adjustment to contracted volumes
       const greenRevenue = (periodGeneration * buyersPercentage/100 * greenPrice) / 1000000;
       const blackRevenue = (periodGeneration * buyersPercentage/100 * blackPrice) / 1000000;
       
@@ -151,7 +173,7 @@ export const calculateAssetRevenue = (asset, timeInterval, constants, getMerchan
     merchantBlack,
     greenPercentage: totalGreenPercentage,
     blackPercentage: totalBlackPercentage,
-    annualGeneration: periodGeneration // Return the period-adjusted generation
+    annualGeneration: periodGeneration
   };
 };
 

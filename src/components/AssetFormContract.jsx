@@ -6,6 +6,12 @@ import { X } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const AssetFormContract = ({ contract, updateContract, removeContract }) => {
+  // Helper function to safely handle numeric inputs
+  const handleNumericInput = (field, value) => {
+    const parsed = value === '' ? '' : Number(value);
+    updateContract(field, parsed);
+  };
+
   return (
     <Card className="relative">
       <Button
@@ -18,11 +24,10 @@ const AssetFormContract = ({ contract, updateContract, removeContract }) => {
       </Button>
       <CardContent className="pt-8">
         <div className="grid grid-cols-2 gap-4">
-          {/* Contract Form Fields */}
           <div className="space-y-2">
             <label className="text-sm font-medium">Counterparty</label>
             <Input
-              value={contract.counterparty}
+              value={contract.counterparty || ''}
               onChange={(e) => updateContract('counterparty', e.target.value)}
               placeholder="Counterparty Name"
             />
@@ -30,7 +35,7 @@ const AssetFormContract = ({ contract, updateContract, removeContract }) => {
           <div className="space-y-2">
             <label className="text-sm font-medium">Contract Type</label>
             <Select 
-              value={contract.type}
+              value={contract.type || ''}
               onValueChange={(value) => updateContract('type', value)}
             >
               <SelectTrigger>
@@ -48,8 +53,8 @@ const AssetFormContract = ({ contract, updateContract, removeContract }) => {
             <label className="text-sm font-medium">Strike Price</label>
             <Input
               type="number"
-              value={contract.strikePrice}
-              onChange={(e) => updateContract('strikePrice', e.target.value)}
+              value={contract.strikePrice || ''}
+              onChange={(e) => handleNumericInput('strikePrice', e.target.value)}
             />
           </div>
           <div className="space-y-2">
@@ -59,8 +64,8 @@ const AssetFormContract = ({ contract, updateContract, removeContract }) => {
               min="0"
               max="100"
               step="0.1"
-              value={contract.buyersPercentage}
-              onChange={(e) => updateContract('buyersPercentage', e.target.value)}
+              value={contract.buyersPercentage || ''}
+              onChange={(e) => handleNumericInput('buyersPercentage', e.target.value)}
             />
           </div>
 
@@ -70,16 +75,16 @@ const AssetFormContract = ({ contract, updateContract, removeContract }) => {
                 <label className="text-sm font-medium">Black Price</label>
                 <Input
                   type="number"
-                  value={contract.blackPrice}
-                  onChange={(e) => updateContract('blackPrice', e.target.value)}
+                  value={contract.blackPrice || ''}
+                  onChange={(e) => handleNumericInput('blackPrice', e.target.value)}
                 />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">Green Price</label>
                 <Input
                   type="number"
-                  value={contract.greenPrice}
-                  onChange={(e) => updateContract('greenPrice', e.target.value)}
+                  value={contract.greenPrice || ''}
+                  onChange={(e) => handleNumericInput('greenPrice', e.target.value)}
                   disabled
                   className="bg-gray-100"
                 />
@@ -91,7 +96,7 @@ const AssetFormContract = ({ contract, updateContract, removeContract }) => {
             <label className="text-sm font-medium">Start Date</label>
             <Input
               type="date"
-              value={contract.startDate}
+              value={contract.startDate || ''}
               onChange={(e) => updateContract('startDate', e.target.value)}
             />
           </div>
@@ -99,7 +104,7 @@ const AssetFormContract = ({ contract, updateContract, removeContract }) => {
             <label className="text-sm font-medium">End Date</label>
             <Input
               type="date"
-              value={contract.endDate}
+              value={contract.endDate || ''}
               onChange={(e) => updateContract('endDate', e.target.value)}
             />
           </div>
@@ -111,16 +116,16 @@ const AssetFormContract = ({ contract, updateContract, removeContract }) => {
                 <Input
                   type="number"
                   step="0.1"
-                  value={contract.indexation}
-                  onChange={(e) => updateContract('indexation', e.target.value)}
+                  value={contract.indexation || ''}
+                  onChange={(e) => handleNumericInput('indexation', e.target.value)}
                 />
               </div>
               <div className="space-y-1">
                 <label className="text-sm font-medium">Reference Year</label>
                 <Input
                   type="number"
-                  value={contract.indexationReferenceYear}
-                  onChange={(e) => updateContract('indexationReferenceYear', e.target.value)}
+                  value={contract.indexationReferenceYear || ''}
+                  onChange={(e) => handleNumericInput('indexationReferenceYear', e.target.value)}
                   min="2000"
                   max="2100"
                 />
@@ -147,8 +152,8 @@ const AssetFormContract = ({ contract, updateContract, removeContract }) => {
                 <Input
                   type="number"
                   placeholder="Floor Value"
-                  value={contract.floorValue}
-                  onChange={(e) => updateContract('floorValue', e.target.value)}
+                  value={contract.floorValue || ''}
+                  onChange={(e) => handleNumericInput('floorValue', e.target.value)}
                   className="w-2/3"
                 />
               )}
@@ -158,12 +163,11 @@ const AssetFormContract = ({ contract, updateContract, removeContract }) => {
           <div className="col-span-2 space-y-2">
             <label className="text-sm font-medium">Settlement Formula</label>
             <Input
-              value={contract.settlementFormula}
+              value={contract.settlementFormula || ''}
               onChange={(e) => updateContract('settlementFormula', e.target.value)}
               placeholder="=[{Market} - {Strike}] x [{Volume}]} - WIP not used"
             />
           </div>
-          
         </div>
       </CardContent>
     </Card>

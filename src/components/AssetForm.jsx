@@ -21,6 +21,28 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts }) => {
     assetStartDate: false,
   });
 
+  // Helper function to safely handle numeric inputs
+  const handleNumericInput = (field, value, forceNumber = false) => {
+    const parsed = value === '' ? '' : Number(value);
+    if (field === 'capacity') {
+      // Round capacity to whole number and keep as number
+      const roundedValue = Math.round(parsed);
+      onUpdateAsset(field, roundedValue);
+    } else if (field.startsWith('qualrtyCapacityFactor_')) {
+      // Round capacity factors to whole numbers and store as string
+      const roundedValue = Math.round(parsed);
+      onUpdateAsset(field, String(roundedValue));
+    } else {
+      onUpdateAsset(field, forceNumber ? parsed : String(parsed));
+    }
+  };
+
+  // Helper function to format numeric values for display
+  const formatNumericValue = (value) => {
+    if (value === undefined || value === null || value === '') return '';
+    return String(value);
+  };
+
   useEffect(() => {
     const loadRenewablesData = async () => {
       try {
@@ -36,7 +58,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts }) => {
           id: row.DUID,
           name: row['Station Name'],
           state: row.Region.substring(0, row.Region.length - 1),
-          capacity: parseFloat(row['Reg Cap generation (MW)']),
+          capacity: Math.round(parseFloat(row['Reg Cap generation (MW)'])), // Keep rounded
           type: row['Fuel Source - Primary'].toLowerCase(),
           mlf: row['2024-25 MLF'] ? parseFloat(row['2024-25 MLF']) * 100 : null,
           startDate: row['StartDate'] ? formatDate(row['StartDate']) : ''
@@ -51,7 +73,6 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts }) => {
     loadRenewablesData();
   }, []);
 
-  // Helper function to format date from DD/MM/YYYY to YYYY-MM-DD
   const formatDate = (dateStr) => {
     if (!dateStr) return '';
     const [day, month, year] = dateStr.split('/');
@@ -59,22 +80,43 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts }) => {
     return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
   };
 
+  // Update capacity and quarterly factors when state or type changes
   useEffect(() => {
-    if (asset.state && asset.type) {
-      const defaultCapacityFactor = constants.capacityFactors?.[asset.type]?.[asset.state];
-      if (defaultCapacityFactor) {
-        onUpdateAsset('capacityFactor', Math.round(defaultCapacityFactor * 100));
-      }
+    console.log('Effect triggered - State:', asset.state, 'Type:', asset.type);
+    // Reset quarterly factors when type or state changes
+    if (!asset.state || !asset.type) {
+      ['Q1', 'Q2', 'Q3', 'Q4'].forEach(quarter => {
+        const quarterKey = `qualrtyCapacityFactor_${quarter.toLowerCase()}`;
+        onUpdateAsset(quarterKey, '');
+      });
+      return;
     }
-  }, [asset.state, asset.type, constants.capacityFactors]);
 
-  // Check if values are out of sync with selected renewable
+    // Always update quarterly capacity factors when state or type changes
+    ['Q1', 'Q2', 'Q3', 'Q4'].forEach(quarter => {
+      const defaultValue = constants.capacityFactors_qtr?.[asset.type]?.[asset.state]?.[quarter];
+      const quarterKey = `qualrtyCapacityFactor_${quarter.toLowerCase()}`;
+      
+      // Force update the value regardless of existing value
+      if (defaultValue !== undefined) {
+        const roundedValue = Math.round(defaultValue * 100);
+        onUpdateAsset(quarterKey, String(roundedValue));
+      }
+    });
+
+    // Update annual capacity factor
+    const defaultCapacityFactor = constants.capacityFactors?.[asset.type]?.[asset.state];
+    if (defaultCapacityFactor) {
+      onUpdateAsset('capacityFactor', String(Math.round(defaultCapacityFactor * 100)));
+    }
+  }, [asset.state, asset.type, onUpdateAsset]);
+
   useEffect(() => {
     if (selectedRenewable) {
       setOutOfSync({
         name: asset.name !== selectedRenewable.name,
         state: asset.state !== selectedRenewable.state,
-        capacity: String(asset.capacity) !== String(selectedRenewable.capacity),
+        capacity: asset.capacity !== selectedRenewable.capacity, // Compare numbers directly
         type: asset.type !== selectedRenewable.type,
         volumeLossAdjustment: selectedRenewable.mlf && 
           String(asset.volumeLossAdjustment) !== String(selectedRenewable.mlf.toFixed(2)),
@@ -83,14 +125,14 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts }) => {
       });
     }
   }, [asset, selectedRenewable]);
-
+  
   const handleRenewableSelection = (selectedRenewableId) => {
     const selected = renewablesData.find(r => r.id === selectedRenewableId);
     if (selected) {
       setSelectedRenewable(selected);
       onUpdateAsset('name', selected.name);
       onUpdateAsset('state', selected.state);
-      onUpdateAsset('capacity', String(selected.capacity));
+      onUpdateAsset('capacity', Math.round(selected.capacity)); // Keep as number
       onUpdateAsset('type', selected.type);
       
       if (selected.mlf) {
@@ -114,7 +156,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts }) => {
       greenPrice: '',
       blackPrice: '',
       indexation: '',
-      indexationReferenceYear: new Date().getFullYear(),
+      indexationReferenceYear: String(new Date().getFullYear()),
       settlementFormula: '',
       hasFloor: false,
       floorValue: '',
@@ -140,7 +182,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts }) => {
           if (field === 'strikePrice' || field === 'blackPrice') {
             const strikePrice = field === 'strikePrice' ? Number(value) : Number(contract.strikePrice) || 0;
             const blackPrice = field === 'blackPrice' ? Number(value) : Number(contract.blackPrice) || 0;
-            updatedContract.greenPrice = strikePrice - blackPrice;
+            updatedContract.greenPrice = String(strikePrice - blackPrice);
           }
         }
         
@@ -181,7 +223,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts }) => {
             <div className="space-y-2">
               <label className="text-sm font-medium">Name</label>
               <Input
-                value={asset.name}
+                value={asset.name || ''}
                 onChange={(e) => onUpdateAsset('name', e.target.value)}
                 placeholder="Asset Name"
                 className={outOfSync.name ? "text-red-500" : ""}
@@ -190,7 +232,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts }) => {
             <div className="space-y-2">
               <label className="text-sm font-medium">State</label>
               <Select
-                value={asset.state}
+                value={asset.state || ''}
                 onValueChange={(value) => onUpdateAsset('state', value)}
               >
                 <SelectTrigger className={outOfSync.state ? "text-red-500" : ""}>
@@ -208,7 +250,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts }) => {
             <div className="space-y-2">
               <label className="text-sm font-medium">Type</label>
               <Select
-                value={asset.type}
+                value={asset.type || ''}
                 onValueChange={(value) => onUpdateAsset('type', value)}
               >
                 <SelectTrigger className={outOfSync.type ? "text-red-500" : ""}>
@@ -224,8 +266,8 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts }) => {
               <label className="text-sm font-medium">Capacity (MW)</label>
               <Input
                 type="number"
-                value={asset.capacity}
-                onChange={(e) => onUpdateAsset('capacity', e.target.value)}
+                value={asset.capacity || ''}
+                onChange={(e) => handleNumericInput('capacity', e.target.value)}
                 placeholder="Capacity"
                 className={outOfSync.capacity ? "text-red-500" : ""}
               />
@@ -234,26 +276,44 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts }) => {
               <label className="text-sm font-medium">Asset Start Date</label>
               <Input
                 type="date"
-                value={asset.assetStartDate}
+                value={asset.assetStartDate || ''}
                 onChange={(e) => onUpdateAsset('assetStartDate', e.target.value)}
                 placeholder="Asset Start Date"
                 className={outOfSync.assetStartDate ? "text-red-500" : ""}
               />
             </div>
-            <div></div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Capacity Factor (%)</label>
+              <label className="text-sm font-medium">Asset Life (years)</label>
               <Input
                 type="number"
                 min="0"
-                max="100"
-                step="1"
-                value={Math.round(Number(asset.capacityFactor))}
-                onChange={(e) => onUpdateAsset('capacityFactor', Math.round(Number(e.target.value)))}
-                placeholder="Capacity Factor"
+                value={formatNumericValue(asset.assetLife) || '35'}
+                onChange={(e) => handleNumericInput('assetLife', e.target.value)}
+                placeholder="Asset Life"
               />
-              <p className="text-xs text-gray-500">Defaults from global settings based on State and Type</p>
             </div>
+
+            <div className="col-span-2">
+              <h4 className="text-sm font-medium mb-2">Quarterly Capacity Factors (%)</h4>
+              <div className="grid grid-cols-4 gap-4">
+                {['Q1', 'Q2', 'Q3', 'Q4'].map((quarter) => (
+                  <div key={quarter} className="space-y-1">
+                    <label className="text-xs text-gray-500">{quarter}</label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="1"
+                      value={asset[`qualrtyCapacityFactor_${quarter.toLowerCase()}`] || ''}
+                      onChange={(e) => handleNumericInput(`qualrtyCapacityFactor_${quarter.toLowerCase()}`, e.target.value)}
+                      placeholder={`${quarter}`}
+                    />
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Defaults from global settings based on State and Type</p>
+            </div>
+
             <div className="space-y-2">
               <label className="text-sm font-medium">Volume Loss Adjustment (%)</label>
               <Input
@@ -261,12 +321,12 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts }) => {
                 min="0"
                 max="100"
                 step="0.1"
-                value={asset.volumeLossAdjustment}
-                onChange={(e) => onUpdateAsset('volumeLossAdjustment', e.target.value)}
+                value={formatNumericValue(asset.volumeLossAdjustment)}
+                onChange={(e) => handleNumericInput('volumeLossAdjustment', e.target.value)}
                 placeholder="Volume Loss Adjustment"
                 className={outOfSync.volumeLossAdjustment ? "text-red-500" : ""}
               />
-              <p className="text-xs text-gray-500">Includes MLF and degradation</p>
+              <p className="text-xs text-gray-500">Include MLF, availability and constraints</p>
             </div>
           </div>
         </CardContent>

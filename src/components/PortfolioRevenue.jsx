@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { 
+  BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, Legend, 
+  ResponsiveContainer, CartesianGrid, ComposedChart 
+} from 'recharts';
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -100,6 +103,19 @@ const PortfolioDashboard = () => {
     generatePortfolioData(assets, timeIntervals, constants, getMerchantPrice),
     [assets, timeIntervals, constants, getMerchantPrice]
   );
+  
+  // Calculate average contracted price for an asset
+  const calculateAvgContractedPrice = (periodData, assetName) => {
+    const contractedBlackRev = periodData[`${assetName} Contracted Black`] || 0;
+    const contractedGreenRev = periodData[`${assetName} Contracted Green`] || 0;
+    const contractedBlackVol = periodData[`${assetName} Contracted Black Volume`] || 0.001; // Avoid division by zero
+    const contractedGreenVol = periodData[`${assetName} Contracted Green Volume`] || 0.001;
+    
+    return roundNumber(
+      (contractedBlackRev + contractedGreenRev) / (contractedBlackVol + contractedGreenVol)
+    );
+  };
+
 
   // Pre-calculate processed data with useMemo
   const processedData = useMemo(() => {
@@ -133,6 +149,26 @@ const PortfolioDashboard = () => {
       return newData;
     });
   }, [portfolioData, assets, visibleAssets]);
+
+    // Enhanced processed data with price information
+    const processedDataWithPrices = useMemo(() => {
+      return processedData.map(periodData => {
+        const selectedAssetData = assets[selectedAsset];
+        if (!selectedAssetData) return periodData;
+  
+        const merchantGreenPrice = getMerchantPrice(selectedAssetData.type, 'green', selectedAssetData.state, periodData.timeInterval);
+        const merchantBlackPrice = getMerchantPrice(selectedAssetData.type, 'black', selectedAssetData.state, periodData.timeInterval);
+        const bundledPrice = merchantGreenPrice + merchantBlackPrice;
+        
+        return {
+          ...periodData,
+          merchantGreenPrice: roundNumber(merchantGreenPrice),
+          merchantBlackPrice: roundNumber(merchantBlackPrice),
+          bundledPrice: roundNumber(bundledPrice)
+        };
+      });
+    }, [processedData, selectedAsset, assets, getMerchantPrice]);
+  
 
   useEffect(() => {
     const newVisibleAssets = {};
@@ -172,15 +208,17 @@ const PortfolioDashboard = () => {
 
   return (
     <div className="space-y-6 p-4">
-      {/* Interval Selection at the top */}
       <Card>
         <CardContent className="py-4">
-          <div className="flex justify-end">
+          <div className="flex items-center gap-4">
+            <Label htmlFor="interval-select" className="whitespace-nowrap">
+              Chart Interval
+            </Label>
             <Select 
               value={intervalType} 
               onValueChange={setIntervalType}
             >
-              <SelectTrigger className="w-48">
+              <SelectTrigger id="interval-select" className="w-48">
                 <SelectValue placeholder="Select Interval" />
               </SelectTrigger>
               <SelectContent>
@@ -195,15 +233,24 @@ const PortfolioDashboard = () => {
       <div className="grid grid-cols-12 gap-4">
         <Card className="col-span-9">
           <CardHeader>
-            <CardTitle>Total Portfolio Revenue</CardTitle>
+            <CardTitle>Portfolio Revenue and Contract Percentage</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-96">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={processedData}>
+                <ComposedChart data={processedData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="timeInterval" {...xAxisConfig} />
-                  <YAxis label={{ value: 'Revenue (Million $)', angle: -90, position: 'insideLeft' }} />
+                  <YAxis 
+                    yAxisId="left"
+                    label={{ value: 'Revenue (Million $)', angle: -90, position: 'insideLeft' }} 
+                  />
+                  <YAxis 
+                    yAxisId="right"
+                    orientation="right"
+                    domain={[0, 100]}
+                    label={{ value: 'Contracted (%)', angle: 90, position: 'insideRight' }}
+                  />
                   <Tooltip 
                     formatter={tooltipFormatter}
                     labelFormatter={tooltipLabelFormatter}
@@ -213,6 +260,7 @@ const PortfolioDashboard = () => {
                     visibleAssets[asset.name] && (
                       <React.Fragment key={asset.id}>
                         <Bar 
+                          yAxisId="left"
                           dataKey={`${asset.name} Contracted`}
                           stackId="stack"
                           fill={Object.values(assetColors)[index % 5].base}
@@ -220,6 +268,7 @@ const PortfolioDashboard = () => {
                           isAnimationActive={false}
                         />
                         <Bar 
+                          yAxisId="left"
                           dataKey={`${asset.name} Merchant`}
                           stackId="stack"
                           fill={Object.values(assetColors)[index % 5].faded}
@@ -229,7 +278,25 @@ const PortfolioDashboard = () => {
                       </React.Fragment>
                     )
                   )}
-                </BarChart>
+                  <Line 
+                    yAxisId="right"
+                    type="monotone" 
+                    dataKey="weightedGreenPercentage" 
+                    stroke="#16A34A" 
+                    name="Green Contracted %"
+                    strokeWidth={2}
+                    isAnimationActive={false}
+                  />
+                  <Line 
+                    yAxisId="right"
+                    type="monotone" 
+                    dataKey="weightedBlackPercentage" 
+                    stroke="#171717" 
+                    name="Black Contracted %"
+                    strokeWidth={2}
+                    isAnimationActive={false}
+                  />
+                </ComposedChart>
               </ResponsiveContainer>
             </div>
           </CardContent>
@@ -287,16 +354,30 @@ const PortfolioDashboard = () => {
         <CardContent>
           <div className="h-96">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={processedData}>
+              <ComposedChart data={processedDataWithPrices}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="timeInterval" {...xAxisConfig} />
-                <YAxis label={{ value: 'Revenue (Million $)', angle: -90, position: 'insideLeft' }} />
+                <YAxis 
+                  yAxisId="left"
+                  label={{ value: 'Revenue (Million $)', angle: -90, position: 'insideLeft' }} 
+                />
+                <YAxis 
+                  yAxisId="right"
+                  orientation="right"
+                  label={{ value: 'Price ($/MWh)', angle: 90, position: 'insideRight' }}
+                />
                 <Tooltip 
-                  formatter={tooltipFormatter}
+                  formatter={(value, name) => {
+                    if (name.includes('Price')) {
+                      return [`$${roundNumber(value)}/MWh`, name];
+                    }
+                    return [roundNumber(value), name];
+                  }}
                   labelFormatter={tooltipLabelFormatter}
                 />
                 <Legend />
                 <Bar 
+                  yAxisId="left"
                   dataKey={`${assets[selectedAsset]?.name} Contracted Black`} 
                   stackId="a"
                   fill="#171717"
@@ -304,6 +385,7 @@ const PortfolioDashboard = () => {
                   isAnimationActive={false}
                 />
                 <Bar 
+                  yAxisId="left"
                   dataKey={`${assets[selectedAsset]?.name} Contracted Green`} 
                   stackId="a"
                   fill="#16A34A"
@@ -311,6 +393,7 @@ const PortfolioDashboard = () => {
                   isAnimationActive={false}
                 />
                 <Bar 
+                  yAxisId="left"
                   dataKey={`${assets[selectedAsset]?.name} Merchant Black`} 
                   stackId="a"
                   fill="#737373"
@@ -318,54 +401,44 @@ const PortfolioDashboard = () => {
                   isAnimationActive={false}
                 />
                 <Bar 
+                  yAxisId="left"
                   dataKey={`${assets[selectedAsset]?.name} Merchant Green`} 
                   stackId="a"
                   fill="#86EFAC"
                   name="Green Merchant"
                   isAnimationActive={false}
                 />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Portfolio Contracted Percentage</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={processedData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="timeInterval" {...xAxisConfig} />
-                <YAxis 
-                  domain={[0, 100]}
-                  label={{ value: 'Contracted (%)', angle: -90, position: 'insideLeft' }} 
-                />
-                <Tooltip 
-                  formatter={tooltipFormatter}
-                  labelFormatter={tooltipLabelFormatter}
-                />
-                <Legend />
-                <Line 
-                  type="monotone" 
-                  dataKey="weightedGreenPercentage" 
-                  stroke="#16A34A" 
-                  name="Green Contracted %"
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="merchantGreenPrice"
+                  stroke="#16A34A"
                   strokeWidth={2}
+                  name="Merchant Green Price"
+                  dot={false}
                   isAnimationActive={false}
                 />
-                <Line 
-                  type="monotone" 
-                  dataKey="weightedBlackPercentage" 
-                  stroke="#171717" 
-                  name="Black Contracted %"
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="merchantBlackPrice"
+                  stroke="#171717"
                   strokeWidth={2}
+                  name="Merchant Black Price"
+                  dot={false}
                   isAnimationActive={false}
                 />
-              </LineChart>
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="bundledPrice"
+                  stroke="#EF4444"
+                  strokeWidth={2}
+                  name="Bundled Price"
+                  dot={false}
+                  isAnimationActive={false}
+                />
+              </ComposedChart>
             </ResponsiveContainer>
           </div>
         </CardContent>
