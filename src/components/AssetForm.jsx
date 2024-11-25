@@ -146,6 +146,9 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts }) => {
   };
 
   const addContract = () => {
+    const today = new Date();
+    const startDate = today.toISOString().split('T')[0];
+    
     const newContract = {
       id: String(asset.contracts.length + 1),
       counterparty: `Counterparty ${asset.contracts.length + 1}`,
@@ -160,9 +163,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts }) => {
       settlementFormula: '',
       hasFloor: false,
       floorValue: '',
-      startDate: '2024-01-01',
-      endDate: '',
-      term: ''
+      startDate: startDate,
     };
     onUpdateContracts([...asset.contracts, newContract]);
   };
@@ -172,12 +173,22 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts }) => {
   };
 
   const updateContract = (id, field, value) => {
+    console.log('Updating contract:', field, value); // Debug log
     onUpdateContracts(
       asset.contracts.map(contract => {
         if (contract.id !== id) return contract;
         
-        const updatedContract = { ...contract, [field]: value };
+        let updatedValue = value;
+        // Handle numeric fields
+        if (field === 'term' || field === 'strikePrice' || field === 'buyersPercentage' || 
+            field === 'blackPrice' || field === 'greenPrice' || field === 'indexation' || 
+            field === 'floorValue') {
+          updatedValue = value === '' ? '' : value;  // Keep as is, don't convert
+        }
         
+        const updatedContract = { ...contract, [field]: updatedValue };
+        
+        // Handle bundled contract price calculations
         if (updatedContract.type === 'bundled') {
           if (field === 'strikePrice' || field === 'blackPrice') {
             const strikePrice = field === 'strikePrice' ? Number(value) : Number(contract.strikePrice) || 0;
@@ -200,7 +211,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts }) => {
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2 space-y-2">
-              <label className="text-sm font-medium">Populate with existing renewable asset</label>
+              <label className="text-sm font-medium">Populate with existing renewable asset template</label>
               <Select onValueChange={handleRenewableSelection}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select an existing renewable" />

@@ -11,14 +11,27 @@ const PortfolioSettings = () => {
     setPriceCurveSource
   } = usePortfolio();
 
+  const getPortfolioDisplayName = (filename) => {
+    switch(filename) {
+      case 'assets_aula.csv':
+        return 'Aula Assets - with dummy contracts';
+      case 'assets_neoen.csv':
+        return 'Neoen Asset - merchant';
+      case 'assets_acciona.csv':
+        return 'Acciona Asset - merchant';
+      default:
+        return filename;
+    }
+  };
+
   return (
     <div className="space-y-6 p-4">
       {/* Data Sources Card */}
       <Card>
         <CardHeader>
-          <CardTitle>Test Data Sources</CardTitle>
+          <CardTitle>Dummy Asset Portfolio - Data Sources</CardTitle>
           <CardDescription>
-            Select portfolio and price curve data sources
+            Select a dummy portfolio and price curve data sources
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -33,12 +46,13 @@ const PortfolioSettings = () => {
                 >
                   <SelectTrigger>
                     <SelectValue>
-                      {portfolioSource === 'assets_esp.csv' ? 'Test 2 Portfolio' : 'Test 1 Portfolio'}
+                      {getPortfolioDisplayName(portfolioSource)}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="assets_aula.csv">Test 1 Portfolio</SelectItem>
-                    <SelectItem value="assets_esp.csv">Test 2 Portfolio</SelectItem>
+                    <SelectItem value="assets_aula.csv">Aula Assets - public info with dummy contracts</SelectItem>
+                    <SelectItem value="assets_neoen.csv">Neoen Assets - merchant</SelectItem>
+                    <SelectItem value="assets_acciona.csv">Acciona Assets - merchant</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
