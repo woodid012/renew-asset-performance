@@ -1,4 +1,3 @@
-// PPA_table_I.jsx
 import React, { useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,22 +18,30 @@ const PPATableInputs = ({ yearLimit }) => {
   };
 
   const generateYearlyData = () => {
-    const startYear = constants.analysisStartYear;
-    const endYear = yearLimit 
-      ? startYear + yearLimit - 1 
-      : constants.analysisEndYear;
     const yearlyData = [];
+    const endYear = yearLimit 
+      ? constants.analysisStartYear + yearLimit - 1 
+      : constants.analysisEndYear;
 
-    // Rest of your generateYearlyData function remains the same, just using the new endYear
-    for (let year = startYear; year <= endYear; year++) {
-      // ... (rest of your existing generateYearlyData code)
-      Object.values(assets).forEach(asset => {
+    Object.values(assets).forEach(asset => {
+      const assetStartDate = new Date(asset.assetStartDate);
+      const assetStartYear = assetStartDate instanceof Date && !isNaN(assetStartDate) 
+        ? assetStartDate.getFullYear() 
+        : constants.analysisStartYear;
+
+      for (let year = assetStartYear; year <= endYear; year++) {
         const annualGeneration = calculateAnnualGeneration(asset);
 
-        // Calculate contracted volumes for this year
         asset.contracts.forEach(contract => {
-          const contractStart = new Date(contract.startDate).getFullYear();
-          const contractEnd = new Date(contract.endDate).getFullYear();
+          const contractStartDate = new Date(contract.startDate);
+          const contractEndDate = new Date(contract.endDate);
+          
+          const contractStart = contractStartDate instanceof Date && !isNaN(contractStartDate)
+            ? contractStartDate.getFullYear()
+            : assetStartYear;
+          const contractEnd = contractEndDate instanceof Date && !isNaN(contractEndDate)
+            ? contractEndDate.getFullYear()
+            : endYear;
 
           if (year >= contractStart && year <= contractEnd) {
             const yearsSinceStart = year - contractStart;
@@ -71,7 +78,6 @@ const PPATableInputs = ({ yearLimit }) => {
           }
         });
 
-        // Calculate merchant exposure for both green and black separately
         const contractedGreenPercentage = asset.contracts.reduce((sum, contract) => {
           const contractStart = new Date(contract.startDate).getFullYear();
           const contractEnd = new Date(contract.endDate).getFullYear();
@@ -97,7 +103,6 @@ const PPATableInputs = ({ yearLimit }) => {
         const merchantGreenPercentage = 100 - contractedGreenPercentage;
         const merchantBlackPercentage = 100 - contractedBlackPercentage;
 
-        // Add merchant entries if there's any uncontracted volume
         if (merchantGreenPercentage > 0) {
           const merchantGreenVolume = annualGeneration * (merchantGreenPercentage / 100);
           const merchantGreenMW = asset.capacity * (merchantGreenPercentage / 100);
@@ -145,8 +150,8 @@ const PPATableInputs = ({ yearLimit }) => {
             equivalentMW: merchantBlackMW.toFixed(1)
           });
         }
-      });
-    }
+      }
+    });
 
     return yearlyData.sort((a, b) => 
       a.year - b.year || 
@@ -157,7 +162,6 @@ const PPATableInputs = ({ yearLimit }) => {
 
   const tableData = useMemo(() => generateYearlyData(), [assets, constants, yearLimit]);
 
-  // Rest of your component remains the same
   const exportToCSV = () => {
     const headers = [
       'Year',
@@ -234,25 +238,33 @@ const PPATableInputs = ({ yearLimit }) => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {tableData.map((row, index) => (
-                <tr 
-                  key={`${row.year}-${row.assetName}-${row.ppaNumber}-${row.contractType}`}
-                  className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
-                >
-                  <td className="px-4 py-3 text-sm text-gray-900">{row.year}</td>
-                  <td className="px-4 py-3 text-sm text-gray-900">{row.assetName}</td>
-                  <td className="px-4 py-3 text-sm text-gray-900">{row.state}</td>
-                  <td className="px-4 py-3 text-sm text-gray-900">{row.type}</td>
-                  <td className="px-4 py-3 text-sm text-gray-900">{row.ppaNumber}</td>
-                  <td className="px-4 py-3 text-sm text-gray-900 capitalize">{row.contractType}</td>
-                  <td className="px-4 py-3 text-sm text-gray-900">{row.buyerPercentage}%</td>
-                  <td className="px-4 py-3 text-sm text-gray-900">${row.basePrice}</td>
-                  <td className="px-4 py-3 text-sm text-gray-900">{row.indexation}%</td>
-                  <td className="px-4 py-3 text-sm text-gray-900">${row.indexedPrice}</td>
-                  <td className="px-4 py-3 text-sm text-gray-900">{row.volume.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-sm text-gray-900">{row.equivalentMW}</td>
+              {tableData.length === 0 ? (
+                <tr>
+                  <td colSpan="12" className="px-4 py-3 text-sm text-gray-500 text-center">
+                    No data available for the selected period
+                  </td>
                 </tr>
-              ))}
+              ) : (
+                tableData.map((row, index) => (
+                  <tr 
+                    key={`${row.year}-${row.assetName}-${row.ppaNumber}-${row.contractType}`}
+                    className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
+                  >
+                    <td className="px-4 py-3 text-sm text-gray-900">{row.year}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900">{row.assetName}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900">{row.state}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900">{row.type}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900">{row.ppaNumber}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900 capitalize">{row.contractType}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900">{row.buyerPercentage}%</td>
+                    <td className="px-4 py-3 text-sm text-gray-900">${row.basePrice}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900">{row.indexation}%</td>
+                    <td className="px-4 py-3 text-sm text-gray-900">${row.indexedPrice}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900">{row.volume.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900">{row.equivalentMW}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </CardContent>

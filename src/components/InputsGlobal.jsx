@@ -160,56 +160,54 @@ const InputsGlobal = () => {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Analysis Period Card */}
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle>Analysis Period</CardTitle>
-        </CardHeader>
-        <CardContent className="p-6">
-        <div className="grid grid-cols-3 gap-6">
-          <div className="space-y-2">
-            <label className="block text-sm font-medium mb-2">Start Year</label>
-            <Select 
-              value={String(constants.analysisStartYear)}
-              onValueChange={value => updateConstants('analysisStartYear', parseInt(value))}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select start year" />
-              </SelectTrigger>
-              <SelectContent>
-                {getAvailableYears()
-                  .filter(year => !constants.analysisEndYear || year <= constants.analysisEndYear)
-                  .map(year => (
-                    <SelectItem key={year} value={String(year)}>{year}</SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
-          </div>
+<div className="space-y-2">
+        {/* Analysis Period Card */}
+        <Card className="w-full">
+          <CardHeader className="pb-2">
+            <CardTitle className="px-0">Analysis Period</CardTitle>
+          </CardHeader>
+          <CardContent className="p-2 px-6">
+            <div className="flex gap-4">
+              <div className="space-y-0.5">
+                <label className="block text-sm font-medium mb-0.5">Start Year</label>
+                <Select 
+                  value={String(constants.analysisStartYear)}
+                  onValueChange={value => updateConstants('analysisStartYear', parseInt(value))}
+                >
+                  <SelectTrigger className="w-28">
+                    <SelectValue placeholder="Select start year" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {getAvailableYears()
+                      .filter(year => !constants.analysisEndYear || year <= constants.analysisEndYear)
+                      .map(year => (
+                        <SelectItem key={year} value={String(year)}>{year}</SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-          <div className="space-y-2">
-            <label className="block text-sm font-medium mb-2">End Year</label>
-            <Select 
-              value={String(constants.analysisEndYear)}
-              onValueChange={value => updateConstants('analysisEndYear', parseInt(value))}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select end year" />
-              </SelectTrigger>
-              <SelectContent>
-                {getAvailableYears()
-                  .filter(year => !constants.analysisStartYear || year >= constants.analysisStartYear)
-                  .map(year => (
-                    <SelectItem key={year} value={String(year)}>{year}</SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-
-        </div>
-      </CardContent>
-      </Card>
+              <div className="space-y-0.5">
+                <label className="block text-sm font-medium mb-0.5">End Year</label>
+                <Select 
+                  value={String(constants.analysisEndYear)}
+                  onValueChange={value => updateConstants('analysisEndYear', parseInt(value))}
+                >
+                  <SelectTrigger className="w-28">
+                    <SelectValue placeholder="Select end year" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {getAvailableYears()
+                      .filter(year => !constants.analysisStartYear || year >= constants.analysisStartYear)
+                      .map(year => (
+                        <SelectItem key={year} value={String(year)}>{year}</SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
       {/* Price Curve Card */}
       <Card>
