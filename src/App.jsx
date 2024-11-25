@@ -15,7 +15,7 @@ import {
 import LandingPage from "@/components/LandingPage";
 import PortfolioInputs from "@/components/InputsGlobal";
 import AssetDashboard from "@/components/AssetDashboard";
-import PortfolioRevenue from "@/components/PortfolioRevenue";
+import PortfolioRevenue from "@/components/OutputC_Main";
 import PPASummaryTable from "@/components/PPA_general_Summary";
 import EarningsRiskAnalysis from "@/components/EaR_Dashboard";
 import PortfolioSettings from "@/components/PortfolioSettings";
