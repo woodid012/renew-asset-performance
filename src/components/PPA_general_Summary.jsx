@@ -11,12 +11,13 @@ const PPASummaryTable = ({ assets }) => {
 
   return (
     <div className="space-y-6">
+           <h2 className="text-2xl font-bold">Asset Details and Year 1 Summary</h2>
       <PPASummarySheet assets={assets} />
       
       <Tabs defaultValue="outputs" className="w-full">
         <div className="flex justify-between items-center mb-4">
           <div className="space-y-1">
-            <h2 className="text-2xl font-bold">Datatable</h2>
+            <h2 className="text-2xl font-bold">Datatable Exports</h2>
             <p className="text-sm text-gray-500">Showing first {yearLimit} years of data</p>
           </div>
           <TabsList>
