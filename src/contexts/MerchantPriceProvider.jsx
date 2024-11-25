@@ -2,9 +2,6 @@ import React, { createContext, useContext, useState, useCallback, useEffect } fr
 import Papa from 'papaparse';
 import _ from 'lodash';
 
-// Constants
-const MERCHANT_PRICES_PATH = '/merchant_price_monthly.csv';
-
 // Date helper functions
 const getQuarterFromDate = (dateStr) => {
   if (!dateStr) return null;
@@ -29,6 +26,9 @@ export function useMerchantPrices() {
 }
 
 export function MerchantPriceProvider({ children }) {
+  // Add state for price source
+  const [priceSource, setPriceSource] = useState('merchant_price_monthly.csv');
+  
   // Extended state to include pre-calculated aggregations
   const [priceData, setPriceData] = useState({
     monthly: {
@@ -52,7 +52,8 @@ export function MerchantPriceProvider({ children }) {
   useEffect(() => {
     const loadMerchantPrices = async () => {
       try {
-        const response = await fetch(MERCHANT_PRICES_PATH);
+        console.log('Loading merchant prices from:', `/${priceSource}`);
+        const response = await fetch(`/${priceSource}`);
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -166,7 +167,7 @@ export function MerchantPriceProvider({ children }) {
     };
 
     loadMerchantPrices();
-  }, []);
+  }, [priceSource]); // Added priceSource as dependency
 
   // Optimized getMerchantPrice that uses pre-calculated values
   const getMerchantPrice = useCallback((profile, type, region, timeStr) => {
@@ -191,8 +192,10 @@ export function MerchantPriceProvider({ children }) {
   }, [priceData]);
 
   const value = {
-    merchantPrices: priceData.monthly, // Keep backward compatibility
-    getMerchantPrice
+    merchantPrices: priceData.monthly,
+    getMerchantPrice,
+    priceSource,
+    setPriceSource
   };
 
   return (

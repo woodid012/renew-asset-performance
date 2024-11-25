@@ -1,80 +1,19 @@
 import React from 'react';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Download, Upload } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { usePortfolio } from '@/contexts/PortfolioContext';
 
 const PortfolioSettings = () => {
   const { 
-    assets, 
-    setAssets,
-    constants,
-    updateConstants,
+    portfolioSource,
     setPortfolioSource,
-    setPriceCurveSource,
-    portfolioSource = 'assets_aula.csv',
-    priceCurveSource = 'merchant_price_monthly.csv'
+    priceCurveSource,
+    setPriceCurveSource
   } = usePortfolio();
-
-  const handleImport = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        try {
-          const importedData = JSON.parse(e.target.result);
-          
-          if (importedData.assets && importedData.constants) {
-            setAssets(importedData.assets);
-            Object.entries(importedData.constants).forEach(([key, value]) => {
-              updateConstants(key, value);
-            });
-            alert('Portfolio data imported successfully');
-          } else {
-            throw new Error('Invalid data structure');
-          }
-        } catch (error) {
-          alert('Error importing portfolio data: Invalid format');
-          console.error('Import error:', error);
-        }
-      };
-      reader.readAsText(file);
-    }
-  };
-
-  const exportPortfolio = () => {
-    const exportData = {
-      assets,
-      constants,
-      exportDate: new Date().toISOString(),
-      version: '1.0'
-    };
-
-    const dataStr = JSON.stringify(exportData, null, 2);
-    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-    
-    const exportFileName = `portfolio_${new Date().toISOString().split('T')[0]}.json`;
-    const linkElement = document.createElement('a');
-    linkElement.setAttribute('href', dataUri);
-    linkElement.setAttribute('download', exportFileName);
-    linkElement.click();
-  };
-
-  const handlePortfolioSourceChange = (value) => {
-    if (setPortfolioSource) {
-      setPortfolioSource(value);
-    }
-  };
-
-  const handlePriceCurveSourceChange = (value) => {
-    if (setPriceCurveSource) {
-      setPriceCurveSource(value);
-    }
-  };
 
   return (
     <div className="space-y-6 p-4">
+      {/* Data Sources Card */}
       <Card>
         <CardHeader>
           <CardTitle>Test Data Sources</CardTitle>
@@ -85,11 +24,12 @@ const PortfolioSettings = () => {
         <CardContent>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
+              {/* Portfolio Source Selection */}
               <div className="space-y-2">
                 <label className="text-sm font-medium">Portfolio Source</label>
                 <Select 
                   value={portfolioSource}
-                  onValueChange={handlePortfolioSourceChange}
+                  onValueChange={setPortfolioSource}
                 >
                   <SelectTrigger>
                     <SelectValue>
@@ -103,11 +43,12 @@ const PortfolioSettings = () => {
                 </Select>
               </div>
               
+              {/* Price Curve Source Selection */}
               <div className="space-y-2">
                 <label className="text-sm font-medium">Price Curve Source</label>
                 <Select 
                   value={priceCurveSource}
-                  onValueChange={handlePriceCurveSourceChange}
+                  onValueChange={setPriceCurveSource}
                 >
                   <SelectTrigger>
                     <SelectValue>Monthly Merchant Prices</SelectValue>
@@ -121,6 +62,8 @@ const PortfolioSettings = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* User Guide Card */}
       <Card>
         <CardHeader>
           <CardTitle>User Guide</CardTitle>

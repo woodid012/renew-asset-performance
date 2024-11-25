@@ -3,9 +3,6 @@ import Papa from 'papaparse';
 import _ from 'lodash';
 import { MerchantPriceProvider, useMerchantPrices } from './MerchantPriceProvider';
 
-// Constants
-const ASSETS_PATH = '/assets_aula.csv';
-
 // Date helper functions
 const transformDateFormat = (dateStr) => {
   if (!dateStr) return '';
@@ -45,7 +42,8 @@ export function usePortfolio() {
 
 // Internal wrapper component that has access to merchant prices
 function PortfolioProviderInner({ children }) {
-  const { merchantPrices, getMerchantPrice } = useMerchantPrices();
+  const { merchantPrices, getMerchantPrice, priceSource, setPriceSource } = useMerchantPrices();
+  const [portfolioSource, setPortfolioSource] = useState('assets_aula.csv');
   const [assets, setAssets] = useState({});
   const [constants, setConstants] = useState({
     HOURS_IN_YEAR: 8760,
@@ -64,7 +62,7 @@ function PortfolioProviderInner({ children }) {
         SA:  { Q1: 0.37, Q2: 0.40, Q3: 0.44, Q4: 0.39 } 
       } 
     },
-    merchantPrices: merchantPrices, // Include merchant prices in constants for backward compatibility
+    merchantPrices: merchantPrices,
     analysisStartYear: 2026,
     analysisEndYear: 2045,
     ForecastStartYear: 2024,
@@ -81,12 +79,12 @@ function PortfolioProviderInner({ children }) {
     }));
   }, [merchantPrices]);
 
-  // Assets loading
+  // Assets loading with updated portfolio source
   useEffect(() => {
     const loadAssets = async () => {
       try {
-        console.log('Loading assets from CSV...', ASSETS_PATH);
-        const response = await fetch(ASSETS_PATH);
+        console.log('Loading assets from CSV...', `/${portfolioSource}`);
+        const response = await fetch(`/${portfolioSource}`);
         
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -142,6 +140,7 @@ function PortfolioProviderInner({ children }) {
             });
             
             setAssets(transformedAssets);
+            console.log('Assets loaded successfully from', portfolioSource);
           },
           error: (error) => {
             console.error('Error parsing assets CSV:', error);
@@ -153,7 +152,7 @@ function PortfolioProviderInner({ children }) {
     };
 
     loadAssets();
-  }, []);
+  }, [portfolioSource]); // Added portfolioSource as dependency
 
   // Constants update function
   const updateConstants = useCallback((field, value) => {
@@ -187,7 +186,11 @@ function PortfolioProviderInner({ children }) {
     setAssets,
     constants,
     updateConstants,
-    getMerchantPrice // Expose the getMerchantPrice function from MerchantPriceProvider
+    getMerchantPrice,
+    portfolioSource,
+    setPortfolioSource,
+    priceCurveSource: priceSource,
+    setPriceCurveSource: setPriceSource
   };
 
   return (
