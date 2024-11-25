@@ -13,8 +13,8 @@ const PortfolioSettings = () => {
     updateConstants,
     setPortfolioSource,
     setPriceCurveSource,
-    portfolioSource = 'assets_aula.csv',
-    priceCurveSource = 'merchant_price_monthly.csv'
+    portfolioSource,
+    priceCurveSource
   } = usePortfolio();
 
   const handleImport = (event) => {
@@ -61,18 +61,6 @@ const PortfolioSettings = () => {
     linkElement.click();
   };
 
-  const handlePortfolioSourceChange = (value) => {
-    if (setPortfolioSource) {
-      setPortfolioSource(value);
-    }
-  };
-
-  const handlePriceCurveSourceChange = (value) => {
-    if (setPriceCurveSource) {
-      setPriceCurveSource(value);
-    }
-  };
-
   return (
     <div className="space-y-6 p-4">
       <Card>
@@ -88,17 +76,14 @@ const PortfolioSettings = () => {
               <div className="space-y-2">
                 <label className="text-sm font-medium">Portfolio Source</label>
                 <Select 
-                  value={portfolioSource}
-                  onValueChange={handlePortfolioSourceChange}
+                  value={portfolioSource} 
+                  onValueChange={setPortfolioSource}
                 >
                   <SelectTrigger>
-                    <SelectValue>
-                      {portfolioSource === 'assets_esp.csv' ? 'Test 2 Portfolio' : 'Test 1 Portfolio'}
-                    </SelectValue>
+                    <SelectValue placeholder="Select portfolio source" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="assets_aula.csv">Test 1 Portfolio</SelectItem>
-                    <SelectItem value="assets_esp.csv">Test 2 Portfolio</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -106,11 +91,11 @@ const PortfolioSettings = () => {
               <div className="space-y-2">
                 <label className="text-sm font-medium">Price Curve Source</label>
                 <Select 
-                  value={priceCurveSource}
-                  onValueChange={handlePriceCurveSourceChange}
+                  value={priceCurveSource} 
+                  onValueChange={setPriceCurveSource}
                 >
                   <SelectTrigger>
-                    <SelectValue>Monthly Merchant Prices</SelectValue>
+                    <SelectValue placeholder="Select price curve" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="merchant_price_monthly.csv">Monthly Merchant Prices</SelectItem>
