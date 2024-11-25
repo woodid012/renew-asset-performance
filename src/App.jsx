@@ -16,7 +16,7 @@ import LandingPage from "@/components/LandingPage";
 import PortfolioInputs from "@/components/InputsGlobal";
 import AssetDashboard from "@/components/AssetDashboard";
 import PortfolioRevenue from "@/components/PortfolioRevenue";
-import PPASummaryTable from "@/components/PPASummaryTable";
+import PPASummaryTable from "@/components/PPA_general_Summary";
 import EarningsRiskAnalysis from "@/components/EaR_Dashboard";
 import PortfolioSettings from "@/components/PortfolioSettings";
 
@@ -77,7 +77,7 @@ const App = () => {
       <Card className="mx-auto max-w-7xl">
         <div className="p-6">
           <div className="flex items-center justify-between mb-8">
-            <h1 className="text-3xl font-bold">Portfolio Management</h1>
+            <h1 className="text-3xl font-bold">Portfolio Earnings and Risk Analysis</h1>
             <div className="text-sm text-muted-foreground">
               Last Updated: {formattedDate}
             </div>
