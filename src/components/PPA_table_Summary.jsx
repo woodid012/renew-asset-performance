@@ -23,7 +23,7 @@ const PPASummarySheet = () => {
       type: "header"
     },
     {
-      label: "MWp",
+      label: "MW",
       getValue: (asset) => asset?.capacity || "-"
     },
     {
@@ -125,30 +125,6 @@ const PPASummarySheet = () => {
         return annualGeneration.toFixed(1);
       }
     },
-    {
-      label: "Revenue Assumptions",
-      type: "header"
-    },
-    {
-      label: "Y1 Contracted Black (%)",
-      getValue: (asset) => {
-        if (!asset || !constants) return "-";
-        const startYear = getFirstContractYear(asset);
-        if (!startYear) return "-";
-        const year1Revenue = calculateAssetRevenue(asset, startYear, constants, getMerchantPrice);
-        return year1Revenue ? `${year1Revenue.blackPercentage.toFixed(1)}%` : "-";
-      }
-    },
-    {
-      label: "Y1 Contracted Green (%)",
-      getValue: (asset) => {
-        if (!asset || !constants) return "-";
-        const startYear = getFirstContractYear(asset);
-        if (!startYear) return "-";
-        const year1Revenue = calculateAssetRevenue(asset, startYear, constants, getMerchantPrice);
-        return year1Revenue ? `${year1Revenue.greenPercentage.toFixed(1)}%` : "-";
-      }
-    }
   ];
 
   return (
