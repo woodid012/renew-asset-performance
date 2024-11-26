@@ -2,13 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { usePortfolio } from '@/contexts/PortfolioContext';
 import AssetFormContract from './AssetFormContract';
 import Papa from 'papaparse';
 
-const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts }) => {
+const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) => {
   const { constants } = usePortfolio();
   const [renewablesData, setRenewablesData] = useState([]);
   const [selectedRenewable, setSelectedRenewable] = useState(null);
@@ -205,8 +205,16 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts }) => {
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Asset Details</CardTitle>
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={onRemoveAsset}
+            className="h-8 w-8 p-0 hover:bg-slate-100"
+          >
+            <X className="h-4 w-4" />
+          </Button>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">

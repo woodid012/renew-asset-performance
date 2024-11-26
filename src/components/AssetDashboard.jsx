@@ -139,7 +139,17 @@ const AssetDashboard = () => {
       </div>
     );
   }
-
+{Object.values(assets).map((asset) => (
+  <TabsContent key={asset.id} value={asset.id}>
+    <AssetForm
+      asset={asset}
+      isNewAsset={newAssets.has(asset.id)}
+      onUpdateAsset={(field, value) => updateAsset(asset.id, field, value)}
+      onUpdateContracts={(contracts) => updateAssetContracts(asset.id, contracts)}
+      onRemoveAsset={() => removeAsset(asset.id)}
+    />
+  </TabsContent>
+))}
   return (
     <div className="w-full p-4 space-y-4">
       {/* Import/Export Section */}
@@ -207,17 +217,6 @@ const AssetDashboard = () => {
                 >
                   <span className="flex items-center justify-center w-full">
                     {asset.name}
-                    <span
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (confirm('Are you sure you want to remove this asset?')) {
-                          removeAsset(asset.id);
-                        }
-                      }}
-                      className="absolute right-2 hover:text-red-500 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <X className="h-4 w-4" />
-                    </span>
                   </span>
                 </TabsTrigger>
               ))}
@@ -239,7 +238,6 @@ const AssetDashboard = () => {
             <Plus className="h-4 w-4" />
           </Button>
         </div>
-
         {Object.values(assets).map((asset) => (
           <TabsContent key={asset.id} value={asset.id}>
             <AssetForm
@@ -247,6 +245,7 @@ const AssetDashboard = () => {
               isNewAsset={newAssets.has(asset.id)}
               onUpdateAsset={(field, value) => updateAsset(asset.id, field, value)}
               onUpdateContracts={(contracts) => updateAssetContracts(asset.id, contracts)}
+              onRemoveAsset={() => removeAsset(asset.id)}
             />
           </TabsContent>
         ))}

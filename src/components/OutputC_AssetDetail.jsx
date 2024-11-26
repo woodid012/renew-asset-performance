@@ -1,4 +1,3 @@
-// OutputC_AssetDetail.jsx
 import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -54,7 +53,7 @@ const AssetDetailChart = ({
           value={selectedAsset} 
           onValueChange={setSelectedAsset}
         >
-          <SelectTrigger className="w-48">
+          <SelectTrigger className="w-64 hover:bg-slate-50 border-slate-200 shadow-sm">
             <SelectValue placeholder="Select Asset" />
           </SelectTrigger>
           <SelectContent>
