@@ -8,7 +8,7 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
-    extensions: ['.js', '.jsx', '.ts', '.tsx']  // Add this line
+    extensions: ['.js', '.jsx', '.ts', '.tsx']
   },
   optimizeDeps: {
     include: ['papaparse']
@@ -17,11 +17,14 @@ export default defineConfig({
     commonjsOptions: {
       include: [/node_modules/]
     },
-    rollupOptions: {  // Add this section
+    rollupOptions: {
       output: {
         manualChunks: undefined
       }
     }
   },
-  assetsInclude: ['**/*.csv']
+  assetsInclude: ['**/*.csv'],
+  define: {
+    'process.env.TZ': JSON.stringify('Australia/Sydney')
+  }
 })
