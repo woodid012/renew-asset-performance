@@ -8,7 +8,8 @@ import {
   Sliders,
   FileCheck,
   Settings,
-  HelpCircle
+  HelpCircle,
+  Calculator,
 } from 'lucide-react';
 
 // Import components for each tab
@@ -18,6 +19,7 @@ import AssetDashboard from "@/components/AssetDashboard";
 import PortfolioRevenue from "@/components/OutputC_Main";
 import PPASummaryTable from "@/components/PPA_general_Summary";
 import EarningsRiskAnalysis from "@/components/EaR_Dashboard";
+import ValuationAnalysis from "@/components/ValuationAnalysis";
 import PortfolioSettings from "@/components/PortfolioSettings";
 
 const App = () => {
@@ -61,6 +63,13 @@ const App = () => {
       colors: "hover:bg-red-100 data-[state=active]:bg-red-500 data-[state=active]:text-white",
     },
     {
+      id: "valuation",
+      label: "Valuation",
+      icon: Calculator,
+      component: ValuationAnalysis,
+      colors: "hover:bg-blue-100 data-[state=active]:bg-blue-500 data-[state=active]:text-white",
+    },
+    {
       id: "ppa",
       label: "Export Audit",
       icon: FileCheck,
@@ -82,9 +91,9 @@ const App = () => {
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <Card className="mx-auto max-w-7xl">
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-8">
-            <h1 className="text-3xl font-bold">Portfolio Earnings and Risk Analysis</h1>
+        <div className="p-4">
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-2xl font-bold">Portfolio Earnings and Risk Analysis</h1>
             <div className="text-sm text-muted-foreground">
               Last Updated: {formattedDate}
             </div>
@@ -93,17 +102,17 @@ const App = () => {
           <Tabs 
             value={activeTab} 
             onValueChange={setActiveTab} 
-            className="space-y-6"
+            className="space-y-4"
           >
-            <TabsList className="grid w-full grid-cols-7 p-1 bg-gray-100">
+            <TabsList className="grid w-full grid-cols-8 p-1 bg-gray-100">
               {tabs.map((tab) => (
                 <TabsTrigger
                   key={tab.id}
                   value={tab.id}
-                  className={`flex items-center justify-center gap-2 px-1 py-2 text-sm rounded-md transition-colors duration-200 
+                  className={`flex items-center justify-center gap-1 px-1 py-1 text-xs rounded-md transition-colors duration-200 
                     ${tab.colors}`}
                 >
-                  <tab.icon className="h-4 w-4" />
+                  <tab.icon className="h-3 w-3" />
                   <span className="hidden sm:inline truncate">{tab.label}</span>
                 </TabsTrigger>
               ))}
@@ -113,7 +122,7 @@ const App = () => {
               const TabComponent = tab.component;
               return (
                 <TabsContent key={tab.id} value={tab.id}>
-                  <Card className="p-4">
+                  <Card className="p-3">
                     <TabComponent />
                   </Card>
                 </TabsContent>
@@ -121,15 +130,13 @@ const App = () => {
             })}
           </Tabs>
 
-          <div className="mt-6 text-sm text-muted-foreground">
-            <p>
-              Manage your portfolio settings, assets, and risk analysis in one place.
-            </p>
+          <div className="mt-4 text-xs text-muted-foreground">
+            <p>Manage your portfolio settings, assets, and risk analysis in one place.</p>
           </div>
         </div>
       </Card>
 
-      <footer className="mt-8 text-center text-sm text-muted-foreground">
+      <footer className="mt-4 text-center text-xs text-muted-foreground">
         <p>Portfolio Management Dashboard © {new Date().getFullYear()}</p>
       </footer>
     </div>
