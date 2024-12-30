@@ -12,6 +12,7 @@ const AssetDashboard = () => {
   const [newAssets, setNewAssets] = useState(new Set());
   const [showScrollButtons, setShowScrollButtons] = useState(false);
   const tabsListRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   // Import functionality
   const handleImport = (event) => {
@@ -35,6 +36,8 @@ const AssetDashboard = () => {
       };
       reader.readAsText(file);
     }
+    // Reset file input
+    event.target.value = '';
   };
 
   // Export functionality
@@ -139,117 +142,103 @@ const AssetDashboard = () => {
       </div>
     );
   }
-{Object.values(assets).map((asset) => (
-  <TabsContent key={asset.id} value={asset.id}>
-    <AssetForm
-      asset={asset}
-      isNewAsset={newAssets.has(asset.id)}
-      onUpdateAsset={(field, value) => updateAsset(asset.id, field, value)}
-      onUpdateContracts={(contracts) => updateAssetContracts(asset.id, contracts)}
-      onRemoveAsset={() => removeAsset(asset.id)}
-    />
-  </TabsContent>
-))}
+
   return (
     <div className="w-full p-4 space-y-4">
-      {/* Import/Export Section */}
-      <Card className="mb-4">
+      <Card className="w-full">
         <CardHeader>
-          <CardTitle>Asset & Contracts Defintions</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex space-x-4">
-            <div className="flex-1">
-              <Button 
-                variant="outline" 
-                className="w-full"
-                onClick={() => document.getElementById('import-portfolio').click()}
-              >
-                <Upload className="mr-2 h-4 w-4" />
-                Load Inputs
-              </Button>
+          <CardTitle className="flex justify-between items-center">
+            <span>Asset & Contracts Definitions</span>
+            <div className="flex gap-2">
               <input
-                id="import-portfolio"
                 type="file"
+                ref={fileInputRef}
+                onChange={handleImport}
                 accept=".json"
                 className="hidden"
-                onChange={handleImport}
               />
-            </div>
-            <div className="flex-1">
-              <Button 
-                variant="outline" 
-                className="w-full"
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                Load Inputs
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={exportPortfolio}
               >
-                <Download className="mr-2 h-4 w-4" />
+                <Download className="w-4 h-4 mr-2" />
                 Save Inputs
               </Button>
             </div>
-          </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <div className="flex items-center space-x-2">
+              {showScrollButtons && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="flex-shrink-0"
+                  onClick={() => scroll('left')}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+              )}
+              
+              <div className="flex-grow overflow-hidden">
+                <TabsList 
+                  ref={tabsListRef} 
+                  className="flex overflow-x-hidden scroll-smooth justify-start"
+                >
+                  {Object.values(assets).map((asset) => (
+                    <TabsTrigger
+                      key={asset.id}
+                      value={asset.id}
+                      className="flex-shrink-0 relative group w-auto"
+                    >
+                      <span className="flex items-center justify-center w-full">
+                        {asset.name}
+                      </span>
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </div>
+
+              {showScrollButtons && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="flex-shrink-0"
+                  onClick={() => scroll('right')}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              )}
+
+              <Button onClick={addNewTab} className="flex-shrink-0">
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {Object.values(assets).map((asset) => (
+              <TabsContent key={asset.id} value={asset.id}>
+                <AssetForm
+                  asset={asset}
+                  isNewAsset={newAssets.has(asset.id)}
+                  onUpdateAsset={(field, value) => updateAsset(asset.id, field, value)}
+                  onUpdateContracts={(contracts) => updateAssetContracts(asset.id, contracts)}
+                  onRemoveAsset={() => removeAsset(asset.id)}
+                />
+              </TabsContent>
+            ))}
+          </Tabs>
         </CardContent>
       </Card>
-
-      {/* Existing Tabs Section */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <div className="flex items-center space-x-2">
-          {showScrollButtons && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="flex-shrink-0"
-              onClick={() => scroll('left')}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-          )}
-          
-          <div className="flex-grow overflow-hidden">
-            <TabsList 
-              ref={tabsListRef} 
-              className="flex overflow-x-hidden scroll-smooth justify-start"
-            >
-              {Object.values(assets).map((asset) => (
-                <TabsTrigger
-                  key={asset.id}
-                  value={asset.id}
-                  className="flex-shrink-0 relative group w-auto"
-                >
-                  <span className="flex items-center justify-center w-full">
-                    {asset.name}
-                  </span>
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </div>
-
-          {showScrollButtons && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="flex-shrink-0"
-              onClick={() => scroll('right')}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          )}
-
-          <Button onClick={addNewTab} className="flex-shrink-0">
-            <Plus className="h-4 w-4" />
-          </Button>
-        </div>
-        {Object.values(assets).map((asset) => (
-          <TabsContent key={asset.id} value={asset.id}>
-            <AssetForm
-              asset={asset}
-              isNewAsset={newAssets.has(asset.id)}
-              onUpdateAsset={(field, value) => updateAsset(asset.id, field, value)}
-              onUpdateContracts={(contracts) => updateAssetContracts(asset.id, contracts)}
-              onRemoveAsset={() => removeAsset(asset.id)}
-            />
-          </TabsContent>
-        ))}
-      </Tabs>
     </div>
   );
 };

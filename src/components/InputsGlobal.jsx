@@ -5,6 +5,7 @@ import { usePortfolio } from '@/contexts/PortfolioContext';
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Papa from 'papaparse';
+import { read, utils, writeFile } from 'xlsx';
 import { Download, Upload } from 'lucide-react';
 import PriceChart from './InputsPriceChart';
 
@@ -71,49 +72,82 @@ const InputsGlobal = () => {
     }
   }, [getMerchantPrice]);
 
+  const processData = (data) => {
+    try {
+      const newMerchantPrices = {
+        solar: { black: {}, green: {} },
+        wind: { black: {}, green: {} },
+        baseload: { black: {}, green: {} }
+      };
+
+      data.forEach(row => {
+        if (!row.profile || !row.type || !row.state || !row.year || !row.month || !row.price) {
+          console.warn('Skipping row with missing data:', row);
+          return;
+        }
+        
+        const yearNum = parseInt(row.year);
+        const monthNum = parseInt(row.month);
+        
+        if (yearNum < MIN_YEAR || yearNum > MAX_YEAR || monthNum < 1 || monthNum > 12) {
+          console.warn('Skipping row with invalid year/month:', row);
+          return;
+        }
+        
+        if (!newMerchantPrices[row.profile]) {
+          newMerchantPrices[row.profile] = { black: {}, green: {} };
+        }
+        if (!newMerchantPrices[row.profile][row.type]) {
+          newMerchantPrices[row.profile][row.type] = {};
+        }
+        if (!newMerchantPrices[row.profile][row.type][row.state]) {
+          newMerchantPrices[row.profile][row.type][row.state] = {};
+        }
+        if (!newMerchantPrices[row.profile][row.type][row.state][yearNum]) {
+          newMerchantPrices[row.profile][row.type][row.state][yearNum] = {};
+        }
+
+        // Store monthly data
+        newMerchantPrices[row.profile][row.type][row.state][yearNum][monthNum] = {
+          price: parseFloat(row.price)
+        };
+      });
+
+      updateConstants('merchantPrices', newMerchantPrices);
+    } catch (error) {
+      console.error('Error processing data:', error);
+      alert('Error processing file. Please check the format.');
+    }
+  };
+
   const handleFileImport = (event) => {
     const file = event.target.files[0];
     if (!file) return;
 
-    Papa.parse(file, {
-      header: true,
-      complete: ({ data }) => {
-        try {
-          const newMerchantPrices = {
-            solar: { black: {}, green: {} },
-            wind: { black: {}, green: {} },
-            baseload: { black: {}, green: {} }
-          };
+    const fileExtension = file.name.split('.').pop().toLowerCase();
 
-          data.forEach(row => {
-            if (!row.profile || !row.type || !row.state || !row.year || !row.price) return;
-            
-            const yearNum = parseInt(row.year);
-            if (yearNum < MIN_YEAR || yearNum > MAX_YEAR) return;
-            
-            if (!newMerchantPrices[row.profile]) {
-              newMerchantPrices[row.profile] = { black: {}, green: {} };
-            }
-            if (!newMerchantPrices[row.profile][row.type]) {
-              newMerchantPrices[row.profile][row.type] = {};
-            }
-            if (!newMerchantPrices[row.profile][row.type][row.state]) {
-              newMerchantPrices[row.profile][row.type][row.state] = {};
-            }
+    if (fileExtension === 'csv') {
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: ({ data }) => processData(data)
+      });
+    } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const data = new Uint8Array(e.target.result);
+        const workbook = read(data, { type: 'array', cellDates: true });
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = utils.sheet_to_json(worksheet);
+        processData(jsonData);
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      alert('Please upload a CSV or Excel file');
+    }
 
-            // Store yearly data
-            newMerchantPrices[row.profile][row.type][row.state][yearNum] = {
-              price: parseFloat(row.price)
-            };
-          });
-
-          updateConstants('merchantPrices', newMerchantPrices);
-        } catch (error) {
-          console.error('Error processing CSV:', error);
-          alert('Error processing CSV file. Please check the format.');
-        }
-      }
-    });
+    // Reset file input
+    event.target.value = '';
   };
 
   const handleExport = () => {
@@ -127,26 +161,42 @@ const InputsGlobal = () => {
         states.forEach(state => {
           const years = getAvailableYears();
           years.forEach(year => {
-            const price = getMerchantPrice(profile, type, state, year);
-            if (price !== undefined && price !== null && price !== 0) {
-              rows.push({
-                profile,
-                type,
-                state,
-                year,
-                price: price.toFixed(2)
-              });
+            // Export monthly data
+            for (let month = 1; month <= 12; month++) {
+              const price = getMerchantPrice(profile, type, state, `1/${month.toString().padStart(2, '0')}/${year}`);
+              if (price !== undefined && price !== null && price !== 0) {
+                rows.push({
+                  profile,
+                  type,
+                  state,
+                  year,
+                  month,
+                  price: price.toFixed(2)
+                });
+              }
             }
           });
         });
       });
     });
 
-    const blob = new Blob([Papa.unparse(rows)], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = 'merchant_prices_real_dollars.csv';
-    link.click();
+    // Create workbook and worksheet with formatting
+    const ws = utils.json_to_sheet(rows);
+    const wb = utils.book_new();
+    utils.book_append_sheet(wb, ws, "Prices");
+
+    // Add column headers
+    ws['!cols'] = [
+      { wch: 10 },  // profile
+      { wch: 8 },   // type
+      { wch: 6 },   // state
+      { wch: 6 },   // year
+      { wch: 6 },   // month
+      { wch: 10 }   // price
+    ];
+
+    // Save file
+    writeFile(wb, 'merchant_prices_base_real.xlsx');
   };
 
   // Get valid years for reference year dropdown (between start and end year)
@@ -160,59 +210,86 @@ const InputsGlobal = () => {
   };
 
   return (
-<div className="space-y-2">
-        {/* Analysis Period Card */}
-        <Card className="w-full">
-          <CardHeader className="pb-2">
-            <CardTitle className="px-0">Analysis Period</CardTitle>
-          </CardHeader>
-          <CardContent className="p-2 px-6">
-            <div className="flex gap-4">
-              <div className="space-y-0.5">
-                <label className="block text-sm font-medium mb-0.5">Start Year</label>
-                <Select 
-                  value={String(constants.analysisStartYear)}
-                  onValueChange={value => updateConstants('analysisStartYear', parseInt(value))}
-                >
-                  <SelectTrigger className="w-28">
-                    <SelectValue placeholder="Select start year" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {getAvailableYears()
-                      .filter(year => !constants.analysisEndYear || year <= constants.analysisEndYear)
-                      .map(year => (
-                        <SelectItem key={year} value={String(year)}>{year}</SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-0.5">
-                <label className="block text-sm font-medium mb-0.5">End Year</label>
-                <Select 
-                  value={String(constants.analysisEndYear)}
-                  onValueChange={value => updateConstants('analysisEndYear', parseInt(value))}
-                >
-                  <SelectTrigger className="w-28">
-                    <SelectValue placeholder="Select end year" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {getAvailableYears()
-                      .filter(year => !constants.analysisStartYear || year >= constants.analysisStartYear)
-                      .map(year => (
-                        <SelectItem key={year} value={String(year)}>{year}</SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </div>
+    <div className="space-y-2">
+      {/* Analysis Period Card */}
+      <Card className="w-full">
+        <CardHeader className="pb-2">
+          <CardTitle className="px-0">Analysis Period</CardTitle>
+        </CardHeader>
+        <CardContent className="p-2 px-6">
+          <div className="flex gap-4">
+            <div className="space-y-0.5">
+              <label className="block text-sm font-medium mb-0.5">Start Year</label>
+              <Select 
+                value={String(constants.analysisStartYear)}
+                onValueChange={value => updateConstants('analysisStartYear', parseInt(value))}
+              >
+                <SelectTrigger className="w-28">
+                  <SelectValue placeholder="Select start year" />
+                </SelectTrigger>
+                <SelectContent>
+                  {getAvailableYears()
+                    .filter(year => !constants.analysisEndYear || year <= constants.analysisEndYear)
+                    .map(year => (
+                      <SelectItem key={year} value={String(year)}>{year}</SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
             </div>
-          </CardContent>
-        </Card>
+
+            <div className="space-y-0.5">
+              <label className="block text-sm font-medium mb-0.5">End Year</label>
+              <Select 
+                value={String(constants.analysisEndYear)}
+                onValueChange={value => updateConstants('analysisEndYear', parseInt(value))}
+              >
+                <SelectTrigger className="w-28">
+                  <SelectValue placeholder="Select end year" />
+                </SelectTrigger>
+                <SelectContent>
+                  {getAvailableYears()
+                    .filter(year => !constants.analysisStartYear || year >= constants.analysisStartYear)
+                    .map(year => (
+                      <SelectItem key={year} value={String(year)}>{year}</SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Price Curve Card */}
       <Card>
         <CardHeader>
-          <CardTitle>Price Curve</CardTitle>
+          <CardTitle className="flex justify-between items-center">
+            <span>Price Curve</span>
+            <div className="flex gap-2">
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileImport}
+                accept=".csv,.xlsx,.xls"
+                className="hidden"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                Import Base Prices (pre-escalation)
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExport}
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Save Base Prices (pre-escalation)
+              </Button>
+            </div>
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Inputs Sub-Card */}
@@ -260,7 +337,7 @@ const InputsGlobal = () => {
           <Card>
             <CardHeader>
               <CardTitle className="flex justify-between items-center">
-                <span>Price Curves for Anaylsis ($nominal)</span>
+                <span>Price Curves for Analysis ($nominal)</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
