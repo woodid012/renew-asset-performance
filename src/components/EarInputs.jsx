@@ -77,67 +77,69 @@ const TimePeriodParameters = ({
 );
 
 // Main EarInputs Component
-const EarInputs = ({ constants, updateConstants, onTimePeriodsChange, mode, setMode }) => {
+const EarInputs = ({ constants, updateConstants, onTimePeriodsChange, mode, setMode, timePeriods: externalTimePeriods }) => {
   const [validationError, setValidationError] = useState(null);
-  // Initialize variations state with constants but don't update on constants changes
   const [initializedVariations] = useState({
     volumeVariation: constants.volumeVariation,
     blackPriceVariation: constants.blackPriceVariation,
     greenPriceVariation: constants.greenPriceVariation
   });
 
-  const [timePeriods, setTimePeriods] = useState(() => {
-    const midYear = Math.floor((constants.analysisEndYear - constants.analysisStartYear) / 2) + constants.analysisStartYear;
-    return [
-      {
-        startYear: constants.analysisStartYear,
-        endYear: midYear,
-        volumeVariation: initializedVariations.volumeVariation,
-        blackPriceVariation: initializedVariations.blackPriceVariation,
-        greenPriceVariation: initializedVariations.greenPriceVariation,
-      },
-      {
-        startYear: midYear + 1,
-        endYear: constants.analysisEndYear,
-        volumeVariation: initializedVariations.volumeVariation,
-        blackPriceVariation: initializedVariations.blackPriceVariation,
-        greenPriceVariation: initializedVariations.greenPriceVariation,
-      }
-    ];
-  });
-
+  // Initialize time periods if none are provided
   useEffect(() => {
-    if (mode === 'complex') {
+    if (mode === 'complex' && !externalTimePeriods) {
+      const midYear = Math.floor((constants.analysisEndYear - constants.analysisStartYear) / 2) + constants.analysisStartYear;
+      const defaultPeriods = [
+        {
+          startYear: constants.analysisStartYear,
+          endYear: midYear,
+          volumeVariation: initializedVariations.volumeVariation,
+          blackPriceVariation: initializedVariations.blackPriceVariation,
+          greenPriceVariation: initializedVariations.greenPriceVariation,
+        },
+        {
+          startYear: midYear + 1,
+          endYear: constants.analysisEndYear,
+          volumeVariation: initializedVariations.volumeVariation,
+          blackPriceVariation: initializedVariations.blackPriceVariation,
+          greenPriceVariation: initializedVariations.greenPriceVariation,
+        }
+      ];
+      onTimePeriodsChange(defaultPeriods);
+    }
+  }, [mode, externalTimePeriods, constants.analysisStartYear, constants.analysisEndYear, initializedVariations, onTimePeriodsChange]);
+
+  // Validate time periods and update parent
+  useEffect(() => {
+    if (mode === 'complex' && externalTimePeriods) {
       const validation = validateTimePeriods(
-        timePeriods, 
+        externalTimePeriods, 
         constants.analysisStartYear, 
         constants.analysisEndYear
       );
       
       setValidationError(validation.error);
       
-      if (validation.valid) {
-        onTimePeriodsChange(timePeriods);
-      } else {
+      if (!validation.valid) {
         onTimePeriodsChange(null);
       }
     } else {
       setValidationError(null);
       onTimePeriodsChange(null);
     }
-  }, [mode, timePeriods, constants.analysisStartYear, constants.analysisEndYear, onTimePeriodsChange]);
+  }, [mode, externalTimePeriods, constants.analysisStartYear, constants.analysisEndYear, onTimePeriodsChange]);
 
   const handleAddPeriod = () => {
-    if (timePeriods.length >= 5) return;
+    if (!externalTimePeriods || externalTimePeriods.length >= 5) return;
     
-    const lastPeriod = timePeriods[timePeriods.length - 1];
+    const lastPeriod = externalTimePeriods[externalTimePeriods.length - 1];
     const newEndYear = Math.min(
       lastPeriod.endYear + Math.floor((constants.analysisEndYear - lastPeriod.endYear) / 2),
       constants.analysisEndYear
     );
     
-    setTimePeriods([
-      ...timePeriods,
+    onTimePeriodsChange([
+      ...externalTimePeriods,
       {
         startYear: lastPeriod.endYear + 1,
         endYear: newEndYear,
@@ -149,14 +151,30 @@ const EarInputs = ({ constants, updateConstants, onTimePeriodsChange, mode, setM
   };
 
   const handleRemovePeriod = (index) => {
-    if (timePeriods.length <= 1) return;
-    setTimePeriods(timePeriods.filter((_, i) => i !== index));
+    if (!externalTimePeriods || externalTimePeriods.length <= 1) return;
+    onTimePeriodsChange(externalTimePeriods.filter((_, i) => i !== index));
   };
 
   const handleUpdatePeriod = (index, updatedPeriod) => {
-    const newPeriods = [...timePeriods];
+    if (!externalTimePeriods) return;
+    const newPeriods = [...externalTimePeriods];
     newPeriods[index] = updatedPeriod;
-    setTimePeriods(newPeriods);
+    onTimePeriodsChange(newPeriods);
+  };
+
+  const handleSimpleParameterChange = (key, value) => {
+    // Update both initialized variations and constants
+    initializedVariations[key] = value;
+    updateConstants(key, value);
+
+    // If in complex mode, update all time periods with the new value
+    if (mode === 'complex' && externalTimePeriods) {
+      const updatedPeriods = externalTimePeriods.map(period => ({
+        ...period,
+        [key]: value
+      }));
+      onTimePeriodsChange(updatedPeriods);
+    }
   };
 
   return (
@@ -184,26 +202,17 @@ const EarInputs = ({ constants, updateConstants, onTimePeriodsChange, mode, setM
                 <ParameterInput
                   label="Volume Sensitivity (±%)"
                   value={initializedVariations.volumeVariation}
-                  onChange={(value) => {
-                    initializedVariations.volumeVariation = value;
-                    updateConstants('volumeVariation', value);
-                  }}
+                  onChange={(value) => handleSimpleParameterChange('volumeVariation', value)}
                 />
                 <ParameterInput
                   label="Black Price Sensitivity (±%)"
                   value={initializedVariations.blackPriceVariation}
-                  onChange={(value) => {
-                    initializedVariations.blackPriceVariation = value;
-                    updateConstants('blackPriceVariation', value);
-                  }}
+                  onChange={(value) => handleSimpleParameterChange('blackPriceVariation', value)}
                 />
                 <ParameterInput
                   label="Green Price Sensitivity (±%)"
                   value={initializedVariations.greenPriceVariation}
-                  onChange={(value) => {
-                    initializedVariations.greenPriceVariation = value;
-                    updateConstants('greenPriceVariation', value);
-                  }}
+                  onChange={(value) => handleSimpleParameterChange('greenPriceVariation', value)}
                 />
               </div>
               <ul className="text-xs space-y-1 text-gray-600 min-w-64">
@@ -214,17 +223,17 @@ const EarInputs = ({ constants, updateConstants, onTimePeriodsChange, mode, setM
             </div>
           ) : (
             <div className="space-y-3">
-              {timePeriods.map((period, index) => (
+              {externalTimePeriods?.map((period, index) => (
                 <TimePeriodParameters
                   key={index}
                   period={period}
                   onUpdate={(updatedPeriod) => handleUpdatePeriod(index, updatedPeriod)}
                   onRemove={() => handleRemovePeriod(index)}
-                  canRemove={timePeriods.length > 1}
+                  canRemove={externalTimePeriods.length > 1}
                   error={validationError}
                 />
               ))}
-              {timePeriods.length < 5 && (
+              {externalTimePeriods && externalTimePeriods.length < 5 && (
                 <button
                   onClick={handleAddPeriod}
                   className="text-sm text-blue-500 hover:text-blue-700"

@@ -1,9 +1,29 @@
 // EarDashboard.jsx
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { usePortfolio } from '@/contexts/PortfolioContext';
 import { useEarAnalysis } from './useEarAnalysis';
 import EarInputs from './EarInputs';
 import EarOutputs from './EarOutputs';
+
+const createInitialTimePeriods = (constants) => {
+  const midYear = Math.floor((constants.analysisEndYear - constants.analysisStartYear) / 2) + constants.analysisStartYear;
+  return [
+    {
+      startYear: constants.analysisStartYear,
+      endYear: midYear,
+      volumeVariation: constants.volumeVariation,
+      blackPriceVariation: constants.blackPriceVariation,
+      greenPriceVariation: constants.greenPriceVariation,
+    },
+    {
+      startYear: midYear + 1,
+      endYear: constants.analysisEndYear,
+      volumeVariation: constants.volumeVariation,
+      blackPriceVariation: constants.blackPriceVariation,
+      greenPriceVariation: constants.greenPriceVariation,
+    }
+  ];
+};
 
 const EarningsRiskAnalysis = () => {
   const { 
@@ -16,7 +36,42 @@ const EarningsRiskAnalysis = () => {
   } = usePortfolio();
   
   const [selectedYear, setSelectedYear] = useState(constants.analysisStartYear);
-  const [timePeriods, setTimePeriods] = useState(null);
+  
+  // Initialize timePeriods with stored value or create default if in complex mode
+  const [timePeriods, setTimePeriods] = useState(() => {
+    if (analysisMode === 'complex') {
+      const savedPeriods = sessionStorage.getItem('timePeriods');
+      return savedPeriods ? JSON.parse(savedPeriods) : createInitialTimePeriods(constants);
+    }
+    return null;
+  });
+
+  // Handle mode changes and ensure timePeriods are properly initialized
+  useEffect(() => {
+    if (analysisMode === 'complex') {
+      const savedPeriods = sessionStorage.getItem('timePeriods');
+      if (savedPeriods) {
+        setTimePeriods(JSON.parse(savedPeriods));
+      } else if (!timePeriods) {
+        const initialPeriods = createInitialTimePeriods(constants);
+        setTimePeriods(initialPeriods);
+        sessionStorage.setItem('timePeriods', JSON.stringify(initialPeriods));
+      }
+    } else {
+      setTimePeriods(null);
+      sessionStorage.removeItem('timePeriods');
+    }
+  }, [analysisMode, constants]);
+
+  // Handle time period changes from EarInputs
+  const handleTimePeriodsChange = useCallback((newPeriods) => {
+    setTimePeriods(newPeriods);
+    if (newPeriods) {
+      sessionStorage.setItem('timePeriods', JSON.stringify(newPeriods));
+    } else {
+      sessionStorage.removeItem('timePeriods');
+    }
+  }, []);
   
   const { getYearlyAnalysis, isCalculating, error, hasScenarios } = useEarAnalysis(
     assets, 
@@ -24,11 +79,6 @@ const EarningsRiskAnalysis = () => {
     getMerchantPrice,
     timePeriods
   );
-
-  // Handle time period changes from EarInputs
-  const handleTimePeriodsChange = useCallback((newPeriods) => {
-    setTimePeriods(newPeriods);
-  }, []);
 
   // Memoize the analysis for the selected year
   const yearlyAnalysis = useMemo(() => {
@@ -94,6 +144,7 @@ const EarningsRiskAnalysis = () => {
         onTimePeriodsChange={handleTimePeriodsChange}
         mode={analysisMode}
         setMode={updateAnalysisMode}
+        timePeriods={timePeriods}
       />
       
       <EarOutputs
