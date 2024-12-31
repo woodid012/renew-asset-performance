@@ -1,3 +1,9 @@
+export const applyEscalation = (basePrice, year, constants) => {
+  if (!basePrice || !constants.referenceYear || !constants.escalation) return basePrice;
+  const yearDiff = year - constants.referenceYear;
+  return basePrice * Math.pow(1 + constants.escalation / 100, yearDiff);
+};
+
 export const calculateAssetRevenue = (asset, timeInterval, constants, getMerchantPrice) => {
   // Convert number to string if it's a year
   if (typeof timeInterval === 'number') {
@@ -80,14 +86,14 @@ export const calculateAssetRevenue = (asset, timeInterval, constants, getMerchan
 
   // Calculate degradation factor based on years since start
   const yearsSinceStart = year - assetStartYear;
-  const degradation = parseFloat(asset.annualDegradation) || 0;
+  const degradation = parseFloat(asset.annualDegradation) || constants.annualDegradation[asset.type] || 0;
   const degradationFactor = Math.pow(1 - degradation/100, yearsSinceStart);
 
   // Calculate generation with degradation factor
   const periodGeneration = capacity * volumeLossAdjustment / 100 * HOURS_IN_YEAR * capacityFactor * periodAdjustment * degradationFactor;
   const annualGeneration = capacity * volumeLossAdjustment / 100 * HOURS_IN_YEAR * capacityFactor * degradationFactor;
 
-  // Rest of the calculation remains the same...
+  // Process active contracts
   const activeContracts = asset.contracts.filter(contract => {
     const startYear = new Date(contract.startDate).getFullYear();
     const endYear = new Date(contract.endDate).getFullYear();
@@ -152,20 +158,13 @@ export const calculateAssetRevenue = (asset, timeInterval, constants, getMerchan
     }
   });
 
-  // Calculate merchant revenue with escalation for both green and black
+  // Calculate merchant revenue
   const greenMerchantPercentage = Math.max(0, 100 - totalGreenPercentage);
   const blackMerchantPercentage = Math.max(0, 100 - totalBlackPercentage);
   
-  // Apply escalation to merchant prices
-  const applyEscalation = (basePrice) => {
-    if (!basePrice || !constants.referenceYear || !constants.escalation) return basePrice;
-    const yearDiff = year - constants.referenceYear;
-    return basePrice * Math.pow(1 + constants.escalation / 100, yearDiff);
-  };
-
-  // Get merchant prices for the specific time interval
-  const merchantGreenPrice = applyEscalation(getMerchantPrice(asset.type, 'green', asset.state, timeInterval) || 0);
-  const merchantBlackPrice = applyEscalation(getMerchantPrice(asset.type, 'black', asset.state, timeInterval) || 0);
+  // Get merchant prices for the specific time interval and apply escalation
+  const merchantGreenPrice = applyEscalation(getMerchantPrice(asset.type, 'green', asset.state, timeInterval) || 0, year, constants);
+  const merchantBlackPrice = applyEscalation(getMerchantPrice(asset.type, 'black', asset.state, timeInterval) || 0, year, constants);
   
   // Calculate merchant revenues with period-adjusted generation
   const merchantGreen = (periodGeneration * greenMerchantPercentage/100 * merchantGreenPrice) / 1000000;

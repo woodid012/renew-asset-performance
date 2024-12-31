@@ -79,22 +79,29 @@ const TimePeriodParameters = ({
 // Main EarInputs Component
 const EarInputs = ({ constants, updateConstants, onTimePeriodsChange, mode, setMode }) => {
   const [validationError, setValidationError] = useState(null);
+  // Initialize variations state with constants but don't update on constants changes
+  const [initializedVariations] = useState({
+    volumeVariation: constants.volumeVariation,
+    blackPriceVariation: constants.blackPriceVariation,
+    greenPriceVariation: constants.greenPriceVariation
+  });
+
   const [timePeriods, setTimePeriods] = useState(() => {
     const midYear = Math.floor((constants.analysisEndYear - constants.analysisStartYear) / 2) + constants.analysisStartYear;
     return [
       {
         startYear: constants.analysisStartYear,
         endYear: midYear,
-        volumeVariation: constants.volumeVariation,
-        blackPriceVariation: constants.blackPriceVariation,
-        greenPriceVariation: constants.greenPriceVariation,
+        volumeVariation: initializedVariations.volumeVariation,
+        blackPriceVariation: initializedVariations.blackPriceVariation,
+        greenPriceVariation: initializedVariations.greenPriceVariation,
       },
       {
         startYear: midYear + 1,
         endYear: constants.analysisEndYear,
-        volumeVariation: constants.volumeVariation,
-        blackPriceVariation: constants.blackPriceVariation,
-        greenPriceVariation: constants.greenPriceVariation,
+        volumeVariation: initializedVariations.volumeVariation,
+        blackPriceVariation: initializedVariations.blackPriceVariation,
+        greenPriceVariation: initializedVariations.greenPriceVariation,
       }
     ];
   });
@@ -134,9 +141,9 @@ const EarInputs = ({ constants, updateConstants, onTimePeriodsChange, mode, setM
       {
         startYear: lastPeriod.endYear + 1,
         endYear: newEndYear,
-        volumeVariation: constants.volumeVariation,
-        blackPriceVariation: constants.blackPriceVariation,
-        greenPriceVariation: constants.greenPriceVariation,
+        volumeVariation: initializedVariations.volumeVariation,
+        blackPriceVariation: initializedVariations.blackPriceVariation,
+        greenPriceVariation: initializedVariations.greenPriceVariation,
       }
     ]);
   };
@@ -176,18 +183,27 @@ const EarInputs = ({ constants, updateConstants, onTimePeriodsChange, mode, setM
               <div className="flex gap-6">
                 <ParameterInput
                   label="Volume Sensitivity (±%)"
-                  value={constants.volumeVariation}
-                  onChange={(value) => updateConstants('volumeVariation', value)}
+                  value={initializedVariations.volumeVariation}
+                  onChange={(value) => {
+                    initializedVariations.volumeVariation = value;
+                    updateConstants('volumeVariation', value);
+                  }}
                 />
                 <ParameterInput
                   label="Black Price Sensitivity (±%)"
-                  value={constants.blackPriceVariation}
-                  onChange={(value) => updateConstants('blackPriceVariation', value)}
+                  value={initializedVariations.blackPriceVariation}
+                  onChange={(value) => {
+                    initializedVariations.blackPriceVariation = value;
+                    updateConstants('blackPriceVariation', value);
+                  }}
                 />
                 <ParameterInput
                   label="Green Price Sensitivity (±%)"
-                  value={constants.greenPriceVariation}
-                  onChange={(value) => updateConstants('greenPriceVariation', value)}
+                  value={initializedVariations.greenPriceVariation}
+                  onChange={(value) => {
+                    initializedVariations.greenPriceVariation = value;
+                    updateConstants('greenPriceVariation', value);
+                  }}
                 />
               </div>
               <ul className="text-xs space-y-1 text-gray-600 min-w-64">

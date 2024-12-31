@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
 import { usePortfolio } from '@/contexts/PortfolioContext';
-import { calculateAssetRevenue } from './RevCalculations';
+import { calculateAssetRevenue, applyEscalation } from './RevCalculations';
 
 const PPATableInputs = ({ yearLimit }) => {
   const { assets, constants, getMerchantPrice } = usePortfolio();
@@ -101,7 +101,7 @@ const PPATableInputs = ({ yearLimit }) => {
           const merchantGreenMW = asset.capacity * (merchantGreenPercentage / 100);
           
           const baseGreenPrice = getMerchantPrice(asset.type, 'green', asset.state, year);
-          const escalatedGreenPrice = applyEscalation(baseGreenPrice, year);
+          const escalatedGreenPrice = applyEscalation(baseGreenPrice, year, constants);
 
           yearlyData.push({
             year,
@@ -125,7 +125,7 @@ const PPATableInputs = ({ yearLimit }) => {
           const merchantBlackMW = asset.capacity * (merchantBlackPercentage / 100);
           
           const baseBlackPrice = getMerchantPrice(asset.type, 'black', asset.state, year);
-          const escalatedBlackPrice = applyEscalation(baseBlackPrice, year);
+          const escalatedBlackPrice = applyEscalation(baseBlackPrice, year, constants);
 
           yearlyData.push({
             year,

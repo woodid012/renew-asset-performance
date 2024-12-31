@@ -92,14 +92,6 @@ const LandingPage = () => {
             </div>
             <div className="flex items-start">
               <span className="w-1.5 h-1.5 bg-blue-400 rounded-full mr-2 mt-2"></span>
-              <p className="text-gray-600">To include price curve import / export (user to set as required)</p>
-            </div>
-            <div className="flex items-start">
-              <span className="w-1.5 h-1.5 bg-blue-400 rounded-full mr-2 mt-2"></span>
-              <p className="text-gray-600">Can include asset intricacies (degration etc.) but not important to prototype</p>
-            </div>
-            <div className="flex items-start">
-              <span className="w-1.5 h-1.5 bg-blue-400 rounded-full mr-2 mt-2"></span>
               <p className="text-gray-600">Can include additional asset types (Storage etc.)</p>
             </div>
             <div className="flex items-start">
