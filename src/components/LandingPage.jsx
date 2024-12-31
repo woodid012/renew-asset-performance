@@ -7,7 +7,8 @@ import {
   Sliders,
   FileCheck,
   Settings,
-  ClipboardList
+  ClipboardList,
+  Calculator
 } from 'lucide-react';
 
 const LandingPage = () => {
@@ -53,6 +54,16 @@ const LandingPage = () => {
       ]
     },
     {
+      icon: Calculator,
+      title: "Valuation",
+      description: "Calculate asset and portfolio valuations",
+      details: [
+        "NPV calculations based on revenue streams",
+        "Asset cost and capital expenditure analysis",
+        "Customizable discount rate scenarios"
+      ]
+    },
+    {
       icon: FileCheck,
       title: "Export Audit",
       description: "Detailed data export and audit capabilities",
@@ -76,7 +87,7 @@ const LandingPage = () => {
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
-      {/* Prototype Notes Section - Full Width */}
+      {/* Rest of the component remains the same */}
       <div className="mb-16">
         <Card className="p-6">
           <div className="border-b border-gray-200 pb-4 mb-4">
