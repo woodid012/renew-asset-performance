@@ -44,6 +44,7 @@ export function usePortfolio() {
 function PortfolioProviderInner({ children }) {
   const { merchantPrices, getMerchantPrice, priceSource, setPriceSource } = useMerchantPrices();
   const [portfolioSource, setPortfolioSource] = useState('assets_aula.csv');
+  const [analysisMode, setAnalysisMode] = useState('simple');
   const [assets, setAssets] = useState({});
   const [constants, setConstants] = useState({
     HOURS_IN_YEAR: 8760,
@@ -61,6 +62,10 @@ function PortfolioProviderInner({ children }) {
         QLD: { Q1: 0.29, Q2: 0.32, Q3: 0.35, Q4: 0.32 }, 
         SA:  { Q1: 0.37, Q2: 0.40, Q3: 0.44, Q4: 0.39 } 
       } 
+    },
+    annualDegradation: {
+      solar: 0.4,
+      wind: 0.6
     },
     merchantPrices: merchantPrices,
     analysisStartYear: 2026,
@@ -135,6 +140,7 @@ function PortfolioProviderInner({ children }) {
                 capacity: firstRow.capacity,
                 type: firstRow.type,
                 volumeLossAdjustment: firstRow.volumeLossAdjustment,
+                annualDegradation: firstRow.annualDegradation,
                 contracts
               };
             });
@@ -152,7 +158,11 @@ function PortfolioProviderInner({ children }) {
     };
 
     loadAssets();
-  }, [portfolioSource]); // Added portfolioSource as dependency
+  }, [portfolioSource]);
+
+  const updateAnalysisMode = useCallback((mode) => {
+    setAnalysisMode(mode);
+  }, []);
 
   // Constants update function
   const updateConstants = useCallback((field, value) => {
@@ -190,7 +200,9 @@ function PortfolioProviderInner({ children }) {
     portfolioSource,
     setPortfolioSource,
     priceCurveSource: priceSource,
-    setPriceCurveSource: setPriceSource
+    setPriceCurveSource: setPriceSource,
+    analysisMode,
+    updateAnalysisMode
   };
 
   return (

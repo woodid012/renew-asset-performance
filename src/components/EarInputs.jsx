@@ -77,8 +77,7 @@ const TimePeriodParameters = ({
 );
 
 // Main EarInputs Component
-const EarInputs = ({ constants, updateConstants, onTimePeriodsChange }) => {
-  const [mode, setMode] = useState('simple');
+const EarInputs = ({ constants, updateConstants, onTimePeriodsChange, mode, setMode }) => {
   const [validationError, setValidationError] = useState(null);
   const [timePeriods, setTimePeriods] = useState(() => {
     const midYear = Math.floor((constants.analysisEndYear - constants.analysisStartYear) / 2) + constants.analysisStartYear;

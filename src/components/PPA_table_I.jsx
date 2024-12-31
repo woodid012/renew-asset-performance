@@ -3,19 +3,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
 import { usePortfolio } from '@/contexts/PortfolioContext';
+import { calculateAssetRevenue } from './RevCalculations';
 
 const PPATableInputs = ({ yearLimit }) => {
   const { assets, constants, getMerchantPrice } = usePortfolio();
-
-  const calculateAnnualGeneration = (asset) => {
-    return asset.capacity * asset.volumeLossAdjustment / 100 * constants.HOURS_IN_YEAR * constants.capacityFactors[asset.type][asset.state];
-  };
-
-  const applyEscalation = (basePrice, year) => {
-    if (!basePrice || !constants.referenceYear || !constants.escalation) return basePrice;
-    const yearDiff = year - constants.referenceYear;
-    return basePrice * Math.pow(1 + constants.escalation / 100, yearDiff);
-  };
 
   const generateYearlyData = () => {
     const yearlyData = [];
@@ -30,7 +21,9 @@ const PPATableInputs = ({ yearLimit }) => {
         : constants.analysisStartYear;
 
       for (let year = assetStartYear; year <= endYear; year++) {
-        const annualGeneration = calculateAnnualGeneration(asset);
+        // Get the annual generation from the revenue calculation
+        const revenueCalc = calculateAssetRevenue(asset, year, constants, getMerchantPrice);
+        const annualGeneration = revenueCalc.annualGeneration;
 
         asset.contracts.forEach(contract => {
           const contractStartDate = new Date(contract.startDate);

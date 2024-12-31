@@ -6,7 +6,15 @@ import EarInputs from './EarInputs';
 import EarOutputs from './EarOutputs';
 
 const EarningsRiskAnalysis = () => {
-  const { assets, constants, updateConstants, getMerchantPrice } = usePortfolio();
+  const { 
+    assets, 
+    constants, 
+    updateConstants, 
+    getMerchantPrice,
+    analysisMode,
+    updateAnalysisMode 
+  } = usePortfolio();
+  
   const [selectedYear, setSelectedYear] = useState(constants.analysisStartYear);
   const [timePeriods, setTimePeriods] = useState(null);
   
@@ -14,7 +22,7 @@ const EarningsRiskAnalysis = () => {
     assets, 
     constants, 
     getMerchantPrice,
-    timePeriods // Pass time periods to the hook
+    timePeriods
   );
 
   // Handle time period changes from EarInputs
@@ -30,7 +38,6 @@ const EarningsRiskAnalysis = () => {
     hasScenarios,
     getYearlyAnalysis,
     selectedYear,
-    // Add time periods as a dependency
     timePeriods
   ]);
 
@@ -62,7 +69,6 @@ const EarningsRiskAnalysis = () => {
     getYearlyAnalysis,
     constants.analysisStartYear,
     constants.analysisEndYear,
-    // Add time periods as a dependency
     timePeriods
   ]);
 
@@ -86,6 +92,8 @@ const EarningsRiskAnalysis = () => {
         constants={constants} 
         updateConstants={updateConstants}
         onTimePeriodsChange={handleTimePeriodsChange}
+        mode={analysisMode}
+        setMode={updateAnalysisMode}
       />
       
       <EarOutputs

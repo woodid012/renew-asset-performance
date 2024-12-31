@@ -126,6 +126,16 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
     }
   }, [asset, selectedRenewable]);
   
+
+  useEffect(() => {
+    // If we have a type but no degradation value, set the default
+    if (asset.type && !asset.annualDegradation) {
+      const defaultDegradation = constants.annualDegradation[asset.type];
+      if (defaultDegradation !== undefined) {
+        onUpdateAsset('annualDegradation', defaultDegradation);
+      }
+    }
+  }, []);
   const handleRenewableSelection = (selectedRenewableId) => {
     const selected = renewablesData.find(r => r.id === selectedRenewableId);
     if (selected) {
@@ -346,6 +356,20 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
                 className={outOfSync.volumeLossAdjustment ? "text-red-500" : ""}
               />
               <p className="text-xs text-gray-500">Include MLF, availability and constraints</p>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Annual Degradation (%)</label>
+              <Input
+                type="number"
+                min="0"
+                max="100"
+                step="0.1"
+                value={formatNumericValue(asset.annualDegradation)}
+                onChange={(e) => handleNumericInput('annualDegradation', e.target.value)}
+                placeholder="Annual Degradation"
+                className={outOfSync.annualDegradation ? "text-red-500" : ""}
+              />
+              <p className="text-xs text-gray-500">Annual reduction in output (e.g. 0.4% per year)</p>
             </div>
           </div>
         </CardContent>

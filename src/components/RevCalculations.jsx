@@ -78,8 +78,14 @@ export const calculateAssetRevenue = (asset, timeInterval, constants, getMerchan
     periodAdjustment = 1/12; // Month is 1/12 of a year
   }
 
-  const periodGeneration = capacity * volumeLossAdjustment / 100 * HOURS_IN_YEAR * capacityFactor * periodAdjustment;
-  const annualGeneration = capacity * volumeLossAdjustment / 100 * HOURS_IN_YEAR * capacityFactor;
+  // Calculate degradation factor based on years since start
+  const yearsSinceStart = year - assetStartYear;
+  const degradation = parseFloat(asset.annualDegradation) || 0;
+  const degradationFactor = Math.pow(1 - degradation/100, yearsSinceStart);
+
+  // Calculate generation with degradation factor
+  const periodGeneration = capacity * volumeLossAdjustment / 100 * HOURS_IN_YEAR * capacityFactor * periodAdjustment * degradationFactor;
+  const annualGeneration = capacity * volumeLossAdjustment / 100 * HOURS_IN_YEAR * capacityFactor * degradationFactor;
 
   // Rest of the calculation remains the same...
   const activeContracts = asset.contracts.filter(contract => {
