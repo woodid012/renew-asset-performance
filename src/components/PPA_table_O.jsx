@@ -25,6 +25,7 @@ const PPATableOutputs = ({ yearLimit }) => {
       case 'worst':
         return {
           ...baseRevenue,
+          annualGeneration: baseRevenue.annualGeneration * (1 - volumeVar/100),
           merchantGreen: baseRevenue.merchantGreen * (1 - volumeVar/100) * (1 - greenVar/100),
           merchantBlack: baseRevenue.merchantBlack * (1 - volumeVar/100) * (1 - blackVar/100),
           contractedGreen: baseRevenue.contractedGreen * (1 - volumeVar/100),
@@ -33,6 +34,7 @@ const PPATableOutputs = ({ yearLimit }) => {
       case 'volume':
         return {
           ...baseRevenue,
+          annualGeneration: baseRevenue.annualGeneration * (1 - volumeVar/100),
           merchantGreen: baseRevenue.merchantGreen * (1 - volumeVar/100),
           merchantBlack: baseRevenue.merchantBlack * (1 - volumeVar/100),
           contractedGreen: baseRevenue.contractedGreen * (1 - volumeVar/100),
