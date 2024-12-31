@@ -18,18 +18,20 @@ import {
 } from './ValuationAnalysis_Calcs';
 
 const ValuationAnalysis = () => {
-  const { assets, constants, getMerchantPrice } = usePortfolio();
-  const [discountRates, setDiscountRates] = useState(DEFAULT_VALUES.discountRates);
+  const { assets, constants, getMerchantPrice, updateConstants } = usePortfolio();
   const [selectedRevenueCase, setSelectedRevenueCase] = useState('base');
-  const [assetCosts, setAssetCosts] = useState({});
   const [isInitialized, setIsInitialized] = useState(false);
+  const volumeStress = constants?.volumeVariation;
+  const priceStress = constants?.blackPriceVariation;
+  const discountRates = constants.discountRates;
+  const assetCosts = constants.assetCosts;
 
   useEffect(() => {
-    if (!isInitialized && Object.keys(assets).length > 0) {
-      setAssetCosts(initializeAssetCosts(assets));
+    if (!isInitialized && Object.keys(assets).length > 0 && Object.keys(assetCosts).length === 0) {
+      updateConstants('assetCosts', initializeAssetCosts(assets));
       setIsInitialized(true);
     }
-  }, [assets, isInitialized]);
+  }, [assets, isInitialized, assetCosts, updateConstants]);
 
   const valuationResults = useMemo(() => calculateNPVData(
     assets,
@@ -41,13 +43,14 @@ const ValuationAnalysis = () => {
   ), [assets, assetCosts, discountRates, selectedRevenueCase, constants, getMerchantPrice]);
 
   const handleAssetCostChange = (assetName, field, value) => {
-    setAssetCosts(prev => ({
-      ...prev,
+    const newAssetCosts = {
+      ...assetCosts,
       [assetName]: {
-        ...prev[assetName],
+        ...assetCosts[assetName],
         [field]: value === '' ? '' : parseFloat(value)
       }
-    }));
+    };
+    updateConstants('assetCosts', newAssetCosts);
   };
 
   return (
@@ -72,11 +75,8 @@ const ValuationAnalysis = () => {
                   <input
                     type="number"
                     inputMode="numeric"
-                    value={Number((discountRates.contract * 100).toFixed(2))}
-                    onChange={(e) => setDiscountRates(prev => ({
-                      ...prev,
-                      contract: parseFloat(e.target.value) / 100
-                    }))}
+                    value={((discountRates.contract * 100).toFixed(1).replace(/\.?0+$/, '') + '.0')}
+                    onChange={(e) => updateConstants('discountRates.contract', parseFloat(e.target.value) / 100)}
                     className="w-32 border rounded p-2"
                   />
                   %
@@ -85,11 +85,8 @@ const ValuationAnalysis = () => {
                   <input
                     type="number"
                     inputMode="numeric"
-                    value={Number((discountRates.merchant * 100).toFixed(2))}
-                    onChange={(e) => setDiscountRates(prev => ({
-                      ...prev,
-                      merchant: parseFloat(e.target.value) / 100
-                    }))}
+                    value={((discountRates.merchant * 100).toFixed(1).replace(/\.?0+$/, '') + '.0')}
+                    onChange={(e) => updateConstants('discountRates.merchant', parseFloat(e.target.value) / 100)}
                     className="w-32 border rounded p-2"
                   />
                   %
@@ -101,7 +98,7 @@ const ValuationAnalysis = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="base">Base Case</SelectItem>
-                      <SelectItem value="worst">Worst Case</SelectItem>
+                      <SelectItem value="worst">Downside Volume & Price</SelectItem>
                       <SelectItem value="volume">Volume Stress</SelectItem>
                       <SelectItem value="price">Price Stress</SelectItem>
                     </SelectContent>
