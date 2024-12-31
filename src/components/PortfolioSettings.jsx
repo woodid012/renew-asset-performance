@@ -24,6 +24,17 @@ const PortfolioSettings = () => {
     }
   };
 
+  const getPriceCurveDisplayName = (source) => {
+    switch(source) {
+      case 'merchant_price_monthly.csv':
+        return 'Monthly Merchant Prices';
+      case 'imported':
+        return 'Imported Prices';
+      default:
+        return source;
+    }
+  };
+
   return (
     <div className="space-y-6 p-4">
       {/* Data Sources Card */}
@@ -55,6 +66,7 @@ const PortfolioSettings = () => {
                     <SelectItem value="assets_acciona.csv">Acciona Assets - merchant</SelectItem>
                   </SelectContent>
                 </Select>
+                <p className="text-sm text-gray-500">Select the portfolio of assets to analyze</p>
               </div>
               
               {/* Price Curve Source Selection */}
@@ -65,12 +77,16 @@ const PortfolioSettings = () => {
                   onValueChange={setPriceCurveSource}
                 >
                   <SelectTrigger>
-                    <SelectValue>Monthly Merchant Prices</SelectValue>
+                    <SelectValue>
+                      {getPriceCurveDisplayName(priceCurveSource)}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="merchant_price_monthly.csv">Monthly Merchant Prices</SelectItem>
+                    <SelectItem value="imported">Imported Prices</SelectItem>
                   </SelectContent>
                 </Select>
+                <p className="text-sm text-gray-500">Select the source for price curves</p>
               </div>
             </div>
           </div>
@@ -91,7 +107,8 @@ const PortfolioSettings = () => {
               <h4 className="font-medium mb-2">Data Sources</h4>
               <p className="text-sm text-gray-600">
                 Select your preferred portfolio data source and price curve from the dropdown menus above.
-                Changes will take effect immediately.
+                You can use the default Monthly Merchant Prices or switch to your Imported Prices after uploading
+                a custom price file. Changes will take effect immediately.
               </p>
             </div>
           </div>

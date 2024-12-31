@@ -8,12 +8,20 @@ import Papa from 'papaparse';
 import { read, utils, writeFile } from 'xlsx';
 import { Download, Upload } from 'lucide-react';
 import PriceChart from './InputsPriceChart';
+import { useMerchantPrices } from '@/contexts/MerchantPriceProvider';
 
 const MIN_YEAR = 2022;
 const MAX_YEAR = 2100;
 
 const InputsGlobal = () => {
-  const { constants, updateConstants, getMerchantPrice } = usePortfolio();
+  const { 
+    constants, 
+    updateConstants, 
+    getMerchantPrice, 
+    setPriceCurveSource 
+  } = usePortfolio();
+  
+  const { setMerchantPrices } = useMerchantPrices();
   const fileInputRef = useRef(null);
 
   // Helper function to get available years from merchant prices
@@ -74,49 +82,110 @@ const InputsGlobal = () => {
 
   const processData = (data) => {
     try {
-      const newMerchantPrices = {
-        solar: { black: {}, green: {} },
-        wind: { black: {}, green: {} },
-        baseload: { black: {}, green: {} }
-      };
+      if (!data || data.length === 0) {
+        throw new Error('No data found in file');
+      }
 
-      data.forEach(row => {
-        if (!row.profile || !row.type || !row.state || !row.year || !row.month || !row.price) {
-          console.warn('Skipping row with missing data:', row);
-          return;
-        }
-        
-        const yearNum = parseInt(row.year);
-        const monthNum = parseInt(row.month);
-        
-        if (yearNum < MIN_YEAR || yearNum > MAX_YEAR || monthNum < 1 || monthNum > 12) {
-          console.warn('Skipping row with invalid year/month:', row);
-          return;
-        }
-        
-        if (!newMerchantPrices[row.profile]) {
-          newMerchantPrices[row.profile] = { black: {}, green: {} };
-        }
-        if (!newMerchantPrices[row.profile][row.type]) {
-          newMerchantPrices[row.profile][row.type] = {};
-        }
-        if (!newMerchantPrices[row.profile][row.type][row.state]) {
-          newMerchantPrices[row.profile][row.type][row.state] = {};
-        }
-        if (!newMerchantPrices[row.profile][row.type][row.state][yearNum]) {
-          newMerchantPrices[row.profile][row.type][row.state][yearNum] = {};
-        }
+      // Debug log to see what columns we're getting
+      const firstRow = data[0];
+      const availableColumns = Object.keys(firstRow);
+      console.log('First row data:', firstRow);
+      console.log('Available columns:', availableColumns);
 
-        // Store monthly data
-        newMerchantPrices[row.profile][row.type][row.state][yearNum][monthNum] = {
-          price: parseFloat(row.price)
-        };
+      // Check for case-insensitive column matches
+      const columnMap = {};
+      const requiredColumns = ['profile', 'type', 'state', 'time', 'price'];
+      const lowerColumns = availableColumns.map(key => key.toLowerCase());
+      
+      let missingColumns = [];
+      requiredColumns.forEach(required => {
+        const match = availableColumns.find(
+          key => key.toLowerCase() === required.toLowerCase()
+        );
+        if (!match) {
+          missingColumns.push(required);
+        }
+        columnMap[required] = match;
       });
 
-      updateConstants('merchantPrices', newMerchantPrices);
+      if (missingColumns.length > 0) {
+        throw new Error(`Missing required columns: ${missingColumns.join(', ')}`);
+      }
+
+      console.log('Column mapping:', columnMap);
+
+      // Transform data into the format expected by MerchantPriceProvider
+      const transformedData = data
+        .map((row, index) => {
+          try {
+            // Get values using the column mapping
+            const profile = row[columnMap.profile];
+            const type = row[columnMap.type];
+            const state = row[columnMap.state];
+            const time = row[columnMap.time];
+            const rawPrice = row[columnMap.price];
+            const price = typeof rawPrice === 'string' ? parseFloat(rawPrice.replace(/[^0-9.-]/g, '')) : parseFloat(rawPrice);
+            
+            // Log row details for debugging
+            console.log(`Processing row ${index}:`, { profile, type, state, time, rawPrice, price });
+
+            // Validation with specific checks
+            if (!profile) {
+              console.warn(`Row ${index}: Missing profile`);
+              return null;
+            }
+            if (!type) {
+              console.warn(`Row ${index}: Missing type`);
+              return null;
+            }
+            if (!state) {
+              console.warn(`Row ${index}: Missing state`);
+              return null;
+            }
+            if (!time) {
+              console.warn(`Row ${index}: Missing time`);
+              return null;
+            }
+            if (isNaN(price)) {
+              console.warn(`Row ${index}: Invalid price value`, rawPrice);
+              return null;
+            }
+
+            return {
+              profile: profile.toLowerCase(),
+              type: type.toLowerCase(),
+              state: state.toUpperCase(),
+              time,
+              price,
+              source: 'imported'
+            };
+          } catch (err) {
+            console.warn(`Error processing row ${index}:`, err, row);
+            return null;
+          }
+        })
+        .filter(row => row !== null);
+
+      // Verify we have transformed data
+      if (!transformedData.length) {
+        throw new Error('No valid data rows found in file after processing');
+      }
+
+      console.log('Successfully transformed data. First row:', transformedData[0]);
+      console.log('Total valid rows:', transformedData.length);
+
+      // Send the transformed data to the context
+      setMerchantPrices(transformedData);
+      setPriceCurveSource('imported');
+      
     } catch (error) {
-      console.error('Error processing data:', error);
-      alert('Error processing file. Please check the format.');
+      console.error('Error details:', {
+        message: error.message,
+        stack: error.stack,
+        data: data?.[0]
+      });
+      alert(error.message || 'Error processing file. Please check the data format and try again.');
+      throw error;
     }
   };
 
@@ -130,9 +199,12 @@ const InputsGlobal = () => {
       Papa.parse(file, {
         header: true,
         skipEmptyLines: true,
-        complete: ({ data }) => processData(data)
+        complete: ({ data }) => {
+          console.log('Raw imported data:', data); // Add this
+          processData(data);
+        }
       });
-    } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
+     } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
       const reader = new FileReader();
       reader.onload = (e) => {
         const data = new Uint8Array(e.target.result);
@@ -163,14 +235,14 @@ const InputsGlobal = () => {
           years.forEach(year => {
             // Export monthly data
             for (let month = 1; month <= 12; month++) {
-              const price = getMerchantPrice(profile, type, state, `1/${month.toString().padStart(2, '0')}/${year}`);
+              const time = `1/${month.toString().padStart(2, '0')}/${year}`;
+              const price = getMerchantPrice(profile, type, state, time);
               if (price !== undefined && price !== null && price !== 0) {
                 rows.push({
                   profile,
                   type,
                   state,
-                  year,
-                  month,
+                  time,
                   price: price.toFixed(2)
                 });
               }
@@ -179,22 +251,21 @@ const InputsGlobal = () => {
         });
       });
     });
-
+  
     // Create workbook and worksheet with formatting
     const ws = utils.json_to_sheet(rows);
     const wb = utils.book_new();
     utils.book_append_sheet(wb, ws, "Prices");
-
+  
     // Add column headers
     ws['!cols'] = [
       { wch: 10 },  // profile
       { wch: 8 },   // type
       { wch: 6 },   // state
-      { wch: 6 },   // year
-      { wch: 6 },   // month
+      { wch: 12 },  // time
       { wch: 10 }   // price
     ];
-
+  
     // Save file
     writeFile(wb, 'merchant_prices_base_real.xlsx');
   };

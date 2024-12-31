@@ -48,11 +48,137 @@ export function MerchantPriceProvider({ children }) {
     }
   });
 
-  // Pre-calculate aggregations during data load
+  // Function to aggregate data into yearly and quarterly
+  const aggregateData = (monthlyData) => {
+    const aggregated = {
+      monthly: monthlyData,
+      yearly: {
+        solar: { black: {}, green: {} },
+        wind: { black: {}, green: {} },
+        baseload: { black: {}, green: {} }
+      },
+      quarterly: {
+        solar: { black: {}, green: {} },
+        wind: { black: {}, green: {} },
+        baseload: { black: {}, green: {} }
+      }
+    };
+
+    // Aggregate monthly data into yearly and quarterly
+    Object.entries(monthlyData).forEach(([profile, profileData]) => {
+      Object.entries(profileData).forEach(([type, typeData]) => {
+        Object.entries(typeData).forEach(([state, stateData]) => {
+          Object.entries(stateData).forEach(([time, data]) => {
+            const [, , year] = time.split('/');
+            const quarter = getQuarterFromDate(time);
+            const yearKey = year.toString();
+            const quarterKey = `${yearKey}-Q${quarter}`;
+
+            // Initialize arrays if they don't exist
+            if (!aggregated.yearly[profile][type][state]) {
+              aggregated.yearly[profile][type][state] = {};
+            }
+            if (!aggregated.quarterly[profile][type][state]) {
+              aggregated.quarterly[profile][type][state] = {};
+            }
+            if (!aggregated.yearly[profile][type][state][yearKey]) {
+              aggregated.yearly[profile][type][state][yearKey] = [];
+            }
+            if (!aggregated.quarterly[profile][type][state][quarterKey]) {
+              aggregated.quarterly[profile][type][state][quarterKey] = [];
+            }
+
+            // Add prices to arrays
+            aggregated.yearly[profile][type][state][yearKey].push(data.price);
+            aggregated.quarterly[profile][type][state][quarterKey].push(data.price);
+          });
+        });
+      });
+    });
+
+    // Calculate averages for yearly and quarterly data
+    ['yearly', 'quarterly'].forEach(period => {
+      Object.entries(aggregated[period]).forEach(([profile, profileData]) => {
+        Object.entries(profileData).forEach(([type, typeData]) => {
+          Object.entries(typeData).forEach(([state, periodData]) => {
+            Object.entries(periodData).forEach(([key, prices]) => {
+              aggregated[period][profile][type][state][key] = _.mean(prices);
+            });
+          });
+        });
+      });
+    });
+
+    return aggregated;
+  };
+
+  // Function to process imported data
+  const setMerchantPrices = useCallback((data) => {
+    // Transform imported data into monthly format
+    const monthlyData = {
+      solar: { black: {}, green: {} },
+      wind: { black: {}, green: {} },
+      baseload: { black: {}, green: {} }
+    };
+
+    data.forEach(row => {
+      if (!monthlyData[row.profile][row.type][row.state]) {
+        monthlyData[row.profile][row.type][row.state] = {};
+      }
+      monthlyData[row.profile][row.type][row.state][row.time] = {
+        price: row.price,
+        source: row.source || 'imported'
+      };
+    });
+
+    // Aggregate the data and update state
+    const aggregatedData = aggregateData(monthlyData);
+    setPriceData(aggregatedData);
+    setPriceSource('imported');
+  }, []);
+
+  // Function to process CSV data
+  const processCSVData = useCallback((results) => {
+    if (!results.data || results.data.length === 0) {
+      console.error('No data found in merchant prices CSV');
+      return;
+    }
+
+    const monthlyData = {
+      solar: { black: {}, green: {} },
+      wind: { black: {}, green: {} },
+      baseload: { black: {}, green: {} }
+    };
+
+    // Process data into monthly format
+    results.data.forEach(row => {
+      if (!row.profile || !row.type || !row.state || !row.time || row.price === undefined) {
+        return;
+      }
+
+      if (!monthlyData[row.profile][row.type][row.state]) {
+        monthlyData[row.profile][row.type][row.state] = {};
+      }
+
+      monthlyData[row.profile][row.type][row.state][row.time] = {
+        price: row.price,
+        source: 'default'
+      };
+    });
+
+    // Aggregate and update state
+    const aggregatedData = aggregateData(monthlyData);
+    setPriceData(aggregatedData);
+  }, []);
+
+  // Load data when price source changes
   useEffect(() => {
     const loadMerchantPrices = async () => {
       try {
-        console.log('Loading merchant prices from:', `/${priceSource}`);
+        if (priceSource === 'imported') {
+          return; // Data is already loaded via setMerchantPrices
+        }
+
         const response = await fetch(`/${priceSource}`);
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -63,103 +189,7 @@ export function MerchantPriceProvider({ children }) {
           header: true,
           dynamicTyping: true,
           skipEmptyLines: true,
-          complete: (results) => {
-            if (!results.data || results.data.length === 0) {
-              console.error('No data found in merchant prices CSV');
-              return;
-            }
-
-            const newPriceData = {
-              monthly: {
-                solar: { black: {}, green: {} },
-                wind: { black: {}, green: {} },
-                baseload: { black: {}, green: {} }
-              },
-              yearly: {
-                solar: { black: {}, green: {} },
-                wind: { black: {}, green: {} },
-                baseload: { black: {}, green: {} }
-              },
-              quarterly: {
-                solar: { black: {}, green: {} },
-                wind: { black: {}, green: {} },
-                baseload: { black: {}, green: {} }
-              }
-            };
-
-            // First, organize monthly data
-            results.data.forEach(row => {
-              if (!row.profile || !row.type || !row.state || !row.time || row.price === undefined) {
-                return;
-              }
-
-              // Ensure all necessary objects exist
-              if (!newPriceData.monthly[row.profile]) {
-                newPriceData.monthly[row.profile] = { black: {}, green: {} };
-              }
-              if (!newPriceData.monthly[row.profile][row.type]) {
-                newPriceData.monthly[row.profile][row.type] = {};
-              }
-              if (!newPriceData.monthly[row.profile][row.type][row.state]) {
-                newPriceData.monthly[row.profile][row.type][row.state] = {};
-              }
-
-              // Store monthly data
-              newPriceData.monthly[row.profile][row.type][row.state][row.time] = {
-                price: row.price,
-                source: row.source
-              };
-
-              // Extract year and quarter for aggregations
-              const [, , yearStr] = row.time.split('/');
-              const year = parseInt(yearStr);
-              const quarter = getQuarterFromDate(row.time);
-
-              // Initialize aggregation objects if needed
-              ['yearly', 'quarterly'].forEach(period => {
-                if (!newPriceData[period][row.profile][row.type][row.state]) {
-                  newPriceData[period][row.profile][row.type][row.state] = {};
-                }
-              });
-
-              // Add to yearly aggregation arrays
-              const yearKey = year.toString();
-              if (!newPriceData.yearly[row.profile][row.type][row.state][yearKey]) {
-                newPriceData.yearly[row.profile][row.type][row.state][yearKey] = [];
-              }
-              newPriceData.yearly[row.profile][row.type][row.state][yearKey].push(row.price);
-
-              // Add to quarterly aggregation arrays
-              const quarterKey = `${yearKey}-Q${quarter}`;
-              if (!newPriceData.quarterly[row.profile][row.type][row.state][quarterKey]) {
-                newPriceData.quarterly[row.profile][row.type][row.state][quarterKey] = [];
-              }
-              newPriceData.quarterly[row.profile][row.type][row.state][quarterKey].push(row.price);
-            });
-
-            // Calculate final aggregations
-            Object.entries(newPriceData.yearly).forEach(([profile, typeData]) => {
-              Object.entries(typeData).forEach(([type, stateData]) => {
-                Object.entries(stateData).forEach(([state, yearData]) => {
-                  Object.entries(yearData).forEach(([year, prices]) => {
-                    newPriceData.yearly[profile][type][state][year] = _.mean(prices);
-                  });
-                });
-              });
-            });
-
-            Object.entries(newPriceData.quarterly).forEach(([profile, typeData]) => {
-              Object.entries(typeData).forEach(([type, stateData]) => {
-                Object.entries(stateData).forEach(([state, quarterData]) => {
-                  Object.entries(quarterData).forEach(([quarter, prices]) => {
-                    newPriceData.quarterly[profile][type][state][quarter] = _.mean(prices);
-                  });
-                });
-              });
-            });
-
-            setPriceData(newPriceData);
-          }
+          complete: processCSVData
         });
       } catch (error) {
         console.error('Error loading merchant prices:', error);
@@ -167,9 +197,8 @@ export function MerchantPriceProvider({ children }) {
     };
 
     loadMerchantPrices();
-  }, [priceSource]); // Added priceSource as dependency
+  }, [priceSource, processCSVData]);
 
-  // Optimized getMerchantPrice that uses pre-calculated values
   const getMerchantPrice = useCallback((profile, type, region, timeStr) => {
     try {
       // Case 1: Year only (e.g., "2022" or 2022)
@@ -195,7 +224,8 @@ export function MerchantPriceProvider({ children }) {
     merchantPrices: priceData.monthly,
     getMerchantPrice,
     priceSource,
-    setPriceSource
+    setPriceSource,
+    setMerchantPrices
   };
 
   return (
