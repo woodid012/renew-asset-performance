@@ -54,7 +54,7 @@ const ValuationAnalysis = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="w-full p-4 space-y-4">
       {/* Input Parameters Table */}
       <Card>
         <CardHeader>
@@ -64,7 +64,7 @@ const ValuationAnalysis = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Contract Discount Rate</TableHead>
+                <TableHead>Contracted Discount Rate</TableHead>
                 <TableHead>Merchant Discount Rate</TableHead>
                 <TableHead>Revenue Case</TableHead>
               </TableRow>

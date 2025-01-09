@@ -281,13 +281,12 @@ const InputsGlobal = () => {
   };
 
   return (
-    <div className="space-y-2">
-      {/* Analysis Period Card */}
-      <Card className="w-full">
+      <div className="w-full p-4 space-y-4"> 
+        <Card className="w-full">  
         <CardHeader className="pb-2">
           <CardTitle className="px-0">Analysis Period</CardTitle>
         </CardHeader>
-        <CardContent className="p-2 px-6">
+        <CardContent className="p-6">
           <div className="flex gap-4">
             <div className="space-y-0.5">
               <label className="block text-sm font-medium mb-0.5">Start Year</label>

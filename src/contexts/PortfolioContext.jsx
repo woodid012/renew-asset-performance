@@ -118,13 +118,18 @@ function PortfolioProviderInner({ children }) {
             const transformedAssets = _.mapValues(groupedByAsset, (assetRows) => {
               const firstRow = assetRows[0];
               
-              // Transform contract data
-              const contracts = assetRows.map(row => ({
+              const contracts = assetRows
+              .filter(row => {
+                // Only include rows that have essential contract data
+                return row.contractId && 
+                      row.contractType && 
+                      row.contractCounterparty;
+              })
+              .map(row => ({
                 id: row.contractId?.toString(),
                 counterparty: row.contractCounterparty,
                 type: row.contractType,
                 buyersPercentage: row.contractBuyersPercentage,
-                shape: row.contractShape,
                 strikePrice: row.contractStrikePrice?.toString(),
                 greenPrice: row.contractGreenPrice?.toString(),
                 blackPrice: row.contractBlackPrice?.toString(),
@@ -136,7 +141,6 @@ function PortfolioProviderInner({ children }) {
                 term: row.contractTerm?.toString(),
                 indexationReferenceYear: getYearFromDate(row.contractStartDate)
               }));
-              
               return {
                 id: firstRow.assetId?.toString(),
                 name: firstRow.name,
