@@ -50,7 +50,7 @@ const AssetFormContract = ({ contract, updateContract, removeContract }) => {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">Strike Price</label>
+            <label className="text-sm font-medium">Strike Price ($)</label>
             <Input
               type="number"
               value={contract.strikePrice || ''}
@@ -72,7 +72,7 @@ const AssetFormContract = ({ contract, updateContract, removeContract }) => {
           {contract.type === 'bundled' && (
             <>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Black Price</label>
+                <label className="text-sm font-medium">Black Price ($)</label>
                 <Input
                   type="number"
                   value={contract.blackPrice || ''}
@@ -80,7 +80,7 @@ const AssetFormContract = ({ contract, updateContract, removeContract }) => {
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Green Price</label>
+                <label className="text-sm font-medium">Green Price ($)</label>
                 <Input
                   type="number"
                   value={contract.greenPrice || ''}
