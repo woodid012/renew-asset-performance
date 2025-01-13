@@ -15,7 +15,7 @@ import {
   processAssetData,
   createNewContract,
   updateBundledPrices
-} from './assetUtils';
+} from './AssetUtils';
 
 const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) => {
   const { constants } = usePortfolio();
