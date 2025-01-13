@@ -66,31 +66,35 @@ const ValuationAnalysis = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Contracted Discount Rate</TableHead>
-                <TableHead>Merchant Discount Rate</TableHead>
+                <TableHead>Discount Rates</TableHead>
+                <TableHead></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               <TableRow>
-                <TableCell>
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    value={((discountRates.contract * 100).toFixed(1).replace(/\.?0+$/, '') + '.0')}
-                    onChange={(e) => updateConstants('discountRates.contract', parseFloat(e.target.value) / 100)}
-                    className="w-32 border rounded p-2"
-                  />
-                  %
-                </TableCell>
-                <TableCell>
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    value={((discountRates.merchant * 100).toFixed(1).replace(/\.?0+$/, '') + '.0')}
-                    onChange={(e) => updateConstants('discountRates.merchant', parseFloat(e.target.value) / 100)}
-                    className="w-32 border rounded p-2"
-                  />
-                  %
+                <TableCell className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-40">Contracted Rate:</span>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      value={((discountRates.contract * 100).toFixed(1).replace(/\.?0+$/, '') + '.0')}
+                      onChange={(e) => updateConstants('discountRates.contract', parseFloat(e.target.value) / 100)}
+                      className="w-32 border rounded p-2"
+                    />
+                    <span>%</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-40">Merchant Rate:</span>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      value={((discountRates.merchant * 100).toFixed(1).replace(/\.?0+$/, '') + '.0')}
+                      onChange={(e) => updateConstants('discountRates.merchant', parseFloat(e.target.value) / 100)}
+                      className="w-32 border rounded p-2"
+                    />
+                    <span>%</span>
+                  </div>
                 </TableCell>
                 <TableCell></TableCell>
               </TableRow>
@@ -110,11 +114,11 @@ const ValuationAnalysis = () => {
               <TableRow>
                 <TableHead>Asset Name</TableHead>
                 <TableHead>Capacity (MW)</TableHead>
-                <TableHead>Start Date</TableHead>
-                <TableHead>Fixed Cost ($M pa)</TableHead>
-                <TableHead>Fixed Cost Index (%)</TableHead>
-                <TableHead>Variable Cost ($M per MW)</TableHead>
-                <TableHead>Variable Cost Index (%)</TableHead>
+                <TableHead>Start</TableHead>
+                <TableHead>Fixed Cost ($M/pa)</TableHead>
+                <TableHead>Fixed Cost Esc. (%)</TableHead>
+                <TableHead>Var. Cost ($M/MW)</TableHead>
+                <TableHead>Var. Cost Esc. (%)</TableHead>
                 <TableHead>Terminal Value ($M)</TableHead>
               </TableRow>
             </TableHeader>

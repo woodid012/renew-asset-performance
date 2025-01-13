@@ -167,7 +167,7 @@ const PPATableInputs = ({ yearLimit }) => {
       'Base Price ($/MWh)',
       'Indexation/Escalation %',
       'Indexed/Escalated Price ($/MWh)',
-      'Volume (MWh)',
+      'Adj. Volume (MWh)',
       'Equivalent MW'
     ];
 
@@ -226,7 +226,7 @@ const PPATableInputs = ({ yearLimit }) => {
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Base Price</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Index %</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Indexed Price</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Volume (MWh)</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Adj. Volume (MWh)</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Equivalent MW</th>
               </tr>
             </thead>

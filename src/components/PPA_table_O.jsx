@@ -219,7 +219,7 @@ const PPATableOutputs = ({ yearLimit }) => {
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Contract ID</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Category</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Type</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Volume (MWh)</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Adj.Volume (MWh)</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Price ($/MWh)</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Revenue ($M)</th>
               </tr>

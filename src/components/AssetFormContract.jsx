@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { X } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-const AssetFormContract = ({ contract, updateContract, removeContract }) => {
+const AssetFormContract = ({ contract, updateContract, removeContract, isStorage = false }) => {
   // Helper function to safely handle numeric inputs
   const handleNumericInput = (field, value) => {
     const parsed = value === '' ? '' : Number(value);
@@ -36,21 +36,40 @@ const AssetFormContract = ({ contract, updateContract, removeContract }) => {
             <label className="text-sm font-medium">Contract Type</label>
             <Select 
               value={contract.type || ''}
-              onValueChange={(value) => updateContract('type', value)}
+              onValueChange={(value) => {
+                updateContract('type', value);
+              }}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select Type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="bundled">Bundled PPA</SelectItem>
-                <SelectItem value="green">Green Only</SelectItem>
-                <SelectItem value="black">Black Only</SelectItem>
+                {isStorage ? (
+                  <>
+                    <SelectItem value="cfd">CfD</SelectItem>
+                    <SelectItem value="fixed">Fixed Revenue</SelectItem>
+                  </>
+                ) : (
+                  <>
+                    <SelectItem value="bundled">Bundled PPA</SelectItem>
+                    <SelectItem value="green">Green Only</SelectItem>
+                    <SelectItem value="black">Black Only</SelectItem>
+                  </>
+                )}
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">Strike Price ($)</label>
+            <label className="text-sm font-medium">
+              {contract.type === 'fixed'
+                ? 'Annual Revenue ($M)'
+                : isStorage 
+                  ? contract.type === 'fixed'
+                    ? 'Annual Revenue ($M)'
+                    : 'Price Spread ($/MWh)'
+                  : 'Strike Price ($)'}
+            </label>
             <Input
               type="number"
               value={contract.strikePrice || ''}
@@ -58,18 +77,28 @@ const AssetFormContract = ({ contract, updateContract, removeContract }) => {
             />
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium">Buyer's Percentage (%)</label>
-            <Input
-              type="number"
-              min="0"
-              max="100"
-              step="0.1"
-              value={contract.buyersPercentage || ''}
-              onChange={(e) => handleNumericInput('buyersPercentage', e.target.value)}
-            />
+            {contract.type !== 'fixed' ? (
+              <>
+                <label className="text-sm font-medium">Buyer's Percentage (%)</label>
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  value={contract.buyersPercentage || ''}
+                  onChange={(e) => handleNumericInput('buyersPercentage', e.target.value)}
+                  disabled={false}
+                />
+              </>
+            ) : (
+              <div className="invisible">
+                <label className="text-sm font-medium">Placeholder</label>
+                <Input type="number" disabled />
+              </div>
+            )}
           </div>
 
-          {contract.type === 'bundled' && (
+          {!isStorage && contract.type === 'bundled' && (
             <>
               <div className="space-y-2">
                 <label className="text-sm font-medium">Black Price ($)</label>
@@ -133,32 +162,34 @@ const AssetFormContract = ({ contract, updateContract, removeContract }) => {
             </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Floor Strike</label>
-            <div className="flex space-x-2">
-              <Select
-                value={contract.hasFloor ? 'yes' : 'no'}
-                onValueChange={(value) => updateContract('hasFloor', value === 'yes')}
-              >
-                <SelectTrigger className="w-1/3">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="no">No</SelectItem>
-                  <SelectItem value="yes">Yes</SelectItem>
-                </SelectContent>
-              </Select>
-              {contract.hasFloor && (
-                <Input
-                  type="number"
-                  placeholder="Floor Value"
-                  value={contract.floorValue || ''}
-                  onChange={(e) => handleNumericInput('floorValue', e.target.value)}
-                  className="w-2/3"
-                />
-              )}
+          {!isStorage && contract.type !== 'fixed' && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Floor Strike</label>
+              <div className="flex space-x-2">
+                <Select
+                  value={contract.hasFloor ? 'yes' : 'no'}
+                  onValueChange={(value) => updateContract('hasFloor', value === 'yes')}
+                >
+                  <SelectTrigger className="w-1/3">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="no">No</SelectItem>
+                    <SelectItem value="yes">Yes</SelectItem>
+                  </SelectContent>
+                </Select>
+                {contract.hasFloor && (
+                  <Input
+                    type="number"
+                    placeholder="Floor Value"
+                    value={contract.floorValue || ''}
+                    onChange={(e) => handleNumericInput('floorValue', e.target.value)}
+                    className="w-2/3"
+                  />
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="col-span-2 space-y-2">
             <label className="text-sm font-medium">Settlement Formula</label>
