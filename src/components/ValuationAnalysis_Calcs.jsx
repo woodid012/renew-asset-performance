@@ -106,7 +106,8 @@ export const calculateNPVData = (
   discountRates,
   constants,
   getMerchantPrice,
-  selectedRevenueCase
+  selectedRevenueCase,
+  selectedAsset = 'Total'
 ) => {
   const npvData = Array.from({ length: 30 }, (_, yearIndex) => {
     let totalContractRevenue = 0;
@@ -115,9 +116,14 @@ export const calculateNPVData = (
     let totalVariableCosts = 0;
     let totalTerminalValue = 0;
     
+    // Filter assets based on selection
+    const filteredAssets = selectedAsset === 'Total' 
+      ? Object.values(assets)
+      : Object.values(assets).filter(asset => asset.name === selectedAsset);
+    
     const year = yearIndex + constants.analysisStartYear;
 
-    Object.values(assets).forEach(asset => {
+    filteredAssets.forEach(asset => {
       // Check if asset has started operations
       const assetStartYear = new Date(asset.assetStartDate).getFullYear();
       if (year >= assetStartYear) {

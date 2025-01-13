@@ -228,27 +228,29 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2 space-y-2">
-              <label className="text-sm font-medium">Populate with existing renewable asset template</label>
-              <Select onValueChange={handleRenewableSelection}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select an existing renewable" />
-                </SelectTrigger>
-                <SelectContent className="max-h-[300px]">
-                  <SelectGroup>
-                    <SelectLabel>Select Asset</SelectLabel>
-                    {renewablesData
-                      .sort((a, b) => a.name.localeCompare(b.name))
-                      .map(renewable => (
-                        <SelectItem key={renewable.id} value={renewable.id}>
-                          {renewable.name} ({renewable.capacity} MW, {renewable.type.charAt(0).toUpperCase() + renewable.type.slice(1)})
-                        </SelectItem>
-                      ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </div>
-
+            {!selectedRenewable && asset.name === `Default Asset ${asset.id}` && (
+              <div className="col-span-2 space-y-2">
+                <label className="text-sm font-medium">Populate with existing renewable asset template</label>
+                <Select onValueChange={handleRenewableSelection}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select an existing renewable" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[300px]">
+                    <SelectGroup>
+                      <SelectLabel>Select Asset</SelectLabel>
+                      {renewablesData
+                        .sort((a, b) => a.name.localeCompare(b.name))
+                        .map(renewable => (
+                          <SelectItem key={renewable.id} value={renewable.id}>
+                            {renewable.name} ({renewable.capacity} MW, {renewable.type.charAt(0).toUpperCase() + renewable.type.slice(1)})
+                          </SelectItem>
+                        ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+  
             <div className="space-y-2">
               <label className="text-sm font-medium">Name</label>
               <Input
@@ -275,7 +277,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
                 </SelectContent>
               </Select>
             </div>
-
+  
             <div className="space-y-2">
               <label className="text-sm font-medium">Type</label>
               <Select
@@ -301,6 +303,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
                 className={outOfSync.capacity ? "text-red-500" : ""}
               />
             </div>
+  
             <div className="space-y-2">
               <label className="text-sm font-medium">Asset Start Date</label>
               <Input
@@ -321,7 +324,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
                 placeholder="Asset Life"
               />
             </div>
-
+  
             <div className="col-span-2">
               <h4 className="text-sm font-medium mb-2">Quarterly Capacity Factors (%)</h4>
               <div className="grid grid-cols-4 gap-4">
@@ -342,7 +345,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
               </div>
               <p className="text-xs text-gray-500 mt-1">Defaults from global settings based on State and Type</p>
             </div>
-
+  
             <div className="space-y-2">
               <label className="text-sm font-medium">Volume Loss Adjustment (%)</label>
               <Input
@@ -374,7 +377,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
           </div>
         </CardContent>
       </Card>
-
+  
       {/* Contracts Section */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">

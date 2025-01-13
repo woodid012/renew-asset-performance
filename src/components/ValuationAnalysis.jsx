@@ -20,6 +20,7 @@ import {
 const ValuationAnalysis = () => {
   const { assets, constants, getMerchantPrice, updateConstants } = usePortfolio();
   const [selectedRevenueCase, setSelectedRevenueCase] = useState('base');
+  const [selectedAsset, setSelectedAsset] = useState('Total');
   const [isInitialized, setIsInitialized] = useState(false);
   const volumeStress = constants?.volumeVariation;
   const priceStress = constants?.blackPriceVariation;
@@ -39,8 +40,9 @@ const ValuationAnalysis = () => {
     discountRates,
     constants,
     getMerchantPrice,
-    selectedRevenueCase
-  ), [assets, assetCosts, discountRates, selectedRevenueCase, constants, getMerchantPrice]);
+    selectedRevenueCase,
+    selectedAsset
+  ), [assets, assetCosts, discountRates, selectedRevenueCase, selectedAsset, constants, getMerchantPrice]);
 
   const handleAssetCostChange = (assetName, field, value) => {
     const newAssetCosts = {
@@ -54,7 +56,7 @@ const ValuationAnalysis = () => {
   };
 
   return (
-    <div className="w-full p-4 space-y-4">
+    <div className="w-full p-4 space-y-2">
       {/* Input Parameters Table */}
       <Card>
         <CardHeader>
@@ -66,7 +68,6 @@ const ValuationAnalysis = () => {
               <TableRow>
                 <TableHead>Contracted Discount Rate</TableHead>
                 <TableHead>Merchant Discount Rate</TableHead>
-                <TableHead>Revenue Case</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -91,19 +92,7 @@ const ValuationAnalysis = () => {
                   />
                   %
                 </TableCell>
-                <TableCell>
-                  <Select value={selectedRevenueCase} onValueChange={setSelectedRevenueCase}>
-                    <SelectTrigger className="w-48">
-                      <SelectValue placeholder="Select case" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="base">Base Case</SelectItem>
-                      <SelectItem value="worst">Downside Volume & Price</SelectItem>
-                      <SelectItem value="volume">Volume Stress</SelectItem>
-                      <SelectItem value="price">Price Stress</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </TableCell>
+                <TableCell></TableCell>
               </TableRow>
             </TableBody>
           </Table>
@@ -190,10 +179,44 @@ const ValuationAnalysis = () => {
       {/* NPV Analysis Table */}
       <Card>
         <CardHeader>
-          <div className="flex justify-between items-center">
-            <CardTitle>Valuation Analysis</CardTitle>
-            <div className="text-2xl font-bold">
-              Total NPV: ${(valuationResults?.totalNPV || 0).toLocaleString(undefined, { maximumFractionDigits: 1 })}M
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <CardTitle>Valuation Analysis</CardTitle>
+              <div className="text-2xl font-bold">
+                {selectedAsset === 'Total' ? 'Total Portfolio' : selectedAsset} NPV: ${(valuationResults?.totalNPV || 0).toLocaleString(undefined, { maximumFractionDigits: 1 })}M
+              </div>
+            </div>
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2">
+                <span className="font-medium">Analysis:</span>
+                <Select value={selectedAsset} onValueChange={setSelectedAsset}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="Select asset" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Total">Total Portfolio</SelectItem>
+                    {Object.values(assets).map(asset => (
+                      <SelectItem key={asset.name} value={asset.name}>
+                        {asset.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-medium">Revenue Case:</span>
+                <Select value={selectedRevenueCase} onValueChange={setSelectedRevenueCase}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="Select case" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="base">Base Case</SelectItem>
+                    <SelectItem value="worst">Downside Volume & Price</SelectItem>
+                    <SelectItem value="volume">Volume Stress</SelectItem>
+                    <SelectItem value="price">Price Stress</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
         </CardHeader>
