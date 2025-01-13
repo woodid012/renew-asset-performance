@@ -45,10 +45,14 @@ function PortfolioProviderInner({ children }) {
   const { merchantPrices, getMerchantPrice, priceSource, setPriceSource } = useMerchantPrices();
   const [portfolioSource, setPortfolioSource] = useState('assets_aula.csv');
   const [analysisMode, setAnalysisMode] = useState('simple');
+  const [portfolioName, setPortfolioName] = useState("Portfolio Name");
   const [assets, setAssets] = useState({});
   const [constants, setConstants] = useState({
     HOURS_IN_YEAR: 8760,
-    capacityFactors: { solar: { NSW: 0.28, VIC: 0.25, QLD: 0.29, SA: 0.27 }, wind: { NSW: 0.35, VIC: 0.38, QLD: 0.32, SA: 0.40 } },
+    capacityFactors: { 
+      solar: { NSW: 0.28, VIC: 0.25, QLD: 0.29, SA: 0.27 }, 
+      wind: { NSW: 0.35, VIC: 0.38, QLD: 0.32, SA: 0.40 } 
+    },
     capacityFactors_qtr: { 
       solar: { 
         NSW: { Q1: 0.32, Q2: 0.26, Q3: 0.24, Q4: 0.30 }, 
@@ -203,6 +207,8 @@ function PortfolioProviderInner({ children }) {
   const value = {
     assets,
     setAssets,
+    portfolioName,
+    setPortfolioName,
     constants,
     updateConstants,
     getMerchantPrice,

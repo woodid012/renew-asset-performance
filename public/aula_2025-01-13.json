@@ -1,0 +1,106 @@
+{
+  "assets": {
+    "1": {
+      "id": "1",
+      "name": "Boulder Creek Wind Farm",
+      "state": "QLD",
+      "assetStartDate": "2026-07-01",
+      "capacity": 228,
+      "type": "wind",
+      "volumeLossAdjustment": 95,
+      "annualDegradation": 0.6,
+      "contracts": [
+        {
+          "id": "1",
+          "counterparty": "Kangaroo",
+          "type": "bundled",
+          "buyersPercentage": 80,
+          "strikePrice": "90",
+          "greenPrice": "10",
+          "blackPrice": "80",
+          "indexation": 3,
+          "hasFloor": true,
+          "floorValue": "0",
+          "startDate": "2026-07-01",
+          "endDate": "2036-06-30",
+          "indexationReferenceYear": 2026
+        }
+      ],
+      "qtrCapacityFactor_q1": "29",
+      "qtrCapacityFactor_q2": "32",
+      "qtrCapacityFactor_q3": "35",
+      "qtrCapacityFactor_q4": "32",
+      "capacityFactor": "32"
+    },
+    "2": {
+      "id": "2",
+      "name": "Carmodys Hill Wind Farm",
+      "state": "SA",
+      "assetStartDate": "2028-01-01",
+      "capacity": 192,
+      "type": "wind",
+      "volumeLossAdjustment": 95,
+      "contracts": [
+        {
+          "id": "1",
+          "counterparty": "Wombat",
+          "type": "bundled",
+          "buyersPercentage": 90,
+          "strikePrice": "80",
+          "greenPrice": "10",
+          "blackPrice": "70",
+          "indexation": 2,
+          "hasFloor": true,
+          "floorValue": "0",
+          "startDate": "2028-01-01",
+          "endDate": "2037-12-31",
+          "indexationReferenceYear": 2028
+        }
+      ]
+    },
+    "3": {
+      "id": "3",
+      "name": "Argoon Wind Farm",
+      "state": "NSW",
+      "assetStartDate": "2029-01-01",
+      "capacity": 612,
+      "type": "wind",
+      "volumeLossAdjustment": 95,
+      "contracts": [
+        {
+          "id": "1",
+          "counterparty": "Koala",
+          "type": "bundled",
+          "buyersPercentage": 50,
+          "strikePrice": "85",
+          "greenPrice": "5",
+          "blackPrice": "80",
+          "indexation": 3,
+          "hasFloor": true,
+          "floorValue": "0",
+          "startDate": "2029-01-01",
+          "endDate": "2038-12-31",
+          "indexationReferenceYear": 2029
+        },
+        {
+          "id": "2",
+          "counterparty": "Dingo",
+          "type": "bundled",
+          "buyersPercentage": 40,
+          "strikePrice": "85",
+          "greenPrice": "5",
+          "blackPrice": "80",
+          "indexation": 3,
+          "hasFloor": true,
+          "floorValue": "0",
+          "startDate": "2029-01-01",
+          "endDate": "2038-12-31",
+          "indexationReferenceYear": 2029
+        }
+      ]
+    }
+  },
+  "portfolioName": "Aula",
+  "exportDate": "2025-01-13T23:01:28.627Z",
+  "version": "1.0"
+}

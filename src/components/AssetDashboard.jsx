@@ -2,12 +2,13 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Plus, X, ChevronLeft, ChevronRight, Download, Upload } from 'lucide-react';
 import { usePortfolio } from '@/contexts/PortfolioContext';
 import AssetForm from './AssetForm';
 
 const AssetDashboard = () => {
-  const { assets, setAssets } = usePortfolio();
+  const { assets, setAssets, portfolioName, setPortfolioName } = usePortfolio();
   const [activeTab, setActiveTab] = useState(Object.keys(assets)[0] || '1');
   const [newAssets, setNewAssets] = useState(new Set());
   const [showScrollButtons, setShowScrollButtons] = useState(false);
@@ -25,6 +26,9 @@ const AssetDashboard = () => {
           
           if (importedData.assets) {
             setAssets(importedData.assets);
+            if (importedData.portfolioName) {
+              setPortfolioName(importedData.portfolioName);
+            }
             alert('Asset data imported successfully');
           } else {
             throw new Error('Invalid data structure');
@@ -44,6 +48,7 @@ const AssetDashboard = () => {
   const exportPortfolio = () => {
     const exportData = {
       assets,
+      portfolioName,
       exportDate: new Date().toISOString(),
       version: '1.0'
     };
@@ -51,7 +56,7 @@ const AssetDashboard = () => {
     const dataStr = JSON.stringify(exportData, null, 2);
     const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
     
-    const exportFileName = `portfolio_assets_${new Date().toISOString().split('T')[0]}.json`;
+    const exportFileName = `${portfolioName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${new Date().toISOString().split('T')[0]}.json`;
     const linkElement = document.createElement('a');
     linkElement.setAttribute('href', dataUri);
     linkElement.setAttribute('download', exportFileName);
@@ -148,7 +153,15 @@ const AssetDashboard = () => {
       <Card className="w-full">
         <CardHeader>
           <CardTitle className="flex justify-between items-center">
-            <span>Asset & Contracts Definitions</span>
+            <div className="flex items-center gap-4">
+              <span>Asset & Contracts Definitions</span>
+              <Input 
+                className="w-64 border-2 px-3 py-1 rounded-md focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter Portfolio Name"
+                value={portfolioName}
+                onChange={(e) => setPortfolioName(e.target.value)}
+              />
+            </div>
             <div className="flex gap-2">
               <input
                 type="file"

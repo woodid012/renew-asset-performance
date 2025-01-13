@@ -3,24 +3,52 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { usePortfolio } from '@/contexts/PortfolioContext';
 
+const portfolios = [
+  {
+    id: 'aula',
+    filename: 'aula_2025-01-13.json',
+    displayName: 'Aula',
+    description: 'Greenfield wind portfolio with long-term PPAs'
+  },
+  {
+    id: 'neoen',
+    filename: 'neoen___merchant_2025-01-13.json',
+    displayName: 'Neoen - Merchant',
+    description: 'Operational renewables portfolio'
+  },
+  {
+    id: 'zebre',
+    filename: 'zebre_2025-01-13.json',
+    displayName: 'ZEBRE',
+    description: 'Mixed technology portfolio with storage'
+  },
+  {
+    id: 'acciona',
+    filename: 'acciona_merchant_2025-01-13.json',
+    displayName: 'Acciona - Merchant',
+    description: 'Operational and development portfolio'
+  }
+];
+
 const PortfolioSettings = () => {
   const { 
-    portfolioSource,
-    setPortfolioSource,
+    setAssets,
+    setPortfolioName,
     priceCurveSource,
     setPriceCurveSource
   } = usePortfolio();
 
-  const getPortfolioDisplayName = (filename) => {
-    switch(filename) {
-      case 'assets_aula.csv':
-        return 'Aula Assets - with dummy contracts';
-      case 'assets_neoen.csv':
-        return 'Neoen Asset - merchant';
-      case 'assets_acciona.csv':
-        return 'Acciona Asset - merchant';
-      default:
-        return filename;
+  const loadPortfolio = async (filename) => {
+    try {
+      const response = await fetch(`/${filename}`);
+      if (!response.ok) throw new Error('Failed to load portfolio');
+      
+      const data = await response.json();
+      setAssets(data.assets);
+      setPortfolioName(data.portfolioName);
+    } catch (error) {
+      console.error('Error loading portfolio:', error);
+      alert('Failed to load portfolio');
     }
   };
 
@@ -40,9 +68,9 @@ const PortfolioSettings = () => {
       {/* Data Sources Card */}
       <Card>
         <CardHeader>
-          <CardTitle>Dummy Asset Portfolio - Data Sources</CardTitle>
+          <CardTitle>Portfolio Settings</CardTitle>
           <CardDescription>
-            Select a dummy portfolio and price curve data sources
+            Select a portfolio template and price curve data source
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -50,23 +78,25 @@ const PortfolioSettings = () => {
             <div className="grid grid-cols-2 gap-4">
               {/* Portfolio Source Selection */}
               <div className="space-y-2">
-                <label className="text-sm font-medium">Portfolio Source</label>
+                <label className="text-sm font-medium">Portfolio Template</label>
                 <Select 
-                  value={portfolioSource}
-                  onValueChange={setPortfolioSource}
+                  onValueChange={(value) => {
+                    const portfolio = portfolios.find(p => p.id === value);
+                    if (portfolio) loadPortfolio(portfolio.filename);
+                  }}
                 >
                   <SelectTrigger>
-                    <SelectValue>
-                      {getPortfolioDisplayName(portfolioSource)}
-                    </SelectValue>
+                    <SelectValue placeholder="Select a portfolio template" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="assets_aula.csv">Aula Assets - public info with dummy contracts</SelectItem>
-                    <SelectItem value="assets_neoen.csv">Neoen Assets - merchant</SelectItem>
-                    <SelectItem value="assets_acciona.csv">Acciona Assets - merchant</SelectItem>
+                    {portfolios.map(portfolio => (
+                      <SelectItem key={portfolio.id} value={portfolio.id}>
+                        {portfolio.displayName}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
-                <p className="text-sm text-gray-500">Select the portfolio of assets to analyze</p>
+                <p className="text-sm text-gray-500">Select a predefined portfolio template</p>
               </div>
               
               {/* Price Curve Source Selection */}
@@ -104,11 +134,23 @@ const PortfolioSettings = () => {
         <CardContent>
           <div className="space-y-4">
             <div>
-              <h4 className="font-medium mb-2">Data Sources</h4>
+              <h4 className="font-medium mb-2">Portfolio Templates</h4>
               <p className="text-sm text-gray-600">
-                Select your preferred portfolio data source and price curve from the dropdown menus above.
-                You can use the default Monthly Merchant Prices or switch to your Imported Prices after uploading
-                a custom price file. Changes will take effect immediately.
+                Choose from predefined portfolio templates that showcase different scenarios:
+              </p>
+              <ul className="mt-2 space-y-2">
+                {portfolios.map(portfolio => (
+                  <li key={portfolio.id} className="text-sm text-gray-600">
+                    <strong>{portfolio.displayName}</strong>: {portfolio.description}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-medium mb-2">Price Curves</h4>
+              <p className="text-sm text-gray-600">
+                Select your preferred price curve source. You can use the default Monthly Merchant Prices or 
+                switch to your Imported Prices after uploading a custom price file. Changes will take effect immediately.
               </p>
             </div>
           </div>
