@@ -47,9 +47,9 @@
           "id": "1",
           "counterparty": "Counterparty 1",
           "type": "",
-          "buyersPercentage": "",
+          "buyersPercentage": 80,
           "shape": "flat",
-          "strikePrice": "",
+          "strikePrice": 65,
           "greenPrice": "",
           "blackPrice": "",
           "indexation": "2.5",
@@ -106,6 +106,6 @@
     }
   },
   "portfolioName": "ZEBRE",
-  "exportDate": "2025-01-13T23:01:36.310Z",
+  "exportDate": "2025-01-13T23:32:11.560Z",
   "version": "1.0"
 }

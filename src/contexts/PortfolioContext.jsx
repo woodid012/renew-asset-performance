@@ -46,6 +46,7 @@ function PortfolioProviderInner({ children }) {
   const [portfolioSource, setPortfolioSource] = useState('assets_aula.csv');
   const [analysisMode, setAnalysisMode] = useState('simple');
   const [portfolioName, setPortfolioName] = useState("Portfolio Name");
+  const [activePortfolio, setActivePortfolio] = useState('aula');
   const [assets, setAssets] = useState({});
   const [constants, setConstants] = useState({
     HOURS_IN_YEAR: 8760,
@@ -209,6 +210,8 @@ function PortfolioProviderInner({ children }) {
     setAssets,
     portfolioName,
     setPortfolioName,
+    activePortfolio,
+    setActivePortfolio,
     constants,
     updateConstants,
     getMerchantPrice,

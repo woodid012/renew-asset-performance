@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { Card } from "@/components/ui/card";
 import { usePortfolio } from '@/contexts/PortfolioContext';
 import {
@@ -126,13 +126,19 @@ const features = [
 ];
 
 const LandingPage = () => {
-  const { setAssets, setPortfolioName } = usePortfolio();
-  const [activePortfolio, setActivePortfolio] = useState('aula');
+  const { 
+    setAssets, 
+    setPortfolioName, 
+    activePortfolio, 
+    setActivePortfolio 
+  } = usePortfolio();
 
-  // Load Aula portfolio by default
+  // Load Aula portfolio by default only if no active portfolio
   useEffect(() => {
-    loadPortfolio(portfolios[0]);
-  }, []);
+    if (!activePortfolio) {
+      loadPortfolio(portfolios[0]);
+    }
+  }, [activePortfolio]);
 
   const loadPortfolio = async (portfolio) => {
     try {
@@ -157,7 +163,7 @@ const LandingPage = () => {
           <div className="flex flex-col space-y-4">
             <div className="flex items-center">
               <Building2 className="h-6 w-6 text-blue-500 mr-2" />
-              <h2 className="text-xl font-semibold">Select Portfolio</h2>
+              <h2 className="text-xl font-semibold">Select Demo Portfolio</h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {portfolios.map((portfolio) => (
@@ -211,11 +217,11 @@ const LandingPage = () => {
           <div className="grid grid-cols-1 gap-2">
             <div className="flex items-start">
               <span className="w-1.5 h-1.5 bg-blue-400 rounded-full mr-2 mt-2"></span>
-              <p className="text-gray-600">Remember this is just a prototype</p>
+              <p className="text-gray-600">Remember this is just a prototype...bugs are expected</p>
             </div>
             <div className="flex items-start">
               <span className="w-1.5 h-1.5 bg-blue-400 rounded-full mr-2 mt-2"></span>
-              <p className="text-gray-600">Can include additional asset types (Storage etc.)</p>
+              <p className="text-gray-600">All contract values are assumed values for demonstration purposes</p>
             </div>
             <div className="flex items-start">
               <span className="w-1.5 h-1.5 bg-blue-400 rounded-full mr-2 mt-2"></span>

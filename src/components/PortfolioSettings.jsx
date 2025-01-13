@@ -34,11 +34,13 @@ const PortfolioSettings = () => {
   const { 
     setAssets,
     setPortfolioName,
+    activePortfolio,
+    setActivePortfolio,
     priceCurveSource,
     setPriceCurveSource
   } = usePortfolio();
 
-  const loadPortfolio = async (filename) => {
+  const loadPortfolio = async (filename, portfolioId) => {
     try {
       const response = await fetch(`/${filename}`);
       if (!response.ok) throw new Error('Failed to load portfolio');
@@ -46,6 +48,7 @@ const PortfolioSettings = () => {
       const data = await response.json();
       setAssets(data.assets);
       setPortfolioName(data.portfolioName);
+      setActivePortfolio(portfolioId);
     } catch (error) {
       console.error('Error loading portfolio:', error);
       alert('Failed to load portfolio');
@@ -80,13 +83,16 @@ const PortfolioSettings = () => {
               <div className="space-y-2">
                 <label className="text-sm font-medium">Portfolio Template</label>
                 <Select 
+                  value={activePortfolio}
                   onValueChange={(value) => {
                     const portfolio = portfolios.find(p => p.id === value);
-                    if (portfolio) loadPortfolio(portfolio.filename);
+                    if (portfolio) loadPortfolio(portfolio.filename, portfolio.id);
                   }}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a portfolio template" />
+                    <SelectValue placeholder="Select a portfolio template">
+                      {portfolios.find(p => p.id === activePortfolio)?.displayName || "Select a portfolio template"}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {portfolios.map(portfolio => (

@@ -28,11 +28,12 @@ const ValuationAnalysis = () => {
   const assetCosts = constants.assetCosts;
 
   useEffect(() => {
-    if (!isInitialized && Object.keys(assets).length > 0 && Object.keys(assetCosts).length === 0) {
+    // Reset initialization when assets change
+    if (Object.keys(assets).length > 0) {
       updateConstants('assetCosts', initializeAssetCosts(assets));
       setIsInitialized(true);
     }
-  }, [assets, isInitialized, assetCosts, updateConstants]);
+  }, [assets, updateConstants]);
 
   const valuationResults = useMemo(() => calculateNPVData(
     assets,
