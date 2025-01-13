@@ -80,6 +80,16 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
         assetStartDate: selectedRenewable.startDate && 
           asset.assetStartDate !== selectedRenewable.startDate,
       });
+    } else {
+      // Clear out of sync state for new assets
+      setOutOfSync({
+        name: false,
+        state: false,
+        capacity: false,
+        type: false,
+        volumeLossAdjustment: false,
+        assetStartDate: false
+      });
     }
   }, [asset, selectedRenewable]);
 
@@ -106,14 +116,29 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
   };
 
   const handleContractUpdate = (id, field, value) => {
-    onUpdateContracts(asset.contracts.map(contract => {
+    // Ensure we're working with the current contracts array
+    const updatedContracts = asset.contracts.map(contract => {
       if (contract.id !== id) return contract;
-      return updateBundledPrices(contract, field, value);
-    }));
+      
+      // Handle the update and get the new contract state
+      const updatedContract = updateBundledPrices({...contract}, field, value);
+      
+      // Ensure numeric fields are properly handled
+      if (['strikePrice', 'blackPrice', 'greenPrice', 'buyersPercentage', 'indexation'].includes(field)) {
+        // If the value is empty string, keep it as empty string to allow typing
+        updatedContract[field] = value === '' ? '' : value;
+      } else {
+        updatedContract[field] = value;
+      }
+      
+      return updatedContract;
+    });
+
+    onUpdateContracts(updatedContracts);
   };
 
   const addContract = () => {
-    const newContract = createNewContract(asset.contracts);
+    const newContract = createNewContract(asset.contracts, asset.assetStartDate);
     onUpdateContracts([...asset.contracts, newContract]);
   };
 

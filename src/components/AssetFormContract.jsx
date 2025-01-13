@@ -8,8 +8,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 const AssetFormContract = ({ contract, updateContract, removeContract, isStorage = false }) => {
   // Helper function to safely handle numeric inputs
   const handleNumericInput = (field, value) => {
-    const parsed = value === '' ? '' : Number(value);
-    updateContract(field, parsed);
+    // Always pass through empty string to allow typing
+    if (value === '') {
+      updateContract(field, '');
+      return;
+    }
+    
+    // Only parse if it's a valid number
+    const parsed = Number(value);
+    if (!isNaN(parsed)) {
+      updateContract(field, parsed);
+    }
   };
 
   return (
@@ -54,6 +63,7 @@ const AssetFormContract = ({ contract, updateContract, removeContract, isStorage
                     <SelectItem value="bundled">Bundled PPA</SelectItem>
                     <SelectItem value="green">Green Only</SelectItem>
                     <SelectItem value="black">Black Only</SelectItem>
+                    <SelectItem value="fixed">Fixed Revenue</SelectItem>
                   </>
                 )}
               </SelectContent>
@@ -76,6 +86,7 @@ const AssetFormContract = ({ contract, updateContract, removeContract, isStorage
               onChange={(e) => handleNumericInput('strikePrice', e.target.value)}
             />
           </div>
+          
           <div className="space-y-2">
             {contract.type !== 'fixed' ? (
               <>
@@ -128,6 +139,7 @@ const AssetFormContract = ({ contract, updateContract, removeContract, isStorage
               value={contract.startDate || ''}
               onChange={(e) => updateContract('startDate', e.target.value)}
             />
+            <p className="text-xs text-gray-500">Default as Asset Start</p>
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium">End Date</label>
@@ -136,6 +148,7 @@ const AssetFormContract = ({ contract, updateContract, removeContract, isStorage
               value={contract.endDate || ''}
               onChange={(e) => updateContract('endDate', e.target.value)}
             />
+            <p className="text-xs text-gray-500">Default +10 years</p>
           </div>
 
           <div className="space-y-2">
@@ -160,44 +173,6 @@ const AssetFormContract = ({ contract, updateContract, removeContract, isStorage
                 />
               </div>
             </div>
-          </div>
-
-          {!isStorage && contract.type !== 'fixed' && (
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Floor Strike</label>
-              <div className="flex space-x-2">
-                <Select
-                  value={contract.hasFloor ? 'yes' : 'no'}
-                  onValueChange={(value) => updateContract('hasFloor', value === 'yes')}
-                >
-                  <SelectTrigger className="w-1/3">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="no">No</SelectItem>
-                    <SelectItem value="yes">Yes</SelectItem>
-                  </SelectContent>
-                </Select>
-                {contract.hasFloor && (
-                  <Input
-                    type="number"
-                    placeholder="Floor Value"
-                    value={contract.floorValue || ''}
-                    onChange={(e) => handleNumericInput('floorValue', e.target.value)}
-                    className="w-2/3"
-                  />
-                )}
-              </div>
-            </div>
-          )}
-
-          <div className="col-span-2 space-y-2">
-            <label className="text-sm font-medium">Settlement Formula</label>
-            <Input
-              value={contract.settlementFormula || ''}
-              onChange={(e) => updateContract('settlementFormula', e.target.value)}
-              placeholder="=[{Market} - {Strike}] x [{Volume}]} - WIP not used"
-            />
           </div>
         </div>
       </CardContent>

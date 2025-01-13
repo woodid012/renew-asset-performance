@@ -94,8 +94,17 @@ export const calculateYear1Volume = (asset) => {
     }));
   };
   
-  export const createNewContract = (contracts) => {
-    const startDate = new Date().toISOString().split('T')[0];
+  export const createNewContract = (contracts, defaultStartDate) => {
+    // Use the provided start date if available, otherwise use today's date
+    const startDate = defaultStartDate || new Date().toISOString().split('T')[0];
+    
+    // Calculate end date (10 years minus 1 day from start)
+    const startDateObj = new Date(startDate);
+    const endDateObj = new Date(startDateObj);
+    endDateObj.setFullYear(startDateObj.getFullYear() + 10);
+    endDateObj.setDate(endDateObj.getDate() - 1); // Subtract one day
+    const endDate = endDateObj.toISOString().split('T')[0];
+  
     return {
       id: String(contracts.length + 1),
       counterparty: `Counterparty ${contracts.length + 1}`,
@@ -105,12 +114,13 @@ export const calculateYear1Volume = (asset) => {
       strikePrice: '',
       greenPrice: '',
       blackPrice: '',
-      indexation: '',
+      indexation: '2.5',
       indexationReferenceYear: String(new Date().getFullYear()),
       settlementFormula: '',
       hasFloor: false,
       floorValue: '',
-      startDate
+      startDate,
+      endDate
     };
   };
   
