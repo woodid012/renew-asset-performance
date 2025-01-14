@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { Card } from "@/components/ui/card";
 import { usePortfolio } from '@/contexts/PortfolioContext';
 import {
@@ -130,15 +130,16 @@ const LandingPage = () => {
     setAssets, 
     setPortfolioName, 
     activePortfolio, 
-    setActivePortfolio 
+    setActivePortfolio,
+    assets 
   } = usePortfolio();
 
-  // Load Aula portfolio by default only if no active portfolio
+  // Initialize Aula portfolio when needed
   useEffect(() => {
-    if (!activePortfolio) {
-      loadPortfolio(portfolios[0]);
+    if (!activePortfolio || Object.keys(assets || {}).length === 0) {
+      loadPortfolio(portfolios[0]); // Use the same loadPortfolio function as the button click
     }
-  }, [activePortfolio]);
+  }, [activePortfolio, assets]);
 
   const loadPortfolio = async (portfolio) => {
     try {

@@ -43,7 +43,7 @@ export function usePortfolio() {
 // Internal wrapper component that has access to merchant prices
 function PortfolioProviderInner({ children }) {
   const { merchantPrices, getMerchantPrice, priceSource, setPriceSource } = useMerchantPrices();
-  const [portfolioSource, setPortfolioSource] = useState('assets_aula.csv');
+  const [portfolioSource, setPortfolioSource] = useState('aula_2025-01-13.json');
   const [analysisMode, setAnalysisMode] = useState('simple');
   const [portfolioName, setPortfolioName] = useState("Portfolio Name");
   const [activePortfolio, setActivePortfolio] = useState('aula');
@@ -94,85 +94,68 @@ function PortfolioProviderInner({ children }) {
     }));
   }, [merchantPrices]);
 
-  // Assets loading with updated portfolio source
+  // Load portfolio data whenever source changes
   useEffect(() => {
-    const loadAssets = async () => {
+    const loadPortfolio = async () => {
       try {
-        console.log('Loading assets from CSV...', `/${portfolioSource}`);
         const response = await fetch(`/${portfolioSource}`);
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const csvText = await response.text();
-        
-        Papa.parse(csvText, {
-          header: true,
-          dynamicTyping: true,
-          skipEmptyLines: true,
-          complete: (results) => {
-            if (!results.data || results.data.length === 0) {
-              console.error('No data found in assets CSV');
-              return;
-            }
+        if (!response.ok) throw new Error(`Failed to load portfolio: ${response.statusText}`);
 
-            // Group the data by assetId
-            const groupedByAsset = _.groupBy(results.data, 'assetId');
-            
-            // Transform the data into the required structure
-            const transformedAssets = _.mapValues(groupedByAsset, (assetRows) => {
-              const firstRow = assetRows[0];
-              
-              const contracts = assetRows
-              .filter(row => {
-                // Only include rows that have essential contract data
-                return row.contractId && 
-                      row.contractType && 
-                      row.contractCounterparty;
-              })
-              .map(row => ({
-                id: row.contractId?.toString(),
-                counterparty: row.contractCounterparty,
-                type: row.contractType,
-                buyersPercentage: row.contractBuyersPercentage,
-                strikePrice: row.contractStrikePrice?.toString(),
-                greenPrice: row.contractGreenPrice?.toString(),
-                blackPrice: row.contractBlackPrice?.toString(),
-                indexation: row.contractIndexation,
-                hasFloor: row.contractHasFloor,
-                floorValue: row.contractFloorValue?.toString() || '',
-                startDate: transformDateFormat(row.contractStartDate),
-                endDate: transformDateFormat(row.contractEndDate),
-                term: row.contractTerm?.toString(),
-                indexationReferenceYear: getYearFromDate(row.contractStartDate)
-              }));
-              return {
-                id: firstRow.assetId?.toString(),
-                name: firstRow.name,
-                state: firstRow.state,
-                assetStartDate: transformDateFormat(firstRow.assetStartDate),
-                capacity: firstRow.capacity,
-                type: firstRow.type,
-                volumeLossAdjustment: firstRow.volumeLossAdjustment,
-                annualDegradation: firstRow.annualDegradation,
-                contracts
-              };
-            });
-            
-            setAssets(transformedAssets);
-            console.log('Assets loaded successfully from', portfolioSource);
-          },
-          error: (error) => {
-            console.error('Error parsing assets CSV:', error);
-          }
-        });
+        const data = await response.json();
+        if (!data.assets) throw new Error('Invalid portfolio data structure');
+
+        setAssets(data.assets);
+        if (data.portfolioName) {
+          setPortfolioName(data.portfolioName);
+        }
+
+        console.log('Portfolio loaded successfully:', portfolioSource);
       } catch (error) {
-        console.error('Error loading assets:', error);
+        console.error('Error loading portfolio:', error);
+        setAssets({});  // Reset assets on error
       }
     };
 
-    loadAssets();
+    if (portfolioSource) {
+      loadPortfolio();
+    }
   }, [portfolioSource]);
+
+  // Load and parse merchant price CSV data
+  const loadMerchantPrices = useCallback(async (priceSource) => {
+    try {
+      console.log('Loading merchant prices from CSV...', `/${priceSource}`);
+      const response = await fetch(`/${priceSource}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const csvText = await response.text();
+      
+      Papa.parse(csvText, {
+        header: true,
+        dynamicTyping: true,
+        skipEmptyLines: true,
+        complete: (results) => {
+          if (!results.data || results.data.length === 0) {
+            console.error('No data found in merchant prices CSV');
+            return;
+          }
+          
+          setConstants(prev => ({
+            ...prev,
+            merchantPrices: results.data
+          }));
+          console.log('Merchant prices loaded successfully');
+        },
+        error: (error) => {
+          console.error('Error parsing merchant prices CSV:', error);
+        }
+      });
+    } catch (error) {
+      console.error('Error loading merchant prices:', error);
+    }
+  }, []);
 
   const updateAnalysisMode = useCallback((mode) => {
     setAnalysisMode(mode);
@@ -220,7 +203,8 @@ function PortfolioProviderInner({ children }) {
     priceCurveSource: priceSource,
     setPriceCurveSource: setPriceSource,
     analysisMode,
-    updateAnalysisMode
+    updateAnalysisMode,
+    loadMerchantPrices
   };
 
   return (
