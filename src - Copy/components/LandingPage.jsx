@@ -17,17 +17,6 @@ import { cn } from "@/lib/utils";
 
 const portfolios = [
   {
-    id: 'blank',
-    filename: '',
-    displayName: 'Blank Template',
-    description: 'Start with a clean slate',
-    details: [
-      'No predefined assets',
-      'Configure your own portfolio',
-      'Full customization'
-    ]
-  },
-  {
     id: 'aula',
     filename: 'aula_2025-01-13.json',
     displayName: 'Aula',
@@ -145,22 +134,14 @@ const LandingPage = () => {
     assets 
   } = usePortfolio();
 
-  // Initialize blank portfolio if nothing is selected
+  // Initialize Aula portfolio when needed
   useEffect(() => {
-    if (!activePortfolio) {
-      loadPortfolio(portfolios[0]); // Load blank template by default
+    if (!activePortfolio || Object.keys(assets || {}).length === 0) {
+      loadPortfolio(portfolios[0]); // Use the same loadPortfolio function as the button click
     }
-  }, [activePortfolio]);
+  }, [activePortfolio, assets]);
 
   const loadPortfolio = async (portfolio) => {
-    if (portfolio.id === 'blank') {
-      // Load empty portfolio
-      setAssets({});
-      setPortfolioName('New Portfolio');
-      setActivePortfolio(portfolio.id);
-      return;
-    }
-
     try {
       const response = await fetch(`/${portfolio.filename}`);
       if (!response.ok) throw new Error('Failed to load portfolio');
@@ -185,7 +166,7 @@ const LandingPage = () => {
               <Building2 className="h-6 w-6 text-blue-500 mr-2" />
               <h2 className="text-xl font-semibold">Select Demo Portfolio</h2>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {portfolios.map((portfolio) => (
                 <Card key={portfolio.id} className="p-4 bg-white hover:shadow-lg transition-shadow flex flex-col h-full">
                   <div className="flex-grow space-y-3">
@@ -206,10 +187,7 @@ const LandingPage = () => {
                         "w-full",
                         activePortfolio === portfolio.id ? "bg-green-500 hover:bg-green-600" : ""
                       )}
-                      onClick={() => {
-                        console.log('Loading portfolio:', portfolio.id);
-                        loadPortfolio(portfolio);
-                      }}
+                      onClick={() => loadPortfolio(portfolio)}
                     >
                       {activePortfolio === portfolio.id ? (
                         <span className="flex items-center justify-center">
