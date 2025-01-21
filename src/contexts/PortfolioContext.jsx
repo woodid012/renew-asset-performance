@@ -73,7 +73,7 @@ function PortfolioProviderInner({ children }) {
       wind: 0.6
     },
     merchantPrices: merchantPrices,
-    analysisStartYear: 2026,
+    analysisStartYear: 2025,
     analysisEndYear: 2045,
     ForecastStartYear: 2024,
     volumeVariation: 20,
