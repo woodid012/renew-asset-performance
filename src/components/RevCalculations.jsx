@@ -65,20 +65,30 @@ export const processPortfolioData = (portfolioData, assets, visibleAssets) => {
       weightedBlackPercentage: 0
     };
 
-    let totalPeriodGeneration = 0;
+    let totalRenewableGeneration = 0; // Only for renewable assets (non-storage)
 
     Object.entries(periodData.assets).forEach(([assetName, assetData]) => {
       if (visibleAssets[assetName]) {
+        const asset = Object.values(assets).find(a => a.name === assetName);
+        const isStorage = asset.type === 'storage';
+
+        // Add to total revenue regardless of asset type
         processedPeriodData.total += Number((assetData.contractedGreen + assetData.contractedBlack + 
           assetData.merchantGreen + assetData.merchantBlack).toFixed(2));
+
+        // Add to contracted/merchant totals
         processedPeriodData.contractedGreen += Number(assetData.contractedGreen.toFixed(2));
         processedPeriodData.contractedBlack += Number(assetData.contractedBlack.toFixed(2));
         processedPeriodData.merchantGreen += Number(assetData.merchantGreen.toFixed(2));
         processedPeriodData.merchantBlack += Number(assetData.merchantBlack.toFixed(2));
 
-        const asset = Object.values(assets).find(a => a.name === assetName);
+        // Add to total generation
         processedPeriodData.totalGeneration += parseFloat(asset.capacity) || 0;
-        totalPeriodGeneration += assetData.annualGeneration;
+        
+        // Only add to renewable generation total if not storage
+        if (!isStorage) {
+          totalRenewableGeneration += assetData.annualGeneration;
+        }
 
         // Store individual asset data
         processedPeriodData[`${assetName} Contracted Green`] = Number(assetData.contractedGreen.toFixed(2));
@@ -88,16 +98,25 @@ export const processPortfolioData = (portfolioData, assets, visibleAssets) => {
       }
     });
     
-    if (totalPeriodGeneration > 0) {
+    // Calculate weighted percentages only considering renewable assets
+    if (totalRenewableGeneration > 0) {
       processedPeriodData.weightedGreenPercentage = Object.entries(periodData.assets)
-        .filter(([assetName]) => visibleAssets[assetName])
+        .filter(([assetName]) => {
+          if (!visibleAssets[assetName]) return false;
+          const asset = Object.values(assets).find(a => a.name === assetName);
+          return asset.type !== 'storage'; // Exclude storage assets
+        })
         .reduce((acc, [_, assetData]) => 
-          acc + (assetData.greenPercentage * assetData.annualGeneration / totalPeriodGeneration), 0);
+          acc + (assetData.greenPercentage * assetData.annualGeneration / totalRenewableGeneration), 0);
       
       processedPeriodData.weightedBlackPercentage = Object.entries(periodData.assets)
-        .filter(([assetName]) => visibleAssets[assetName])
+        .filter(([assetName]) => {
+          if (!visibleAssets[assetName]) return false;
+          const asset = Object.values(assets).find(a => a.name === assetName);
+          return asset.type !== 'storage'; // Exclude storage assets
+        })
         .reduce((acc, [_, assetData]) => 
-          acc + (assetData.blackPercentage * assetData.annualGeneration / totalPeriodGeneration), 0);
+          acc + (assetData.blackPercentage * assetData.annualGeneration / totalRenewableGeneration), 0);
     }
 
     return processedPeriodData;

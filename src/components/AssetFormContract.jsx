@@ -5,7 +5,14 @@ import { Input } from '@/components/ui/input';
 import { X } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-const AssetFormContract = ({ contract, updateContract, removeContract, isStorage = false }) => {
+const AssetFormContract = ({ 
+  contract, 
+  updateContract, 
+  removeContract, 
+  isStorage = false, 
+  capacity,
+  capacityFactor = 0
+}) => {
   // Helper function to safely handle numeric inputs
   const handleNumericInput = (field, value) => {
     // Always pass through empty string to allow typing
@@ -19,6 +26,17 @@ const AssetFormContract = ({ contract, updateContract, removeContract, isStorage
     if (!isNaN(parsed)) {
       updateContract(field, parsed);
     }
+  };
+
+  // Calculate contract duration in years
+  const calculateTenor = () => {
+    if (!contract.startDate || !contract.endDate) return null;
+    
+    const start = new Date(contract.startDate);
+    const end = new Date(contract.endDate);
+    const diffTime = Math.abs(end - start);
+    const diffYears = (diffTime / (1000 * 60 * 60 * 24 * 365.25)).toFixed(1);
+    return diffYears;
   };
 
   return (
@@ -57,6 +75,7 @@ const AssetFormContract = ({ contract, updateContract, removeContract, isStorage
                   <>
                     <SelectItem value="cfd">CfD</SelectItem>
                     <SelectItem value="fixed">Fixed Revenue</SelectItem>
+                    <SelectItem value="tolling">Tolling</SelectItem>
                   </>
                 ) : (
                   <>
@@ -75,9 +94,11 @@ const AssetFormContract = ({ contract, updateContract, removeContract, isStorage
               {contract.type === 'fixed'
                 ? 'Annual Revenue ($M)'
                 : isStorage 
-                  ? contract.type === 'fixed'
-                    ? 'Annual Revenue ($M)'
-                    : 'Price Spread ($/MWh)'
+                  ? contract.type === 'tolling'
+                    ? 'Price ($/MW/hr)'
+                    : contract.type === 'fixed'
+                      ? 'Annual Revenue ($M)'
+                      : 'Price Spread ($/MWh)'
                   : 'Strike Price ($)'}
             </label>
             <Input
@@ -96,9 +117,9 @@ const AssetFormContract = ({ contract, updateContract, removeContract, isStorage
                   min="0"
                   max="100"
                   step="0.1"
-                  value={contract.buyersPercentage || ''}
+                  value={isStorage && contract.type === 'tolling' ? 100 : (contract.buyersPercentage || '')}
                   onChange={(e) => handleNumericInput('buyersPercentage', e.target.value)}
-                  disabled={false}
+                  disabled={isStorage && contract.type === 'tolling'}
                 />
               </>
             ) : (
@@ -108,6 +129,37 @@ const AssetFormContract = ({ contract, updateContract, removeContract, isStorage
               </div>
             )}
           </div>
+
+          {/* Revenue calculation displays for storage types */}
+          {contract.strikePrice && isStorage && (
+            <div className="col-span-2 bg-gray-50 p-4 rounded-md">
+              <h4 className="text-sm font-medium mb-2">Annual Revenue Calculation</h4>
+              
+              {/* Storage Tolling Contract */}
+              {contract.type === 'tolling' && (
+                <>
+                  <div className="text-lg font-semibold">
+                    ${((8760 * contract.strikePrice * capacity) / 1000000).toFixed(2)}M per year
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Based on {capacity} MW × 8,760 hours × ${contract.strikePrice}/MW/hr
+                  </p>
+                </>
+              )}
+
+              {/* Storage CfD Contract */}
+              {contract.type === 'cfd' && (
+                <>
+                  <div className="text-lg font-semibold">
+                    ${((365 * contract.strikePrice * (contract.buyersPercentage / 100)) / 1000000).toFixed(2)}M per year
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Based on 365 days × ${contract.strikePrice} spread × {contract.buyersPercentage}% contracted
+                  </p>
+                </>
+              )}
+            </div>
+          )}
 
           {!isStorage && contract.type === 'bundled' && (
             <>
@@ -129,26 +181,66 @@ const AssetFormContract = ({ contract, updateContract, removeContract, isStorage
                   className="bg-gray-100"
                 />
               </div>
+
+              {/* Renewable PPA Revenue Calculation */}
+              {contract.strikePrice && contract.buyersPercentage && (
+                <div className="col-span-2 bg-gray-50 p-4 rounded-md mt-4">
+                  <h4 className="text-sm font-medium mb-2">Annual Revenue Calculation</h4>
+                  
+                  {/* Calculate black and green components */}
+                  {(() => {
+                    const baseRevenue = 8760 * capacity * (capacityFactor/100) * (contract.buyersPercentage/100);
+                    const blackPrice = contract.blackPrice || 0;
+                    const greenPrice = contract.greenPrice || 0;
+                    const blackRevenue = (baseRevenue * blackPrice) / 1000000;
+                    const greenRevenue = (baseRevenue * greenPrice) / 1000000;
+                    const totalRevenue = blackRevenue + greenRevenue;
+                    
+                    return (
+                      <>
+                        <div className="text-lg font-semibold">
+                          ${totalRevenue.toFixed(2)}M per year (Black = ${blackRevenue.toFixed(2)}M, Green = ${greenRevenue.toFixed(2)}M)
+                        </div>
+                        <p className="text-xs text-gray-500">
+                          Based on {capacity} MW × {capacityFactor}% CF × 8,760 hours × ${contract.strikePrice}/MWh × {contract.buyersPercentage}% contracted
+                        </p>
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
             </>
           )}
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Start Date</label>
-            <Input
-              type="date"
-              value={contract.startDate || ''}
-              onChange={(e) => updateContract('startDate', e.target.value)}
-            />
-            <p className="text-xs text-gray-500">Default as Asset Start</p>
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">End Date</label>
-            <Input
-              type="date"
-              value={contract.endDate || ''}
-              onChange={(e) => updateContract('endDate', e.target.value)}
-            />
-            <p className="text-xs text-gray-500">Default +10 years</p>
+          {/* Modified date section */}
+          <div className="col-span-2 grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Start Date</label>
+                <Input
+                  type="date"
+                  value={contract.startDate || ''}
+                  onChange={(e) => updateContract('startDate', e.target.value)}
+                />
+                <p className="text-xs text-gray-500">Default as Asset Start</p>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">End Date</label>
+                <Input
+                  type="date"
+                  value={contract.endDate || ''}
+                  onChange={(e) => updateContract('endDate', e.target.value)}
+                />
+                <p className="text-xs text-gray-500">Default +10 years</p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Contract Tenor</label>
+              <div className="h-10 flex items-center px-3 border rounded-md bg-gray-50">
+                <span className="text-sm">{calculateTenor() ? `${calculateTenor()} years` : 'N/A'}</span>
+              </div>
+              <p className="text-xs text-gray-500">Calculated from dates</p>
+            </div>
           </div>
 
           <div className="space-y-2">

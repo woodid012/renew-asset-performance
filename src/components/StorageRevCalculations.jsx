@@ -1,7 +1,9 @@
 export const calculateStorageRevenue = (asset, timeInterval, year, assetStartYear) => {
   const volume = parseFloat(asset.volume) || 0;  // This is MWh of storage
+  const capacity = parseFloat(asset.capacity) || 0; // MW capacity
   const volumeLossAdjustment = parseFloat(asset.volumeLossAdjustment) || 95;
   const DAYS_IN_YEAR = 365;
+  const HOURS_IN_YEAR = 8760;
 
   // Calculate period-adjusted values
   let periodAdjustment = 1; // Default for yearly
@@ -34,7 +36,6 @@ export const calculateStorageRevenue = (asset, timeInterval, year, assetStartYea
 
     if (contract.type === 'fixed') {
       // Fixed Revenue contract - directly use the annual revenue in $M
-      // For fixed revenue, ignore buyers percentage as it's a fixed amount
       const annualRevenue = parseFloat(contract.strikePrice) || 0;
       contractedRevenue += (annualRevenue * indexationFactor * periodAdjustment * degradationFactor);
       totalContractedPercentage += buyersPercentage;
@@ -46,6 +47,16 @@ export const calculateStorageRevenue = (asset, timeInterval, year, assetStartYea
       // Simple calculation: volume * 1 cycle per day * 365 days * spread
       const revenue = volume * 1 * DAYS_IN_YEAR * adjustedSpread * degradationFactor * (volumeLossAdjustment/100) * (buyersPercentage/100);
       contractedRevenue += revenue / 1000000; // Convert to $M
+      totalContractedPercentage += buyersPercentage;
+    } else if (contract.type === 'tolling') {
+      // Tolling contract - use price per MW/hr
+      const hourlyRate = parseFloat(contract.strikePrice) || 0;
+      const adjustedRate = hourlyRate * indexationFactor;
+      
+      // Calculate revenue: capacity * hours * rate
+      // Note: Tolling payments are for capacity availability, so no degradation factor
+      const revenue = capacity * HOURS_IN_YEAR * adjustedRate;
+      contractedRevenue += (revenue / 1000000) * periodAdjustment; // Convert to $M
       totalContractedPercentage += buyersPercentage;
     }
   });
@@ -63,14 +74,15 @@ export const calculateStorageRevenue = (asset, timeInterval, year, assetStartYea
     merchantRevenue = revenue / 1000000; // Convert to $M
   }
 
+  // For storage assets, all revenue is considered "black" (non-green) revenue
   return {
     total: contractedRevenue + merchantRevenue,
-    contractedGreen: 0,
-    contractedBlack: contractedRevenue,
-    merchantGreen: 0,
-    merchantBlack: merchantRevenue,
-    greenPercentage: 0,
-    blackPercentage: totalContractedPercentage,
+    contractedGreen: 0,  // Storage has no green component
+    contractedBlack: contractedRevenue,  // All contracted revenue is black
+    merchantGreen: 0,    // Storage has no green component
+    merchantBlack: merchantRevenue,  // All merchant revenue is black
+    greenPercentage: 0,  // Storage has no green percentage
+    blackPercentage: totalContractedPercentage,  // All contracted percentage is black
     annualGeneration: volume * DAYS_IN_YEAR * degradationFactor * (volumeLossAdjustment/100)
   };
 };

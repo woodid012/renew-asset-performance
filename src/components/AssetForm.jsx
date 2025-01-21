@@ -331,11 +331,24 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
             </div>
 
             <div className="col-span-2 bg-gray-50 p-4 rounded-md">
-              <h4 className="text-sm font-medium mb-2">Year 1 Volume</h4>
-              <div className="text-lg font-semibold">
-                {year1Volume ? `${year1Volume.toFixed(0).toLocaleString()} GWh` : 'Not calculated'}
-              </div>
-            </div>
+            <h4 className="text-sm font-medium mb-2">Year 1 Volume</h4>
+            {year1Volume ? (
+              <>
+                <div className="text-lg font-semibold">
+                  {year1Volume.toFixed(0).toLocaleString()} GWh
+                </div>
+                <p className="text-xs text-gray-500">
+                  {asset.type === 'storage' ? (
+                    `Based on ${asset.volume} MWh × 365 days × ${asset.volumeLossAdjustment || 0}% volume loss adjustment`
+                  ) : (
+                    `Based on ${asset.capacity} MW × ${asset.capacityFactor}% CF × 8,760 hours × ${asset.volumeLossAdjustment || 0}% volume loss adjustment`
+                  )}
+                </p>
+              </>
+            ) : (
+              <div className="text-lg font-semibold">Not calculated</div>
+            )}
+</div>
           </div>
         </CardContent>
       </Card>
@@ -351,12 +364,14 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
         <CardContent>
           {asset.contracts.map((contract) => (
             <AssetFormContract
-              key={contract.id}
-              contract={contract}
-              updateContract={(field, value) => handleContractUpdate(contract.id, field, value)}
-              removeContract={() => removeContract(contract.id)}
-              isStorage={asset.type === 'storage'}
-            />
+            key={contract.id}
+            contract={contract}
+            updateContract={(field, value) => handleContractUpdate(contract.id, field, value)}
+            removeContract={() => removeContract(contract.id)}
+            isStorage={asset.type === 'storage'}
+            capacity={asset.capacity}
+            capacityFactor={asset.capacityFactor} // Just pass the annual value directly
+          />
           ))}
           {asset.contracts.length === 0 && (
             <div className="text-center py-4 text-gray-500">No contracts added yet</div>
