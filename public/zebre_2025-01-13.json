@@ -32,7 +32,7 @@
       "qtrCapacityFactor_q4": "",
       "capacityFactor": "",
       "volume": 293,
-      "assetLife": 20
+      "assetLife": 25
     },
     "2": {
       "id": "2",
@@ -57,8 +57,8 @@
           "settlementFormula": "",
           "hasFloor": false,
           "floorValue": "",
-          "startDate": "2028-01-01",
-          "endDate": "2037-12-31"
+          "startDate": "2027-04-01",
+          "endDate": "2037-03-31"
         }
       ],
       "qtrCapacityFactor_q1": "31",
@@ -107,6 +107,6 @@
     }
   },
   "portfolioName": "ZEBRE",
-  "exportDate": "2025-01-21T04:40:14.145Z",
+  "exportDate": "2025-01-21T04:42:35.908Z",
   "version": "1.0"
 }
