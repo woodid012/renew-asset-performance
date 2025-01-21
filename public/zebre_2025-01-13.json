@@ -38,20 +38,20 @@
       "id": "2",
       "name": "Solar River Solar",
       "state": "SA",
-      "assetStartDate": "2028-01-01",
-      "capacity": 200,
+      "assetStartDate": "2027-04-01",
+      "capacity": 232,
       "type": "solar",
-      "volumeLossAdjustment": 95,
+      "volumeLossAdjustment": 97,
       "contracts": [
         {
           "id": "1",
           "counterparty": "Counterparty 1",
-          "type": "",
-          "buyersPercentage": 80,
+          "type": "bundled",
+          "buyersPercentage": 100,
           "shape": "flat",
-          "strikePrice": 65,
-          "greenPrice": "",
-          "blackPrice": "",
+          "strikePrice": 50,
+          "greenPrice": "0",
+          "blackPrice": 50,
           "indexation": "2.5",
           "indexationReferenceYear": "2025",
           "settlementFormula": "",
@@ -66,33 +66,34 @@
       "qtrCapacityFactor_q3": "23",
       "qtrCapacityFactor_q4": "29",
       "capacityFactor": "27",
-      "annualDegradation": 2
+      "annualDegradation": 0.5,
+      "assetLife": 30
     },
     "3": {
       "id": "3",
       "name": "Solar River BESS",
       "state": "SA",
-      "assetStartDate": "2028-01-01",
-      "capacity": 200,
+      "assetStartDate": "2027-04-01",
+      "capacity": 256,
       "type": "storage",
-      "volumeLossAdjustment": 95,
+      "volumeLossAdjustment": 97,
       "contracts": [
         {
           "id": "1",
-          "counterparty": "Counterparty 1",
-          "type": "cfd",
+          "counterparty": "ZEN Tolling",
+          "type": "fixed",
           "buyersPercentage": 100,
           "shape": "flat",
-          "strikePrice": 200,
+          "strikePrice": 53.82,
           "greenPrice": "",
           "blackPrice": "",
-          "indexation": "2.5",
+          "indexation": 2,
           "indexationReferenceYear": "2025",
           "settlementFormula": "",
           "hasFloor": false,
           "floorValue": "",
-          "startDate": "2028-01-01",
-          "endDate": "2037-12-31"
+          "startDate": "2027-04-01",
+          "endDate": "2037-03-31"
         }
       ],
       "qtrCapacityFactor_q1": "",
@@ -101,11 +102,11 @@
       "qtrCapacityFactor_q4": "",
       "capacityFactor": "",
       "annualDegradation": 2,
-      "assetLife": 20,
-      "volume": 800
+      "assetLife": 25,
+      "volume": 656
     }
   },
   "portfolioName": "ZEBRE",
-  "exportDate": "2025-01-13T23:32:11.560Z",
+  "exportDate": "2025-01-21T04:40:14.145Z",
   "version": "1.0"
 }
