@@ -77,16 +77,37 @@ const PPATableOutputs = ({ yearLimit }) => {
             let revenue = 0;
             let price = 0;
             
-            if (contract.type === 'bundled') {
-              revenue = (assetRevenue.contractedGreen + assetRevenue.contractedBlack) * 
-                       (buyersPercentage / assetRevenue.greenPercentage);
-              price = revenue * 1000000 / contractedVolume;
-            } else if (contract.type === 'green') {
-              revenue = assetRevenue.contractedGreen * (buyersPercentage / assetRevenue.greenPercentage);
-              price = revenue * 1000000 / contractedVolume;
-            } else if (contract.type === 'black') {
-              revenue = assetRevenue.contractedBlack * (buyersPercentage / assetRevenue.blackPercentage);
-              price = revenue * 1000000 / contractedVolume;
+            if (asset.type === 'storage') {
+              // For storage assets, all contracts are treated as black only
+              if (contract.type === 'fixed') {
+                // Fixed revenue is already in $M
+                revenue = assetRevenue.contractedBlack * (buyersPercentage / 100);
+                price = revenue * 1000000 / contractedVolume;
+              } else if (contract.type === 'cfd') {
+                // CfD revenue is based on volume and price spread
+                revenue = assetRevenue.contractedBlack * (buyersPercentage / 100);
+                price = parseFloat(contract.strikePrice) || 0;
+              } else if (contract.type === 'tolling') {
+                // Tolling revenue is based on capacity payment
+                revenue = assetRevenue.contractedBlack * (buyersPercentage / 100);
+                price = parseFloat(contract.strikePrice) || 0;
+              }
+              
+              // Override contract type to always show as black for storage
+              contract = { ...contract, type: 'black' };
+            } else {
+              // For non-storage assets
+              if (contract.type === 'bundled') {
+                revenue = (assetRevenue.contractedGreen + assetRevenue.contractedBlack) * 
+                         (buyersPercentage / assetRevenue.greenPercentage);
+                price = revenue * 1000000 / contractedVolume;
+              } else if (contract.type === 'green') {
+                revenue = assetRevenue.contractedGreen * (buyersPercentage / assetRevenue.greenPercentage);
+                price = revenue * 1000000 / contractedVolume;
+              } else if (contract.type === 'black') {
+                revenue = assetRevenue.contractedBlack * (buyersPercentage / assetRevenue.blackPercentage);
+                price = revenue * 1000000 / contractedVolume;
+              }
             }
 
             outputData.push({
@@ -104,37 +125,58 @@ const PPATableOutputs = ({ yearLimit }) => {
         });
 
         // Handle merchant outputs
-        const merchantGreenVolume = assetRevenue.annualGeneration * 
-                                  ((100 - assetRevenue.greenPercentage) / 100);
-        const merchantBlackVolume = assetRevenue.annualGeneration * 
-                                  ((100 - assetRevenue.blackPercentage) / 100);
+        if (asset.type === 'storage') {
+          // Storage only has black merchant revenue
+          const merchantVolume = assetRevenue.annualGeneration * 
+                               ((100 - assetRevenue.blackPercentage) / 100);
+          
+          if (merchantVolume > 0) {
+            outputData.push({
+              year,
+              assetName: asset.name,
+              state: asset.state,
+              contractId: 'Merchant',
+              category: 'Merchant',
+              type: 'black', // Always black for storage
+              volume: Math.round(merchantVolume),
+              price: ((assetRevenue.merchantBlack * 1000000) / merchantVolume).toFixed(2),
+              revenue: assetRevenue.merchantBlack.toFixed(2)
+            });
+          }
+        } else {
+          // For non-storage assets, handle both green and black merchant volumes
+          const merchantGreenVolume = assetRevenue.annualGeneration * 
+                                    ((100 - assetRevenue.greenPercentage) / 100);
+          const merchantBlackVolume = assetRevenue.annualGeneration * 
+                                    ((100 - assetRevenue.blackPercentage) / 100);
 
-        if (merchantGreenVolume > 0) {
-          outputData.push({
-            year,
-            assetName: asset.name,
-            state: asset.state,
-            contractId: 'Merchant',
-            category: 'Merchant',
-            type: 'green',
-            volume: Math.round(merchantGreenVolume),
-            price: ((assetRevenue.merchantGreen * 1000000) / merchantGreenVolume).toFixed(2),
-            revenue: assetRevenue.merchantGreen.toFixed(2)
-          });
-        }
+          if (merchantGreenVolume > 0) {
+            outputData.push({
+              year,
+              assetName: asset.name,
+              state: asset.state,
+              contractId: 'Merchant',
+              category: 'Merchant',
+              type: 'green',
+              volume: Math.round(merchantGreenVolume),
+              price: ((assetRevenue.merchantGreen * 1000000) / merchantGreenVolume).toFixed(2),
+              revenue: assetRevenue.merchantGreen.toFixed(2)
+            });
+          }
 
-        if (merchantBlackVolume > 0) {
-          outputData.push({
-            year,
-            assetName: asset.name,
-            state: asset.state,
-            contractId: 'Merchant',
-            category: 'Merchant',
-            type: 'black',
-            volume: Math.round(merchantBlackVolume),
-            price: ((assetRevenue.merchantBlack * 1000000) / merchantBlackVolume).toFixed(2),
-            revenue: assetRevenue.merchantBlack.toFixed(2)
-          });
+          if (merchantBlackVolume > 0) {
+            outputData.push({
+              year,
+              assetName: asset.name,
+              state: asset.state,
+              contractId: 'Merchant',
+              category: 'Merchant',
+              type: 'black',
+              volume: Math.round(merchantBlackVolume),
+              price: ((assetRevenue.merchantBlack * 1000000) / merchantBlackVolume).toFixed(2),
+              revenue: assetRevenue.merchantBlack.toFixed(2)
+            });
+          }
         }
       }
     });
@@ -201,7 +243,7 @@ const PPATableOutputs = ({ yearLimit }) => {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="base">Base Case</SelectItem>
-            <SelectItem value="worst">Worst Case</SelectItem>
+            <SelectItem value="worst">Combined Downside Case</SelectItem>
             <SelectItem value="volume">Volume Stress</SelectItem>
             <SelectItem value="price">Price Stress</SelectItem>
           </SelectContent>

@@ -8,6 +8,10 @@ import { calculateAssetRevenue, applyEscalation } from './RevCalculations';
 const PPATableInputs = ({ yearLimit }) => {
   const { assets, constants, getMerchantPrice } = usePortfolio();
 
+  const capitalizeType = (type) => {
+    return type.charAt(0).toUpperCase() + type.slice(1);
+  };
+
   const generateYearlyData = () => {
     const yearlyData = [];
     const endYear = yearLimit 
@@ -42,106 +46,143 @@ const PPATableInputs = ({ yearLimit }) => {
             
             let basePrice = 0;
             let indexedPrice = 0;
+            let contractType = contract.type;
 
-            if (contract.type === 'bundled') {
-              basePrice = parseFloat(contract.greenPrice) + parseFloat(contract.blackPrice);
+            // Handle price calculation based on asset and contract type
+            if (asset.type === 'storage') {
+              // Storage assets only have black price
+              if (contract.type === 'fixed' || contract.type === 'cfd' || contract.type === 'tolling') {
+                basePrice = parseFloat(contract.strikePrice);
+                contractType = contract.type; // Keep original contract type for storage
+              }
             } else {
-              basePrice = parseFloat(contract.strikePrice);
+              if (contract.type === 'bundled') {
+                basePrice = parseFloat(contract.greenPrice) + parseFloat(contract.blackPrice);
+              } else {
+                basePrice = parseFloat(contract.strikePrice);
+              }
             }
 
             indexedPrice = basePrice * indexationFactor;
             const contractedVolume = annualGeneration * (contract.buyersPercentage / 100);
-            const equivalentMW = asset.capacity * (contract.buyersPercentage / 100);
 
             yearlyData.push({
               year,
               assetName: asset.name,
               state: asset.state,
-              type: asset.type,
+              type: capitalizeType(asset.type),
               ppaNumber: contract.id,
-              contractType: contract.type,
+              contractType,
               buyerPercentage: contract.buyersPercentage,
               basePrice: basePrice.toFixed(2),
               indexation: contract.indexation,
               indexedPrice: indexedPrice.toFixed(2),
               term: `${contractStart}-${contractEnd}`,
-              volume: Math.round(contractedVolume),
-              equivalentMW: equivalentMW.toFixed(1)
+              volume: Math.round(contractedVolume)
             });
           }
         });
 
-        const contractedGreenPercentage = asset.contracts.reduce((sum, contract) => {
-          const contractStart = new Date(contract.startDate).getFullYear();
-          const contractEnd = new Date(contract.endDate).getFullYear();
-          if (year >= contractStart && year <= contractEnd) {
-            if (contract.type === 'bundled' || contract.type === 'green') {
+        // Handle merchant entries based on asset type
+        if (asset.type === 'storage') {
+          // Storage only has black merchant
+          const merchantPercentage = 100 - asset.contracts.reduce((sum, contract) => {
+            const contractStart = new Date(contract.startDate).getFullYear();
+            const contractEnd = new Date(contract.endDate).getFullYear();
+            if (year >= contractStart && year <= contractEnd) {
               return sum + parseFloat(contract.buyersPercentage);
             }
-          }
-          return sum;
-        }, 0);
+            return sum;
+          }, 0);
 
-        const contractedBlackPercentage = asset.contracts.reduce((sum, contract) => {
-          const contractStart = new Date(contract.startDate).getFullYear();
-          const contractEnd = new Date(contract.endDate).getFullYear();
-          if (year >= contractStart && year <= contractEnd) {
-            if (contract.type === 'bundled' || contract.type === 'black') {
-              return sum + parseFloat(contract.buyersPercentage);
+          if (merchantPercentage > 0) {
+            const merchantVolume = annualGeneration * (merchantPercentage / 100);
+            const basePrice = getMerchantPrice(asset.type, 'black', asset.state, year);
+            const escalatedPrice = applyEscalation(basePrice, year, constants);
+
+            yearlyData.push({
+              year,
+              assetName: asset.name,
+              state: asset.state,
+              type: capitalizeType(asset.type),
+              ppaNumber: 'Merchant',
+              contractType: 'black',
+              buyerPercentage: merchantPercentage,
+              basePrice: basePrice.toFixed(2),
+              indexation: constants.escalation,
+              indexedPrice: escalatedPrice.toFixed(2),
+              term: `${year}`,
+              volume: Math.round(merchantVolume)
+            });
+          }
+        } else {
+          // Non-storage assets can have both green and black merchant
+          const contractedGreenPercentage = asset.contracts.reduce((sum, contract) => {
+            const contractStart = new Date(contract.startDate).getFullYear();
+            const contractEnd = new Date(contract.endDate).getFullYear();
+            if (year >= contractStart && year <= contractEnd) {
+              if (contract.type === 'bundled' || contract.type === 'green') {
+                return sum + parseFloat(contract.buyersPercentage);
+              }
             }
+            return sum;
+          }, 0);
+
+          const contractedBlackPercentage = asset.contracts.reduce((sum, contract) => {
+            const contractStart = new Date(contract.startDate).getFullYear();
+            const contractEnd = new Date(contract.endDate).getFullYear();
+            if (year >= contractStart && year <= contractEnd) {
+              if (contract.type === 'bundled' || contract.type === 'black') {
+                return sum + parseFloat(contract.buyersPercentage);
+              }
+            }
+            return sum;
+          }, 0);
+
+          const merchantGreenPercentage = 100 - contractedGreenPercentage;
+          const merchantBlackPercentage = 100 - contractedBlackPercentage;
+
+          if (merchantGreenPercentage > 0) {
+            const merchantGreenVolume = annualGeneration * (merchantGreenPercentage / 100);
+            const baseGreenPrice = getMerchantPrice(asset.type, 'green', asset.state, year);
+            const escalatedGreenPrice = applyEscalation(baseGreenPrice, year, constants);
+
+            yearlyData.push({
+              year,
+              assetName: asset.name,
+              state: asset.state,
+              type: capitalizeType(asset.type),
+              ppaNumber: 'Merchant',
+              contractType: 'green',
+              buyerPercentage: merchantGreenPercentage,
+              basePrice: baseGreenPrice.toFixed(2),
+              indexation: constants.escalation,
+              indexedPrice: escalatedGreenPrice.toFixed(2),
+              term: `${year}`,
+              volume: Math.round(merchantGreenVolume)
+            });
           }
-          return sum;
-        }, 0);
 
-        const merchantGreenPercentage = 100 - contractedGreenPercentage;
-        const merchantBlackPercentage = 100 - contractedBlackPercentage;
+          if (merchantBlackPercentage > 0) {
+            const merchantBlackVolume = annualGeneration * (merchantBlackPercentage / 100);
+            const baseBlackPrice = getMerchantPrice(asset.type, 'black', asset.state, year);
+            const escalatedBlackPrice = applyEscalation(baseBlackPrice, year, constants);
 
-        if (merchantGreenPercentage > 0) {
-          const merchantGreenVolume = annualGeneration * (merchantGreenPercentage / 100);
-          const merchantGreenMW = asset.capacity * (merchantGreenPercentage / 100);
-          
-          const baseGreenPrice = getMerchantPrice(asset.type, 'green', asset.state, year);
-          const escalatedGreenPrice = applyEscalation(baseGreenPrice, year, constants);
-
-          yearlyData.push({
-            year,
-            assetName: asset.name,
-            state: asset.state,
-            type: asset.type,
-            ppaNumber: 'Merchant',
-            contractType: 'green',
-            buyerPercentage: merchantGreenPercentage,
-            basePrice: baseGreenPrice.toFixed(2),
-            indexation: constants.escalation,
-            indexedPrice: escalatedGreenPrice.toFixed(2),
-            term: `${year}`,
-            volume: Math.round(merchantGreenVolume),
-            equivalentMW: merchantGreenMW.toFixed(1)
-          });
-        }
-
-        if (merchantBlackPercentage > 0) {
-          const merchantBlackVolume = annualGeneration * (merchantBlackPercentage / 100);
-          const merchantBlackMW = asset.capacity * (merchantBlackPercentage / 100);
-          
-          const baseBlackPrice = getMerchantPrice(asset.type, 'black', asset.state, year);
-          const escalatedBlackPrice = applyEscalation(baseBlackPrice, year, constants);
-
-          yearlyData.push({
-            year,
-            assetName: asset.name,
-            state: asset.state,
-            type: asset.type,
-            ppaNumber: 'Merchant',
-            contractType: 'black',
-            buyerPercentage: merchantBlackPercentage,
-            basePrice: baseBlackPrice.toFixed(2),
-            indexation: constants.escalation,
-            indexedPrice: escalatedBlackPrice.toFixed(2),
-            term: `${year}`,
-            volume: Math.round(merchantBlackVolume),
-            equivalentMW: merchantBlackMW.toFixed(1)
-          });
+            yearlyData.push({
+              year,
+              assetName: asset.name,
+              state: asset.state,
+              type: capitalizeType(asset.type),
+              ppaNumber: 'Merchant',
+              contractType: 'black',
+              buyerPercentage: merchantBlackPercentage,
+              basePrice: baseBlackPrice.toFixed(2),
+              indexation: constants.escalation,
+              indexedPrice: escalatedBlackPrice.toFixed(2),
+              term: `${year}`,
+              volume: Math.round(merchantBlackVolume)
+            });
+          }
         }
       }
     });
@@ -167,8 +208,7 @@ const PPATableInputs = ({ yearLimit }) => {
       'Base Price ($/MWh)',
       'Indexation/Escalation %',
       'Indexed/Escalated Price ($/MWh)',
-      'Adj. Volume (MWh)',
-      'Equivalent MW'
+      'Adj. Volume (MWh)'
     ];
 
     const csvData = tableData.map(row => [
@@ -182,8 +222,7 @@ const PPATableInputs = ({ yearLimit }) => {
       row.basePrice,
       row.indexation,
       row.indexedPrice,
-      row.volume,
-      row.equivalentMW
+      row.volume
     ]);
 
     csvData.unshift(headers);
@@ -227,13 +266,12 @@ const PPATableInputs = ({ yearLimit }) => {
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Index %</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Indexed Price</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Adj. Volume (MWh)</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Equivalent MW</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {tableData.length === 0 ? (
                 <tr>
-                  <td colSpan="12" className="px-4 py-3 text-sm text-gray-500 text-center">
+                  <td colSpan="11" className="px-4 py-3 text-sm text-gray-500 text-center">
                     No data available for the selected period
                   </td>
                 </tr>
@@ -254,7 +292,6 @@ const PPATableInputs = ({ yearLimit }) => {
                     <td className="px-4 py-3 text-sm text-gray-900">{row.indexation}%</td>
                     <td className="px-4 py-3 text-sm text-gray-900">${row.indexedPrice}</td>
                     <td className="px-4 py-3 text-sm text-gray-900">{row.volume.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-sm text-gray-900">{row.equivalentMW}</td>
                   </tr>
                 ))
               )}

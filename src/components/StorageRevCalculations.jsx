@@ -66,8 +66,8 @@ export const calculateStorageRevenue = (asset, timeInterval, year, assetStartYea
   let merchantRevenue = 0;
   
   if (merchantPercentage > 0) {
-    // Using hardcoded $150 spread for merchant
-    const priceSpread = 150;
+    // Using hardcoded $160 spread for merchant
+    const priceSpread = 160;
     
     // Same calculation as CfD but with days not hours
     const revenue = volume * 1 * DAYS_IN_YEAR * priceSpread * degradationFactor * (volumeLossAdjustment/100) * (merchantPercentage/100);

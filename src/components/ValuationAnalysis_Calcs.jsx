@@ -2,27 +2,23 @@ import { calculateAssetRevenue } from './RevCalculations';
 
 export const DEFAULT_COSTS = {
   solar: {
-    fixedCostBase: 10.0,    // Base fixed cost for a 100MW solar farm
+    fixedCostBase: 5.0,    // Base fixed cost for a 100MW solar farm
     fixedCostScale: 0.75,   // Scale factor (less than 1 for economies of scale)
-    variableCost: 0.015,    // $0.015M per MW
     terminalValue: 15,      // $15M default terminal value for 100MW
   },
   wind: {
     fixedCostBase: 10.0,    // Base fixed cost for a 100MW wind farm
     fixedCostScale: 0.75,   // Scale factor
-    variableCost: 0.02,     // $0.02M per MW
     terminalValue: 20,      // $20M default terminal value for 100MW
   },
   battery: {
-    fixedCostBase: 10.0,    // Base fixed cost for a 100MW battery
+    fixedCostBase: 5,    // Base fixed cost for a 100MW battery
     fixedCostScale: 0.75,   // Scale factor
-    variableCost: 0.01,     // $0.01M per MW
     terminalValue: 10,      // $10M default terminal value for 100MW
   },
   default: {
-    fixedCostBase: 10.0,    // Base fixed cost for a 100MW asset
+    fixedCostBase: 5,    // Base fixed cost for a 100MW asset
     fixedCostScale: 0.75,   // Scale factor
-    variableCost: 0.015,    // $0.015M per MW
     terminalValue: 15,      // $15M default terminal value for 100MW
   }
 };
@@ -91,8 +87,6 @@ export const initializeAssetCosts = (assets) => {
       [asset.name]: {
         fixedCost: Number(scaledFixedCost.toFixed(2)),
         fixedCostIndex: Number(DEFAULT_VALUES.costEscalation.toFixed(2)),
-        variableCost: Number(defaultCosts.variableCost.toFixed(3)),
-        variableCostIndex: Number(DEFAULT_VALUES.costEscalation.toFixed(2)),
         terminalValue: Number((defaultCosts.terminalValue * 
                       (asset.capacity / DEFAULT_VALUES.baseCapacity)).toFixed(2))
       }
@@ -109,11 +103,16 @@ export const calculateNPVData = (
   selectedRevenueCase,
   selectedAsset = 'Total'
 ) => {
-  const npvData = Array.from({ length: 30 }, (_, yearIndex) => {
+  // Find the earliest start date
+  const startDates = Object.values(assets).map(asset => new Date(asset.assetStartDate).getFullYear());
+  const firstStartYear = Math.min(...startDates);
+  const lastEndYear = Math.max(...startDates) + 30; // Assuming 30-year asset life
+  const evaluationPeriod = lastEndYear - firstStartYear;
+  
+  const npvData = Array.from({ length: evaluationPeriod }, (_, yearIndex) => {
     let totalContractRevenue = 0;
     let totalMerchantRevenue = 0;
     let totalFixedCosts = 0;
-    let totalVariableCosts = 0;
     let totalTerminalValue = 0;
     
     // Filter assets based on selection
@@ -121,12 +120,14 @@ export const calculateNPVData = (
       ? Object.values(assets)
       : Object.values(assets).filter(asset => asset.name === selectedAsset);
     
-    const year = yearIndex + constants.analysisStartYear;
+    const year = yearIndex + firstStartYear + 1; // Start from first full year
 
     filteredAssets.forEach(asset => {
-      // Check if asset has started operations
-      const assetStartYear = new Date(asset.assetStartDate).getFullYear();
-      if (year >= assetStartYear) {
+      // Check if asset has started operations and is within its life
+      const assetStartYear = new Date(asset.assetStartDate).getFullYear() + 1; // First full year
+      const assetEndYear = new Date(asset.assetStartDate).getFullYear() + 30;
+      
+      if (year >= assetStartYear && year <= assetEndYear) {
         const baseRevenue = calculateAssetRevenue(asset, year, constants, getMerchantPrice);
         const stressedRevenue = calculateStressRevenue(baseRevenue, selectedRevenueCase, constants);
         
@@ -134,21 +135,17 @@ export const calculateNPVData = (
         totalMerchantRevenue += stressedRevenue.merchantGreen + stressedRevenue.merchantBlack;
 
         const fixedCostInflation = Math.pow(1 + (assetCosts[asset.name]?.fixedCostIndex || 2.5)/100, yearIndex);
-        const variableCostInflation = Math.pow(1 + (assetCosts[asset.name]?.variableCostIndex || 2.5)/100, yearIndex);
-        
         totalFixedCosts += (assetCosts[asset.name]?.fixedCost || 0) * fixedCostInflation;
-        totalVariableCosts += (assetCosts[asset.name]?.variableCost || 0) * asset.capacity * variableCostInflation;
         
         // Add terminal value in final year
-        if (yearIndex === 29) {
+        if (year === assetEndYear) {
           totalTerminalValue += (assetCosts[asset.name]?.terminalValue || 0);
         }
       }
     });
 
-    const totalCosts = totalFixedCosts + totalVariableCosts;
     const totalRevenue = totalContractRevenue + totalMerchantRevenue;
-    const netCashFlow = totalRevenue - totalCosts;
+    const netCashFlow = totalRevenue - totalFixedCosts;
     
     // Calculate weighted discount rate
     const contractWeight = totalRevenue ? totalContractRevenue / totalRevenue : 0.5;
@@ -159,13 +156,12 @@ export const calculateNPVData = (
     const presentValue = (netCashFlow + totalTerminalValue) / Math.pow(1 + weightedDiscountRate, yearIndex + 1);
 
     return {
-      year: yearIndex + 1,
+      year,
       contractRevenue: totalContractRevenue,
       merchantRevenue: totalMerchantRevenue,
       totalRevenue,
       fixedCosts: totalFixedCosts,
-      variableCosts: totalVariableCosts,
-      totalCosts,
+      totalCosts: totalFixedCosts,
       terminalValue: totalTerminalValue,
       netCashFlow,
       presentValue

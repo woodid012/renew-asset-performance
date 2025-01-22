@@ -7,7 +7,7 @@ import PPASummarySheet from './PPA_table_Summary';
 
 const PPASummaryTable = ({ assets }) => {
   // Define the year limit
-  const yearLimit = 3;
+  const yearLimit = 30;
 
   return (
     <div className="space-y-6">

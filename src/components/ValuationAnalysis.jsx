@@ -118,8 +118,6 @@ const ValuationAnalysis = () => {
                 <TableHead>Start</TableHead>
                 <TableHead>Fixed Cost ($M/pa)</TableHead>
                 <TableHead>Fixed Cost Esc. (%)</TableHead>
-                <TableHead>Var. Cost ($M/MW)</TableHead>
-                <TableHead>Var. Cost Esc. (%)</TableHead>
                 <TableHead>Terminal Value ($M)</TableHead>
               </TableRow>
             </TableHeader>
@@ -144,24 +142,6 @@ const ValuationAnalysis = () => {
                       inputMode="numeric"
                       value={assetCosts[asset.name]?.fixedCostIndex ?? ''}
                       onChange={(e) => handleAssetCostChange(asset.name, 'fixedCostIndex', e.target.value)}
-                      className="w-32 border rounded p-2"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <input
-                      type="number"
-                      inputMode="numeric"
-                      value={assetCosts[asset.name]?.variableCost ?? ''}
-                      onChange={(e) => handleAssetCostChange(asset.name, 'variableCost', e.target.value)}
-                      className="w-32 border rounded p-2"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <input
-                      type="number"
-                      inputMode="numeric"
-                      value={assetCosts[asset.name]?.variableCostIndex ?? ''}
-                      onChange={(e) => handleAssetCostChange(asset.name, 'variableCostIndex', e.target.value)}
                       className="w-32 border rounded p-2"
                     />
                   </TableCell>
@@ -232,11 +212,11 @@ const ValuationAnalysis = () => {
               <LineChart data={valuationResults?.npvData || []}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="year" />
-                <YAxis />
+                <YAxis domain={[0, 'auto']} />
                 <Tooltip formatter={(value) => `$${value?.toLocaleString()}M`} />
                 <Legend />
                 <Line type="monotone" dataKey="totalRevenue" name="Total Revenue" stroke="#FFB74D" />
-                <Line type="monotone" dataKey="totalCosts" name="Total Costs" stroke="#f44336" />
+                <Line type="monotone" dataKey="totalCosts" name="Fixed Costs" stroke="#f44336" />
                 <Line type="monotone" dataKey="netCashFlow" name="Net Cash Flow (inc. Terminal Value)" stroke="#9C27B0" />
               </LineChart>
             </ResponsiveContainer>
@@ -252,8 +232,6 @@ const ValuationAnalysis = () => {
                   <TableHead>Merchant Revenue ($M)</TableHead>
                   <TableHead>Total Revenue ($M)</TableHead>
                   <TableHead>Fixed Costs ($M)</TableHead>
-                  <TableHead>Variable Costs ($M)</TableHead>
-                  <TableHead>Total Costs ($M)</TableHead>
                   <TableHead>Terminal Value ($M)</TableHead>
                   <TableHead>Net Cash Flow (inc. Terminal Value) ($M)</TableHead>
                   <TableHead>Present Value ($M)</TableHead>
@@ -267,8 +245,6 @@ const ValuationAnalysis = () => {
                     <TableCell>${(year.merchantRevenue || 0).toLocaleString(undefined, { maximumFractionDigits: 1 })}</TableCell>
                     <TableCell>${((year.contractRevenue || 0) + (year.merchantRevenue || 0)).toLocaleString(undefined, { maximumFractionDigits: 1 })}</TableCell>
                     <TableCell>${(year.fixedCosts || 0).toLocaleString(undefined, { maximumFractionDigits: 1 })}</TableCell>
-                    <TableCell>${(year.variableCosts || 0).toLocaleString(undefined, { maximumFractionDigits: 1 })}</TableCell>
-                    <TableCell>${(year.totalCosts || 0).toLocaleString(undefined, { maximumFractionDigits: 1 })}</TableCell>
                     <TableCell>${(year.terminalValue || 0).toLocaleString(undefined, { maximumFractionDigits: 1 })}</TableCell>
                     <TableCell>${((year.netCashFlow || 0) + (year.terminalValue || 0)).toLocaleString(undefined, { maximumFractionDigits: 1 })}</TableCell>
                     <TableCell>${(year.presentValue || 0).toLocaleString(undefined, { maximumFractionDigits: 1 })}</TableCell>

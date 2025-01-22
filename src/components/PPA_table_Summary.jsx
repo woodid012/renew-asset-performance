@@ -31,9 +31,17 @@ const PPASummarySheet = () => {
 
   const calculateVolume = (asset, includeAdjustment = false) => {
     if (!asset) return "-";
-    const capacityMW = asset.capacity || 0;
     const volumeLossAdjustment = includeAdjustment ? (parseFloat(asset.volumeLossAdjustment || 95) / 100) : 1;
     
+    // Handle storage assets differently
+    if (asset.type === 'storage') {
+      const storageMWh = parseFloat(asset.volume || 0);
+      const annualGeneration = storageMWh * 365 * volumeLossAdjustment;
+      return annualGeneration.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    }
+    
+    // For non-storage assets, calculate using capacity factors
+    const capacityMW = asset.capacity || 0;
     const getQuarterValue = (quarter) => {
       const value = parseFloat(asset[`qtrCapacityFactor_q${quarter}`] || 0);
       if (value === 0 && asset.type && asset.state) {
