@@ -2,24 +2,33 @@
 import { useState, useCallback, useMemo } from 'react';
 import { calculateAssetRevenue } from './RevCalculations.jsx';
 
-// Helper function to calculate revenue with variations
-const calculateVariedRevenue = (baseRevenue, volumeChange, greenPriceChange, blackPriceChange) => {
-  // Always apply volume change
-  const contractedGreen = baseRevenue.contractedGreen * (1 + volumeChange/100);
-  const contractedBlack = baseRevenue.contractedBlack * (1 + volumeChange/100);
-  
-  // Apply price changes only to merchant components
-  const merchantGreen = baseRevenue.merchantGreen * (1 + volumeChange/100) * (1 + (greenPriceChange || 0)/100);
-  const merchantBlack = baseRevenue.merchantBlack * (1 + volumeChange/100) * (1 + (blackPriceChange || 0)/100);
-  
-  return contractedGreen + contractedBlack + merchantGreen + merchantBlack;
+// Helper function to calculate revenue with variations for storage vs non-storage assets
+const calculateVariedRevenue = (asset, baseRevenue, volumeChange, greenPriceChange, blackPriceChange) => {
+  if (asset.type === 'storage') {
+    // For storage assets, only apply volume change to contracted revenue
+    // and both volume and black price change to merchant revenue
+    const contractedBlack = baseRevenue.contractedBlack * (1 + volumeChange/100);
+    const merchantBlack = baseRevenue.merchantBlack * (1 + volumeChange/100) * (1 + (blackPriceChange || 0)/100);
+    
+    return contractedBlack + merchantBlack;
+  } else {
+    // For non-storage assets, handle both green and black components
+    const contractedGreen = baseRevenue.contractedGreen * (1 + volumeChange/100);
+    const contractedBlack = baseRevenue.contractedBlack * (1 + volumeChange/100);
+    
+    // Apply price changes only to merchant components
+    const merchantGreen = baseRevenue.merchantGreen * (1 + volumeChange/100) * (1 + (greenPriceChange || 0)/100);
+    const merchantBlack = baseRevenue.merchantBlack * (1 + volumeChange/100) * (1 + (blackPriceChange || 0)/100);
+    
+    return contractedGreen + contractedBlack + merchantGreen + merchantBlack;
+  }
 };
 
 // Calculate portfolio revenue for a specific scenario
 const calculatePortfolioRevenue = (assets, year, constants, getMerchantPrice, volumeChange = 0, greenPriceChange = 0, blackPriceChange = 0) => {
   return Object.values(assets).reduce((total, asset) => {
     const baseRevenue = calculateAssetRevenue(asset, year, constants, getMerchantPrice);
-    return total + calculateVariedRevenue(baseRevenue, volumeChange, greenPriceChange, blackPriceChange);
+    return total + calculateVariedRevenue(asset, baseRevenue, volumeChange, greenPriceChange, blackPriceChange);
   }, 0);
 };
 
@@ -52,7 +61,7 @@ export const useEarAnalysis = (assets, constants, getMerchantPrice, timePeriods 
     };
   }, [timePeriods, constants]);
 
-  // Modified scenario generation for time periods
+  // Modified scenario generation for time periods with storage handling
   const generateTimeBasedScenarios = useCallback(() => {
     if (!assets || Object.keys(assets).length === 0) return [];
     
@@ -69,15 +78,16 @@ export const useEarAnalysis = (assets, constants, getMerchantPrice, timePeriods 
             const volumeChange = variations.volumeVariation ? 
               (Math.random() * 2 - 1) * variations.volumeVariation : 0;
             
-            const greenPriceChange = variations.greenPriceVariation ? 
-              (Math.random() * 2 - 1) * variations.greenPriceVariation : 0;
+            // For storage assets, only generate black price change
+            const greenPriceChange = asset.type === 'storage' ? 0 :
+              (variations.greenPriceVariation ? (Math.random() * 2 - 1) * variations.greenPriceVariation : 0);
             
             const blackPriceChange = variations.blackPriceVariation ? 
               (Math.random() * 2 - 1) * variations.blackPriceVariation : 0;
 
             // Get base revenue components
             const baseRevenue = calculateAssetRevenue(asset, year, constants, getMerchantPrice);
-            const revenue = calculateVariedRevenue(baseRevenue, volumeChange, greenPriceChange, blackPriceChange);
+            const revenue = calculateVariedRevenue(asset, baseRevenue, volumeChange, greenPriceChange, blackPriceChange);
 
             scenarios.push({
               asset: asset.name,
@@ -86,7 +96,8 @@ export const useEarAnalysis = (assets, constants, getMerchantPrice, timePeriods 
               greenPriceChange,
               blackPriceChange,
               revenue,
-              baseRevenue: baseRevenue.total
+              baseRevenue: baseRevenue.total,
+              isStorage: asset.type === 'storage'
             });
           } catch (err) {
             console.error(`Error generating scenario for year ${year}:`, err);
@@ -140,7 +151,7 @@ export const useEarAnalysis = (assets, constants, getMerchantPrice, timePeriods 
     }));
   }, []);
 
-  // Calculate metrics for a specific year
+  // Calculate metrics for a specific year with storage handling
   const calculateYearlyMetrics = useCallback((data, year) => {
     if (!data.length) return null;
 
@@ -163,7 +174,8 @@ export const useEarAnalysis = (assets, constants, getMerchantPrice, timePeriods 
           volume: scenario.volumeChange,
           greenPrice: scenario.greenPriceChange,
           blackPrice: scenario.blackPriceChange
-        }
+        },
+        isStorage: scenario.isStorage
       });
     });
 
@@ -177,9 +189,16 @@ export const useEarAnalysis = (assets, constants, getMerchantPrice, timePeriods 
           .reduce((sum, assetScenarios) => sum + assetScenarios[i].baseRevenue, 0);
 
         const avgChanges = Object.values(assetGroups).reduce((changes, assetScenarios) => {
-          changes.volume += assetScenarios[i].changes.volume;
-          changes.greenPrice += assetScenarios[i].changes.greenPrice;
-          changes.blackPrice += assetScenarios[i].changes.blackPrice;
+          if (assetScenarios[i].isStorage) {
+            // For storage assets, only accumulate volume and black price changes
+            changes.volume += assetScenarios[i].changes.volume;
+            changes.blackPrice += assetScenarios[i].changes.blackPrice;
+          } else {
+            // For non-storage assets, accumulate all changes
+            changes.volume += assetScenarios[i].changes.volume;
+            changes.greenPrice += assetScenarios[i].changes.greenPrice;
+            changes.blackPrice += assetScenarios[i].changes.blackPrice;
+          }
           return changes;
         }, { volume: 0, greenPrice: 0, blackPrice: 0 });
 
@@ -203,6 +222,10 @@ export const useEarAnalysis = (assets, constants, getMerchantPrice, timePeriods 
     const p50Index = Math.floor(combinedScenarios.length * 0.5);
     const p10Index = Math.floor(combinedScenarios.length * 0.9);
 
+    // Check asset types in portfolio
+    const hasNonStorageAssets = Object.values(assets).some(asset => asset.type !== 'storage');
+    const hasStorageAssets = Object.values(assets).some(asset => asset.type === 'storage');
+
     // Calculate stress test scenarios
     const stressTests = {
       worstCase: calculatePortfolioRevenue(
@@ -225,7 +248,7 @@ export const useEarAnalysis = (assets, constants, getMerchantPrice, timePeriods 
       {
         name: "Worst Case",
         description: "Maximum adverse changes in all variables",
-        changes: `Volume: -${variations.volumeVariation}% Green: -${variations.greenPriceVariation}% Black: -${variations.blackPriceVariation}%`,
+        changes: `Volume: -${variations.volumeVariation}% ${hasNonStorageAssets ? `Green: -${variations.greenPriceVariation}% ` : ''}Black: -${variations.blackPriceVariation}%`,
         revenue: stressTests.worstCase
       },
       {
@@ -233,14 +256,30 @@ export const useEarAnalysis = (assets, constants, getMerchantPrice, timePeriods 
         description: "Only volume decreases",
         changes: `Volume: -${variations.volumeVariation}%`,
         revenue: stressTests.volumeStress
-      },
-      {
-        name: "Price Stress",
-        description: "Only prices decrease",
-        changes: `Green: -${variations.greenPriceVariation}% Black: -${variations.blackPriceVariation}%`,
-        revenue: stressTests.priceStress
       }
     ];
+
+    if (hasNonStorageAssets) {
+      stressTestDescriptions.push({
+        name: "Green Price Stress",
+        description: "Only green price decreases",
+        changes: `Green: -${variations.greenPriceVariation}%`,
+        revenue: calculatePortfolioRevenue(
+          assets, year, constants, getMerchantPrice,
+          0, -variations.greenPriceVariation, 0
+        )
+      });
+    }
+
+    stressTestDescriptions.push({
+      name: "Black Price Stress",
+      description: "Only black price decreases",
+      changes: `Black: -${variations.blackPriceVariation}%`,
+      revenue: calculatePortfolioRevenue(
+        assets, year, constants, getMerchantPrice,
+        0, 0, -variations.blackPriceVariation
+      )
+    });
 
     // Calculate percentages relative to base case
     const p10Percent = ((combinedScenarios[p10Index].revenue - baseCase) / baseCase * 100).toFixed(1);
@@ -309,6 +348,8 @@ export const validateTimePeriods = (periods, startYear, endYear) => {
   if (!periods || periods.length === 0) {
     return { valid: false, error: 'No time periods defined' };
   }
+
+
 
   // Sort periods by start year
   const sortedPeriods = [...periods].sort((a, b) => a.startYear - b.startYear);

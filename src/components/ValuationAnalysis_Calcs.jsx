@@ -120,22 +120,31 @@ export const calculateNPVData = (
       ? Object.values(assets)
       : Object.values(assets).filter(asset => asset.name === selectedAsset);
     
-    const year = yearIndex + firstStartYear + 1; // Start from first full year
+    const year = yearIndex + firstStartYear; // Start from asset start year
 
     filteredAssets.forEach(asset => {
       // Check if asset has started operations and is within its life
-      const assetStartYear = new Date(asset.assetStartDate).getFullYear() + 1; // First full year
+      const assetStartYear = new Date(asset.assetStartDate).getFullYear(); // Include partial first year
       const assetEndYear = new Date(asset.assetStartDate).getFullYear() + 30;
       
       if (year >= assetStartYear && year <= assetEndYear) {
+        // Calculate partial year factor for first year
+        let partialYearFactor = 1;
+        if (year === assetStartYear) {
+          const startDate = new Date(asset.assetStartDate);
+          const startMonth = startDate.getMonth();
+          // Convert month to quarter (0-2 = Q1, 3-5 = Q2, etc) and get remaining quarters
+          partialYearFactor = (4 - Math.floor(startMonth / 3)) / 4;
+        }
+
         const baseRevenue = calculateAssetRevenue(asset, year, constants, getMerchantPrice);
         const stressedRevenue = calculateStressRevenue(baseRevenue, selectedRevenueCase, constants);
         
-        totalContractRevenue += stressedRevenue.contractedGreen + stressedRevenue.contractedBlack;
-        totalMerchantRevenue += stressedRevenue.merchantGreen + stressedRevenue.merchantBlack;
+        totalContractRevenue += (stressedRevenue.contractedGreen + stressedRevenue.contractedBlack) * partialYearFactor;
+        totalMerchantRevenue += (stressedRevenue.merchantGreen + stressedRevenue.merchantBlack) * partialYearFactor;
 
         const fixedCostInflation = Math.pow(1 + (assetCosts[asset.name]?.fixedCostIndex || 2.5)/100, yearIndex);
-        totalFixedCosts += (assetCosts[asset.name]?.fixedCost || 0) * fixedCostInflation;
+        totalFixedCosts += (assetCosts[asset.name]?.fixedCost || 0) * fixedCostInflation * partialYearFactor;
         
         // Add terminal value in final year
         if (year === assetEndYear) {

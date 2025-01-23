@@ -1,4 +1,3 @@
-// EarDashboard.jsx
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { usePortfolio } from '@/contexts/PortfolioContext';
 import { useEarAnalysis } from './useEarAnalysis';
@@ -35,7 +34,12 @@ const EarningsRiskAnalysis = () => {
     updateAnalysisMode 
   } = usePortfolio();
   
-  const [selectedYear, setSelectedYear] = useState(constants.analysisStartYear);
+  const [selectedYear, setSelectedYear] = useState(() => {
+    const earliestAssetStart = Math.min(...Object.values(assets).map(asset => 
+      asset.assetStartDate ? new Date(asset.assetStartDate).getFullYear() : Infinity
+    ));
+    return Math.max(constants.analysisStartYear, earliestAssetStart === Infinity ? constants.analysisStartYear : earliestAssetStart);
+  });
   
   // Initialize timePeriods with stored value or create default if in complex mode
   const [timePeriods, setTimePeriods] = useState(() => {

@@ -1,23 +1,32 @@
 import { calculateAssetRevenue } from './RevCalculations.jsx';
 
-// Helper function to calculate revenue with variations
-const calculateVariedRevenue = (baseRevenue, volumeChange, greenPriceChange, blackPriceChange) => {
-  // Always apply volume change
-  const contractedGreen = baseRevenue.contractedGreen * (1 + volumeChange/100);
-  const contractedBlack = baseRevenue.contractedBlack * (1 + volumeChange/100);
-  
-  // Apply price changes only to merchant components
-  const merchantGreen = baseRevenue.merchantGreen * (1 + volumeChange/100) * (1 + (greenPriceChange || 0)/100);
-  const merchantBlack = baseRevenue.merchantBlack * (1 + volumeChange/100) * (1 + (blackPriceChange || 0)/100);
-  
-  return contractedGreen + contractedBlack + merchantGreen + merchantBlack;
+// Helper function to calculate revenue with variations for storage vs non-storage assets
+const calculateVariedRevenue = (asset, baseRevenue, volumeChange, greenPriceChange, blackPriceChange) => {
+  if (asset.type === 'storage') {
+    // For storage assets, only apply volume change to contracted revenue
+    // and both volume and black price change to merchant revenue
+    const contractedBlack = baseRevenue.contractedBlack * (1 + volumeChange/100);
+    const merchantBlack = baseRevenue.merchantBlack * (1 + volumeChange/100) * (1 + (blackPriceChange || 0)/100);
+    
+    return contractedBlack + merchantBlack;
+  } else {
+    // For non-storage assets, handle both green and black components
+    const contractedGreen = baseRevenue.contractedGreen * (1 + volumeChange/100);
+    const contractedBlack = baseRevenue.contractedBlack * (1 + volumeChange/100);
+    
+    // Apply price changes only to merchant components
+    const merchantGreen = baseRevenue.merchantGreen * (1 + volumeChange/100) * (1 + (greenPriceChange || 0)/100);
+    const merchantBlack = baseRevenue.merchantBlack * (1 + volumeChange/100) * (1 + (blackPriceChange || 0)/100);
+    
+    return contractedGreen + contractedBlack + merchantGreen + merchantBlack;
+  }
 };
 
 // Calculate portfolio revenue for a specific scenario
 const calculatePortfolioRevenue = (assets, year, constants, getMerchantPrice, volumeChange = 0, greenPriceChange = 0, blackPriceChange = 0) => {
   return Object.values(assets).reduce((total, asset) => {
     const baseRevenue = calculateAssetRevenue(asset, year, constants, getMerchantPrice);
-    return total + calculateVariedRevenue(baseRevenue, volumeChange, greenPriceChange, blackPriceChange);
+    return total + calculateVariedRevenue(asset, baseRevenue, volumeChange, greenPriceChange, blackPriceChange);
   }, 0);
 };
 
@@ -34,15 +43,16 @@ export const generateScenarios = (assets, constants, getMerchantPrice) => {
         const volumeChange = constants.volumeVariation ? 
           (Math.random() * 2 - 1) * constants.volumeVariation : 0;
         
-        const greenPriceChange = constants.greenPriceVariation ? 
-          (Math.random() * 2 - 1) * constants.greenPriceVariation : 0;
+        // For storage assets, only generate black price change
+        const greenPriceChange = asset.type === 'storage' ? 0 :
+          (constants.greenPriceVariation ? (Math.random() * 2 - 1) * constants.greenPriceVariation : 0);
         
         const blackPriceChange = constants.blackPriceVariation ? 
           (Math.random() * 2 - 1) * constants.blackPriceVariation : 0;
 
         // Get base revenue components
         const baseRevenue = calculateAssetRevenue(asset, year, constants, getMerchantPrice);
-        const revenue = calculateVariedRevenue(baseRevenue, volumeChange, greenPriceChange, blackPriceChange);
+        const revenue = calculateVariedRevenue(asset, baseRevenue, volumeChange, greenPriceChange, blackPriceChange);
 
         scenarios.push({
           asset: asset.name,
@@ -51,7 +61,8 @@ export const generateScenarios = (assets, constants, getMerchantPrice) => {
           greenPriceChange,
           blackPriceChange,
           revenue,
-          baseRevenue: baseRevenue.total
+          baseRevenue: baseRevenue.total,
+          isStorage: asset.type === 'storage'
         });
       }
     });
@@ -118,7 +129,8 @@ export const calculateYearlyMetrics = (data, year, assets, constants, getMerchan
         volume: scenario.volumeChange,
         greenPrice: scenario.greenPriceChange,
         blackPrice: scenario.blackPriceChange
-      }
+      },
+      isStorage: scenario.isStorage
     });
   });
 
@@ -129,9 +141,16 @@ export const calculateYearlyMetrics = (data, year, assets, constants, getMerchan
         .reduce((sum, assetScenarios) => sum + assetScenarios[i].revenue, 0);
 
       const avgChanges = Object.values(assetGroups).reduce((changes, assetScenarios) => {
-        changes.volume += assetScenarios[i].changes.volume;
-        changes.greenPrice += assetScenarios[i].changes.greenPrice;
-        changes.blackPrice += assetScenarios[i].changes.blackPrice;
+        if (assetScenarios[i].isStorage) {
+          // For storage assets, only accumulate volume and black price changes
+          changes.volume += assetScenarios[i].changes.volume;
+          changes.blackPrice += assetScenarios[i].changes.blackPrice;
+        } else {
+          // For non-storage assets, accumulate all changes
+          changes.volume += assetScenarios[i].changes.volume;
+          changes.greenPrice += assetScenarios[i].changes.greenPrice;
+          changes.blackPrice += assetScenarios[i].changes.blackPrice;
+        }
         return changes;
       }, { volume: 0, greenPrice: 0, blackPrice: 0 });
 
@@ -159,20 +178,31 @@ export const calculateYearlyMetrics = (data, year, assets, constants, getMerchan
   const p50Index = Math.floor(combinedScenarios.length * 0.5);
   const p10Index = Math.floor(combinedScenarios.length * 0.9);
 
+  // Check asset types in portfolio
+  const hasNonStorageAssets = Object.values(assets).some(asset => asset.type !== 'storage');
+  const hasStorageAssets = Object.values(assets).some(asset => asset.type === 'storage');
+
   // Calculate stress test scenarios
   const stressTests = {
-    worstCase: calculatePortfolioRevenue(assets, year, constants, getMerchantPrice, -volumeVar, -greenVar, -blackVar),
-    volumeStress: calculatePortfolioRevenue(assets, year, constants, getMerchantPrice, -volumeVar, 0, 0),
-    priceStress: calculatePortfolioRevenue(assets, year, constants, getMerchantPrice, 0, -greenVar, -blackVar),
-    greenPriceStress: calculatePortfolioRevenue(assets, year, constants, getMerchantPrice, 0, -greenVar, 0),
-    blackPriceStress: calculatePortfolioRevenue(assets, year, constants, getMerchantPrice, 0, 0, -blackVar)
+    worstCase: calculatePortfolioRevenue(
+      assets, year, constants, getMerchantPrice,
+      -volumeVar, -greenVar, -blackVar
+    ),
+    volumeStress: calculatePortfolioRevenue(
+      assets, year, constants, getMerchantPrice,
+      -volumeVar, 0, 0
+    ),
+    priceStress: calculatePortfolioRevenue(
+      assets, year, constants, getMerchantPrice,
+      0, -greenVar, -blackVar
+    )
   };
 
   const stressTestDescriptions = [
     {
       name: "Worst Case",
       description: "Maximum adverse changes in all variables",
-      changes: `Volume: -${volumeVar}% Green: -${greenVar}% Black: -${blackVar}%`,
+      changes: `Volume: -${volumeVar}% ${hasNonStorageAssets ? `Green: -${greenVar}% ` : ''}Black: -${blackVar}%`,
       revenue: stressTests.worstCase
     },
     {
@@ -180,26 +210,30 @@ export const calculateYearlyMetrics = (data, year, assets, constants, getMerchan
       description: "Only volume decreases",
       changes: `Volume: -${volumeVar}%`,
       revenue: stressTests.volumeStress
-    },
-    {
-      name: "Price Stress",
-      description: "Only prices decrease",
-      changes: `Green: -${greenVar}% Black: -${blackVar}%`,
-      revenue: stressTests.priceStress
-    },
-    {
+    }
+  ];
+
+  if (hasNonStorageAssets) {
+    stressTestDescriptions.push({
       name: "Green Price Stress",
       description: "Only green price decreases",
       changes: `Green: -${greenVar}%`,
-      revenue: stressTests.greenPriceStress
-    },
-    {
-      name: "Black Price Stress",
-      description: "Only black price decreases",
-      changes: `Black: -${blackVar}%`,
-      revenue: stressTests.blackPriceStress
-    }
-  ];
+      revenue: calculatePortfolioRevenue(
+        assets, year, constants, getMerchantPrice,
+        0, -greenVar, 0
+      )
+    });
+  }
+
+  stressTestDescriptions.push({
+    name: "Black Price Stress",
+    description: "Only black price decreases",
+    changes: `Black: -${blackVar}%`,
+    revenue: calculatePortfolioRevenue(
+      assets, year, constants, getMerchantPrice,
+      0, 0, -blackVar
+    )
+  });
 
   // Calculate percentages relative to base case
   const p10Percent = ((combinedScenarios[p10Index].revenue - baseCase) / baseCase * 100).toFixed(1);
