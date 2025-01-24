@@ -30,11 +30,11 @@ export const calculateAssetRevenue = (asset, timeInterval, constants, getMerchan
     return {
       total: 0,
       contractedGreen: 0,
-      contractedBlack: 0,
+      contractedEnergy: 0,
       merchantGreen: 0,
-      merchantBlack: 0,
+      merchantEnergy: 0,
       greenPercentage: 0,
-      blackPercentage: 0,
+      EnergyPercentage: 0,
       annualGeneration: 0
     };
   }
@@ -52,12 +52,12 @@ export const processPortfolioData = (portfolioData, assets, visibleAssets) => {
       timeInterval: periodData.timeInterval,
       total: 0,
       contractedGreen: 0,
-      contractedBlack: 0,
+      contractedEnergy: 0,
       merchantGreen: 0,
-      merchantBlack: 0,
+      merchantEnergy: 0,
       totalGeneration: 0,
       weightedGreenPercentage: 0,
-      weightedBlackPercentage: 0
+      weightedEnergyPercentage: 0
     };
 
     let totalRenewableGeneration = 0;
@@ -67,13 +67,13 @@ export const processPortfolioData = (portfolioData, assets, visibleAssets) => {
         const asset = Object.values(assets).find(a => a.name === assetName);
         const isStorage = asset.type === 'storage';
 
-        processedPeriodData.total += Number((assetData.contractedGreen + assetData.contractedBlack + 
-          assetData.merchantGreen + assetData.merchantBlack).toFixed(2));
+        processedPeriodData.total += Number((assetData.contractedGreen + assetData.contractedEnergy + 
+          assetData.merchantGreen + assetData.merchantEnergy).toFixed(2));
 
         processedPeriodData.contractedGreen += Number(assetData.contractedGreen.toFixed(2));
-        processedPeriodData.contractedBlack += Number(assetData.contractedBlack.toFixed(2));
+        processedPeriodData.contractedEnergy += Number(assetData.contractedEnergy.toFixed(2));
         processedPeriodData.merchantGreen += Number(assetData.merchantGreen.toFixed(2));
-        processedPeriodData.merchantBlack += Number(assetData.merchantBlack.toFixed(2));
+        processedPeriodData.merchantEnergy += Number(assetData.merchantEnergy.toFixed(2));
 
         processedPeriodData.totalGeneration += parseFloat(asset.capacity) || 0;
         
@@ -82,9 +82,9 @@ export const processPortfolioData = (portfolioData, assets, visibleAssets) => {
         }
 
         processedPeriodData[`${assetName} Contracted Green`] = Number(assetData.contractedGreen.toFixed(2));
-        processedPeriodData[`${assetName} Contracted Black`] = Number(assetData.contractedBlack.toFixed(2));
+        processedPeriodData[`${assetName} Contracted Energy`] = Number(assetData.contractedEnergy.toFixed(2));
         processedPeriodData[`${assetName} Merchant Green`] = Number(assetData.merchantGreen.toFixed(2));
-        processedPeriodData[`${assetName} Merchant Black`] = Number(assetData.merchantBlack.toFixed(2));
+        processedPeriodData[`${assetName} Merchant Energy`] = Number(assetData.merchantEnergy.toFixed(2));
       }
     });
     
@@ -98,14 +98,14 @@ export const processPortfolioData = (portfolioData, assets, visibleAssets) => {
         .reduce((acc, [_, assetData]) => 
           acc + (assetData.greenPercentage * assetData.annualGeneration / totalRenewableGeneration), 0);
       
-      processedPeriodData.weightedBlackPercentage = Object.entries(periodData.assets)
+      processedPeriodData.weightedEnergyPercentage = Object.entries(periodData.assets)
         .filter(([assetName]) => {
           if (!visibleAssets[assetName]) return false;
           const asset = Object.values(assets).find(a => a.name === assetName);
           return asset.type !== 'storage';
         })
         .reduce((acc, [_, assetData]) => 
-          acc + (assetData.blackPercentage * assetData.annualGeneration / totalRenewableGeneration), 0);
+          acc + (assetData.EnergyPercentage * assetData.annualGeneration / totalRenewableGeneration), 0);
     }
 
     return processedPeriodData;

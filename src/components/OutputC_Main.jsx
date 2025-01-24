@@ -110,11 +110,11 @@ const PortfolioDashboard = () => {
       Object.values(assets).forEach(asset => {
         if (visibleAssets[asset.name]) {
           newData[`${asset.name} Contracted`] = roundNumber(
-            (periodData[`${asset.name} Contracted Black`] || 0) + 
+            (periodData[`${asset.name} Contracted Energy`] || 0) + 
             (periodData[`${asset.name} Contracted Green`] || 0)
           );
           newData[`${asset.name} Merchant`] = roundNumber(
-            (periodData[`${asset.name} Merchant Black`] || 0) + 
+            (periodData[`${asset.name} Merchant Energy`] || 0) + 
             (periodData[`${asset.name} Merchant Green`] || 0)
           );
         }

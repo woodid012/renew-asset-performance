@@ -78,7 +78,7 @@ function PortfolioProviderInner({ children }) {
     ForecastStartYear: 2024,
     volumeVariation: 20,
     greenPriceVariation: 20,
-    blackPriceVariation: 20,
+    EnergyPriceVariation: 20,
     discountRates: {
       contract: 0.08,
       merchant: 0.10

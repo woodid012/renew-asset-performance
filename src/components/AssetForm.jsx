@@ -124,7 +124,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
       const updatedContract = updateBundledPrices({...contract}, field, value);
       
       // Ensure numeric fields are properly handled
-      if (['strikePrice', 'blackPrice', 'greenPrice', 'buyersPercentage', 'indexation'].includes(field)) {
+      if (['strikePrice', 'EnergyPrice', 'greenPrice', 'buyersPercentage', 'indexation'].includes(field)) {
         // If the value is empty string, keep it as empty string to allow typing
         updatedContract[field] = value === '' ? '' : value;
       } else {

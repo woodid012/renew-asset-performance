@@ -1,4 +1,4 @@
-assetId,name,state,capacity,type,volumeLossAdjustment,assetStartDate,contractId,contractCounterparty,contractType,contractBuyersPercentage,contractShape,contractStrikePrice,contractGreenPrice,contractBlackPrice,contractIndexation,contractHasFloor,contractFloorValue,contractStartDate,contractEndDate,contractTerm,indexationReferenceYear
+assetId,name,state,capacity,type,volumeLossAdjustment,assetStartDate,contractId,contractCounterparty,contractType,contractBuyersPercentage,contractShape,contractStrikePrice,contractGreenPrice,contractEnergyPrice,contractIndexation,contractHasFloor,contractFloorValue,contractStartDate,contractEndDate,contractTerm,indexationReferenceYear
 ,,,,,,,,,,,,,,,,,,,,,
 ,,,,,,,,,,,,,,,,,,,,,
 ,,,,,,,,,,,,,,,,,,,,,

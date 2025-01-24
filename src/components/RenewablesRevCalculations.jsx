@@ -62,9 +62,9 @@ export const calculateRenewablesRevenue = (asset, timeInterval, year, quarter, a
   });
 
   let contractedGreen = 0;
-  let contractedBlack = 0;
+  let contractedEnergy = 0;
   let totalGreenPercentage = 0;
-  let totalBlackPercentage = 0;
+  let totalEnergyPercentage = 0;
   
   activeContracts.forEach(contract => {
     const buyersPercentage = parseFloat(contract.buyersPercentage) || 0;
@@ -78,37 +78,37 @@ export const calculateRenewablesRevenue = (asset, timeInterval, year, quarter, a
       const annualRevenue = parseFloat(contract.strikePrice) || 0;
       const contractRevenue = annualRevenue * indexationFactor * periodAdjustment * degradationFactor;
       
-      // Allocate all fixed revenue to black component
+      // Allocate all fixed revenue to Energy component
       contractedGreen += 0;
-      contractedBlack += contractRevenue;
+      contractedEnergy += contractRevenue;
       totalGreenPercentage += 0;  // No green percentage for fixed revenue
-      totalBlackPercentage += buyersPercentage;
+      totalEnergyPercentage += buyersPercentage;
     } else if (contract.type === 'bundled') {
       let greenPrice = parseFloat(contract.greenPrice) || 0;
-      let blackPrice = parseFloat(contract.blackPrice) || 0;
+      let EnergyPrice = parseFloat(contract.EnergyPrice) || 0;
       
       greenPrice *= indexationFactor;
-      blackPrice *= indexationFactor;
+      EnergyPrice *= indexationFactor;
 
-      if (contract.hasFloor && (greenPrice + blackPrice) < parseFloat(contract.floorValue)) {
-        const total = greenPrice + blackPrice;
+      if (contract.hasFloor && (greenPrice + EnergyPrice) < parseFloat(contract.floorValue)) {
+        const total = greenPrice + EnergyPrice;
         const floorValue = parseFloat(contract.floorValue);
         if (total > 0) {
           greenPrice = (greenPrice / total) * floorValue;
-          blackPrice = (blackPrice / total) * floorValue;
+          EnergyPrice = (EnergyPrice / total) * floorValue;
         } else {
           greenPrice = floorValue / 2;
-          blackPrice = floorValue / 2;
+          EnergyPrice = floorValue / 2;
         }
       }
 
       const greenRevenue = (periodGeneration * buyersPercentage/100 * greenPrice) / 1000000;
-      const blackRevenue = (periodGeneration * buyersPercentage/100 * blackPrice) / 1000000;
+      const EnergyRevenue = (periodGeneration * buyersPercentage/100 * EnergyPrice) / 1000000;
       
       contractedGreen += greenRevenue;
-      contractedBlack += blackRevenue;
+      contractedEnergy += EnergyRevenue;
       totalGreenPercentage += buyersPercentage;
-      totalBlackPercentage += buyersPercentage;
+      totalEnergyPercentage += buyersPercentage;
 
     } else {
       let price = parseFloat(contract.strikePrice) || 0;
@@ -123,33 +123,33 @@ export const calculateRenewablesRevenue = (asset, timeInterval, year, quarter, a
       if (contract.type === 'green') {
         contractedGreen += contractRevenue;
         totalGreenPercentage += buyersPercentage;
-      } else if (contract.type === 'black') {
-        contractedBlack += contractRevenue;
-        totalBlackPercentage += buyersPercentage;
+      } else if (contract.type === 'Energy') {
+        contractedEnergy += contractRevenue;
+        totalEnergyPercentage += buyersPercentage;
       }
     }
   });
 
   // Calculate merchant revenue
   const greenMerchantPercentage = Math.max(0, 100 - totalGreenPercentage);
-  const blackMerchantPercentage = Math.max(0, 100 - totalBlackPercentage);
+  const EnergyMerchantPercentage = Math.max(0, 100 - totalEnergyPercentage);
   
   // Get merchant prices for the specific time interval and apply escalation
   const merchantGreenPrice = applyEscalation(getMerchantPrice(asset.type, 'green', asset.state, timeInterval) || 0, year, constants);
-  const merchantBlackPrice = applyEscalation(getMerchantPrice(asset.type, 'black', asset.state, timeInterval) || 0, year, constants);
+  const merchantEnergyPrice = applyEscalation(getMerchantPrice(asset.type, 'Energy', asset.state, timeInterval) || 0, year, constants);
   
   // Calculate merchant revenues with period-adjusted generation
   const merchantGreen = (periodGeneration * greenMerchantPercentage/100 * merchantGreenPrice) / 1000000;
-  const merchantBlack = (periodGeneration * blackMerchantPercentage/100 * merchantBlackPrice) / 1000000;
+  const merchantEnergy = (periodGeneration * EnergyMerchantPercentage/100 * merchantEnergyPrice) / 1000000;
 
   return {
-    total: contractedGreen + contractedBlack + merchantGreen + merchantBlack,
+    total: contractedGreen + contractedEnergy + merchantGreen + merchantEnergy,
     contractedGreen,
-    contractedBlack,
+    contractedEnergy,
     merchantGreen,
-    merchantBlack,
+    merchantEnergy,
     greenPercentage: totalGreenPercentage,
-    blackPercentage: totalBlackPercentage,
+    EnergyPercentage: totalEnergyPercentage,
     annualGeneration: periodGeneration
   };
 };

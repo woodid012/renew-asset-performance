@@ -24,9 +24,9 @@ const PriceChart = () => {
   };
 
   const typeColors = {
-    baseloadBlack: '#000000',
-    solarBlack: '#FFD700',
-    windBlack: '#0000FF',
+    baseloadEnergy: '#000000',
+    solarEnergy: '#FFD700',
+    windEnergy: '#0000FF',
     green: '#00FF00',
     storage: '#FF00FF'
   };
@@ -78,9 +78,9 @@ const PriceChart = () => {
     regionsToProcess.forEach(region => {
       timePeriods.forEach(period => {
         const priceTypes = [
-          { profile: 'baseload', type: 'black' },
-          { profile: 'solar', type: 'black' },
-          { profile: 'wind', type: 'black' },
+          { profile: 'baseload', type: 'Energy' },
+          { profile: 'solar', type: 'Energy' },
+          { profile: 'wind', type: 'Energy' },
           { profile: 'solar', type: 'green' }
         ];
         
@@ -135,9 +135,9 @@ const PriceChart = () => {
           }
         } else {
           const priceTypes = [
-            { key: 'baseloadBlack', profile: 'baseload', type: 'black' },
-            { key: 'solarBlack', profile: 'solar', type: 'black' },
-            { key: 'windBlack', profile: 'wind', type: 'black' },
+            { key: 'baseloadEnergy', profile: 'baseload', type: 'Energy' },
+            { key: 'solarEnergy', profile: 'solar', type: 'Energy' },
+            { key: 'windEnergy', profile: 'wind', type: 'Energy' },
             { key: 'green', profile: 'solar', type: 'green' }
           ];
 
@@ -170,13 +170,13 @@ const PriceChart = () => {
           regions.forEach(region => lines.push(`${region}_storage`));
           break;
         case 'Baseload':
-          regions.forEach(region => lines.push(`${region}_baseloadBlack`));
+          regions.forEach(region => lines.push(`${region}_baseloadEnergy`));
           break;
         case 'Solar':
-          regions.forEach(region => lines.push(`${region}_solarBlack`));
+          regions.forEach(region => lines.push(`${region}_solarEnergy`));
           break;
         case 'Wind':
-          regions.forEach(region => lines.push(`${region}_windBlack`));
+          regions.forEach(region => lines.push(`${region}_windEnergy`));
           break;
         case 'Green':
           regions.forEach(region => lines.push(`${region}_green`));
@@ -185,9 +185,9 @@ const PriceChart = () => {
     } else {
       if (selectedType === 'All') {
         lines.push(
-          `${selectedRegion}_baseloadBlack`,
-          `${selectedRegion}_solarBlack`,
-          `${selectedRegion}_windBlack`,
+          `${selectedRegion}_baseloadEnergy`,
+          `${selectedRegion}_solarEnergy`,
+          `${selectedRegion}_windEnergy`,
           `${selectedRegion}_green`,
           `${selectedRegion}_storage`
         );
@@ -196,13 +196,13 @@ const PriceChart = () => {
       } else {
         switch (selectedType) {
           case 'Baseload':
-            lines.push(`${selectedRegion}_baseloadBlack`);
+            lines.push(`${selectedRegion}_baseloadEnergy`);
             break;
           case 'Solar':
-            lines.push(`${selectedRegion}_solarBlack`);
+            lines.push(`${selectedRegion}_solarEnergy`);
             break;
           case 'Wind':
-            lines.push(`${selectedRegion}_windBlack`);
+            lines.push(`${selectedRegion}_windEnergy`);
             break;
           case 'Green':
             lines.push(`${selectedRegion}_green`);
@@ -218,9 +218,9 @@ const PriceChart = () => {
     const [region, type] = dataKey.split('_');
     let name = '';
     
-    if (type === 'baseloadBlack') name = 'Baseload';
-    if (type === 'solarBlack') name = 'Solar';
-    if (type === 'windBlack') name = 'Wind';
+    if (type === 'baseloadEnergy') name = 'Baseload';
+    if (type === 'solarEnergy') name = 'Solar';
+    if (type === 'windEnergy') name = 'Wind';
     if (type === 'green') name = 'Green Certificate';
     if (type === 'storage') name = `${selectedDuration}hr Storage`;
     

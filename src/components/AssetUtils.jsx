@@ -113,7 +113,7 @@ export const calculateYear1Volume = (asset) => {
       shape: 'flat',
       strikePrice: '',
       greenPrice: '',
-      blackPrice: '',
+      EnergyPrice: '',
       indexation: '2.5',
       indexationReferenceYear: String(new Date().getFullYear()),
       settlementFormula: '',
@@ -127,15 +127,15 @@ export const calculateYear1Volume = (asset) => {
   export const updateBundledPrices = (contract, field, value) => {
     if (contract.type !== 'bundled') return contract;
     
-    if (field === 'strikePrice' || field === 'blackPrice') {
+    if (field === 'strikePrice' || field === 'EnergyPrice') {
       const strikePrice = field === 'strikePrice' ? 
         Number(value) : Number(contract.strikePrice) || 0;
-      const blackPrice = field === 'blackPrice' ? 
-        Number(value) : Number(contract.blackPrice) || 0;
+      const EnergyPrice = field === 'EnergyPrice' ? 
+        Number(value) : Number(contract.EnergyPrice) || 0;
       return {
         ...contract,
         [field]: value,
-        greenPrice: String(strikePrice - blackPrice)
+        greenPrice: String(strikePrice - EnergyPrice)
       };
     }
     

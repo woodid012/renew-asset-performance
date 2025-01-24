@@ -83,7 +83,7 @@ const AssetFormContract = ({
                   <>
                     <SelectItem value="bundled">Bundled PPA</SelectItem>
                     <SelectItem value="green">Green Only</SelectItem>
-                    <SelectItem value="black">Black Only</SelectItem>
+                    <SelectItem value="Energy">Energy Only</SelectItem>
                     <SelectItem value="fixed">Fixed Revenue</SelectItem>
                   </>
                 )}
@@ -166,11 +166,11 @@ const AssetFormContract = ({
           {!isStorage && contract.type === 'bundled' && (
             <>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Black Price ($)</label>
+                <label className="text-sm font-medium">Energy Price ($)</label>
                 <Input
                   type="number"
-                  value={contract.blackPrice || ''}
-                  onChange={(e) => handleNumericInput('blackPrice', e.target.value)}
+                  value={contract.EnergyPrice || ''}
+                  onChange={(e) => handleNumericInput('EnergyPrice', e.target.value)}
                 />
               </div>
               <div className="space-y-2">
@@ -189,19 +189,19 @@ const AssetFormContract = ({
                 <div className="col-span-2 bg-gray-50 p-4 rounded-md mt-4">
                   <h4 className="text-sm font-medium mb-2">Annual Revenue Calculation</h4>
                   
-                  {/* Calculate black and green components */}
+                  {/* Calculate Energy and green components */}
                   {(() => {
                     const baseRevenue = 8760 * capacity * (capacityFactor/100) * (contract.buyersPercentage/100);
-                    const blackPrice = contract.blackPrice || 0;
+                    const EnergyPrice = contract.EnergyPrice || 0;
                     const greenPrice = contract.greenPrice || 0;
-                    const blackRevenue = (baseRevenue * blackPrice) / 1000000;
+                    const EnergyRevenue = (baseRevenue * EnergyPrice) / 1000000;
                     const greenRevenue = (baseRevenue * greenPrice) / 1000000;
-                    const totalRevenue = blackRevenue + greenRevenue;
+                    const totalRevenue = EnergyRevenue + greenRevenue;
                     
                     return (
                       <>
                         <div className="text-lg font-semibold">
-                          ${totalRevenue.toFixed(2)}M per year (Black = ${blackRevenue.toFixed(2)}M, Green = ${greenRevenue.toFixed(2)}M)
+                          ${totalRevenue.toFixed(2)}M per year (Energy = ${EnergyRevenue.toFixed(2)}M, Green = ${greenRevenue.toFixed(2)}M)
                         </div>
                         <p className="text-xs text-gray-500">
                           Based on {capacity} MW × {capacityFactor}% CF × 8,760 hours × ${contract.strikePrice}/MWh × {contract.buyersPercentage}% contracted

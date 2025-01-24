@@ -11,14 +11,14 @@ const createInitialTimePeriods = (constants) => {
       startYear: constants.analysisStartYear,
       endYear: midYear,
       volumeVariation: constants.volumeVariation,
-      blackPriceVariation: constants.blackPriceVariation,
+      EnergyPriceVariation: constants.EnergyPriceVariation,
       greenPriceVariation: constants.greenPriceVariation,
     },
     {
       startYear: midYear + 1,
       endYear: constants.analysisEndYear,
       volumeVariation: constants.volumeVariation,
-      blackPriceVariation: constants.blackPriceVariation,
+      EnergyPriceVariation: constants.EnergyPriceVariation,
       greenPriceVariation: constants.greenPriceVariation,
     }
   ];

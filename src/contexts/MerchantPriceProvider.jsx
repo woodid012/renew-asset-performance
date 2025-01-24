@@ -30,19 +30,19 @@ export function MerchantPriceProvider({ children }) {
   const [spreadData, setSpreadData] = useState({});
   const [priceData, setPriceData] = useState({
     monthly: {
-      solar: { black: {}, green: {} },
-      wind: { black: {}, green: {} },
-      baseload: { black: {}, green: {} }
+      solar: { Energy: {}, green: {} },
+      wind: { Energy: {}, green: {} },
+      baseload: { Energy: {}, green: {} }
     },
     yearly: {
-      solar: { black: {}, green: {} },
-      wind: { black: {}, green: {} },
-      baseload: { black: {}, green: {} }
+      solar: { Energy: {}, green: {} },
+      wind: { Energy: {}, green: {} },
+      baseload: { Energy: {}, green: {} }
     },
     quarterly: {
-      solar: { black: {}, green: {} },
-      wind: { black: {}, green: {} },
-      baseload: { black: {}, green: {} }
+      solar: { Energy: {}, green: {} },
+      wind: { Energy: {}, green: {} },
+      baseload: { Energy: {}, green: {} }
     }
   });
 
@@ -50,14 +50,14 @@ export function MerchantPriceProvider({ children }) {
     const aggregated = {
       monthly: monthlyData,
       yearly: {
-        solar: { black: {}, green: {} },
-        wind: { black: {}, green: {} },
-        baseload: { black: {}, green: {} }
+        solar: { Energy: {}, green: {} },
+        wind: { Energy: {}, green: {} },
+        baseload: { Energy: {}, green: {} }
       },
       quarterly: {
-        solar: { black: {}, green: {} },
-        wind: { black: {}, green: {} },
-        baseload: { black: {}, green: {} }
+        solar: { Energy: {}, green: {} },
+        wind: { Energy: {}, green: {} },
+        baseload: { Energy: {}, green: {} }
       }
     };
 
@@ -107,9 +107,9 @@ export function MerchantPriceProvider({ children }) {
 
   const setMerchantPrices = useCallback((data) => {
     const monthlyData = {
-      solar: { black: {}, green: {} },
-      wind: { black: {}, green: {} },
-      baseload: { black: {}, green: {} }
+      solar: { Energy: {}, green: {} },
+      wind: { Energy: {}, green: {} },
+      baseload: { Energy: {}, green: {} }
     };
 
     data.forEach(row => {
@@ -134,9 +134,9 @@ export function MerchantPriceProvider({ children }) {
     }
 
     const monthlyData = {
-      solar: { black: {}, green: {} },
-      wind: { black: {}, green: {} },
-      baseload: { black: {}, green: {} }
+      solar: { Energy: {}, green: {} },
+      wind: { Energy: {}, green: {} },
+      baseload: { Energy: {}, green: {} }
     };
 
     results.data.forEach(row => {

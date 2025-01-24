@@ -36,7 +36,7 @@ const PortfolioOverviewChart = ({
       const bars = [];
       
       if (colorMode === 'all') {
-        // Simplified view - combine black and green
+        // Simplified view - combine Energy and green
         if (viewMode === 'all' || viewMode === 'contracted') {
           bars.push(
             <Bar 
@@ -64,17 +64,17 @@ const PortfolioOverviewChart = ({
           );
         }
       } else {
-        // Detailed view - separate black and green
+        // Detailed view - separate Energy and green
         if ((viewMode === 'all' || viewMode === 'contracted')) {
-          if (colorMode === 'black') {
+          if (colorMode === 'Energy') {
             bars.push(
               <Bar 
-                key={`${asset.id}-contracted-black`}
+                key={`${asset.id}-contracted-Energy`}
                 yAxisId="left"
-                dataKey={`${asset.name} Contracted Black`}
+                dataKey={`${asset.name} Contracted Energy`}
                 stackId="stack"
                 fill={Object.values(assetColors)[index % 5].base}
-                name={`${asset.name} Contracted Black`}
+                name={`${asset.name} Contracted Energy`}
                 isAnimationActive={false}
               />
             );
@@ -96,15 +96,15 @@ const PortfolioOverviewChart = ({
         }
 
         if ((viewMode === 'all' || viewMode === 'merchant')) {
-          if (colorMode === 'black') {
+          if (colorMode === 'Energy') {
             bars.push(
               <Bar 
-                key={`${asset.id}-merchant-black`}
+                key={`${asset.id}-merchant-Energy`}
                 yAxisId="left"
-                dataKey={`${asset.name} Merchant Black`}
+                dataKey={`${asset.name} Merchant Energy`}
                 stackId="stack"
                 fill={Object.values(assetColors)[index % 5].faded}
-                name={`${asset.name} Merchant Black`}
+                name={`${asset.name} Merchant Energy`}
                 isAnimationActive={false}
               />
             );
@@ -140,7 +140,7 @@ const PortfolioOverviewChart = ({
             // For 'all' colorMode, simplify the display names
             let displayName = entry.name;
             if (colorMode === 'all') {
-              displayName = displayName.replace(' Black', '').replace(' Green', '');
+              displayName = displayName.replace(' Energy', '').replace(' Green', '');
             }
             return (
               <p key={index} className="font-medium" style={{ color: entry.color }}>
@@ -192,11 +192,11 @@ const PortfolioOverviewChart = ({
                 All
               </Button>
               <Button
-                variant={colorMode === 'black' ? "default" : "outline"}
-                onClick={() => setColorMode('black')}
+                variant={colorMode === 'Energy' ? "default" : "outline"}
+                onClick={() => setColorMode('Energy')}
                 className="w-24"
               >
-                Black
+                Energy
               </Button>
               <Button
                 variant={colorMode === 'green' ? "default" : "outline"}
@@ -239,13 +239,13 @@ const PortfolioOverviewChart = ({
                   isAnimationActive={false}
                 />
               )}
-              {(colorMode === 'all' || colorMode === 'black') && (
+              {(colorMode === 'all' || colorMode === 'Energy') && (
                 <Line 
                   yAxisId="right"
                   type="monotone" 
-                  dataKey="weightedBlackPercentage" 
+                  dataKey="weightedEnergyPercentage" 
                   stroke="#171717" 
-                  name="Black Contracted %"
+                  name="Energy Contracted %"
                   strokeWidth={2}
                   isAnimationActive={false}
                 />

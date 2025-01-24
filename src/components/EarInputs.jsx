@@ -54,9 +54,9 @@ const TimePeriodParameters = ({
         onChange={(value) => onUpdate({ ...period, volumeVariation: value })}
       />
       <ParameterInput
-        label="Black Price Sensitivity (±%)"
-        value={period.blackPriceVariation}
-        onChange={(value) => onUpdate({ ...period, blackPriceVariation: value })}
+        label="Energy Price Sensitivity (±%)"
+        value={period.EnergyPriceVariation}
+        onChange={(value) => onUpdate({ ...period, EnergyPriceVariation: value })}
       />
       <ParameterInput
         label="Green Price Sensitivity (±%)"
@@ -81,7 +81,7 @@ const EarInputs = ({ constants, updateConstants, onTimePeriodsChange, mode, setM
   const [validationError, setValidationError] = useState(null);
   const [initializedVariations] = useState({
     volumeVariation: constants.volumeVariation,
-    blackPriceVariation: constants.blackPriceVariation,
+    EnergyPriceVariation: constants.EnergyPriceVariation,
     greenPriceVariation: constants.greenPriceVariation
   });
 
@@ -94,14 +94,14 @@ const EarInputs = ({ constants, updateConstants, onTimePeriodsChange, mode, setM
           startYear: constants.analysisStartYear,
           endYear: midYear,
           volumeVariation: initializedVariations.volumeVariation,
-          blackPriceVariation: initializedVariations.blackPriceVariation,
+          EnergyPriceVariation: initializedVariations.EnergyPriceVariation,
           greenPriceVariation: initializedVariations.greenPriceVariation,
         },
         {
           startYear: midYear + 1,
           endYear: constants.analysisEndYear,
           volumeVariation: initializedVariations.volumeVariation,
-          blackPriceVariation: initializedVariations.blackPriceVariation,
+          EnergyPriceVariation: initializedVariations.EnergyPriceVariation,
           greenPriceVariation: initializedVariations.greenPriceVariation,
         }
       ];
@@ -144,7 +144,7 @@ const EarInputs = ({ constants, updateConstants, onTimePeriodsChange, mode, setM
         startYear: lastPeriod.endYear + 1,
         endYear: newEndYear,
         volumeVariation: initializedVariations.volumeVariation,
-        blackPriceVariation: initializedVariations.blackPriceVariation,
+        EnergyPriceVariation: initializedVariations.EnergyPriceVariation,
         greenPriceVariation: initializedVariations.greenPriceVariation,
       }
     ]);
@@ -205,9 +205,9 @@ const EarInputs = ({ constants, updateConstants, onTimePeriodsChange, mode, setM
                   onChange={(value) => handleSimpleParameterChange('volumeVariation', value)}
                 />
                 <ParameterInput
-                  label="Black Price Sensitivity (±%)"
-                  value={initializedVariations.blackPriceVariation}
-                  onChange={(value) => handleSimpleParameterChange('blackPriceVariation', value)}
+                  label="Energy Price Sensitivity (±%)"
+                  value={initializedVariations.EnergyPriceVariation}
+                  onChange={(value) => handleSimpleParameterChange('EnergyPriceVariation', value)}
                 />
                 <ParameterInput
                   label="Green Price Sensitivity (±%)"
@@ -217,7 +217,7 @@ const EarInputs = ({ constants, updateConstants, onTimePeriodsChange, mode, setM
               </div>
               <ul className="text-xs space-y-1 text-gray-600 min-w-64">
                 <li>• Merchant revenue affected by both volume and price risks</li>
-                <li>• Green and black prices vary independently</li>
+                <li>• Green and Energy prices vary independently</li>
                 <li>• PPA revenue affected by volume risk only</li>
               </ul>
             </div>

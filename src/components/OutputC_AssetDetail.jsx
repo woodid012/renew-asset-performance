@@ -57,18 +57,18 @@ const AssetDetailChart = ({
           selectedAssetData.state, 
           periodData.timeInterval
         );
-        const merchantBlackPrice = getMerchantPrice(
+        const merchantEnergyPrice = getMerchantPrice(
           selectedAssetData.type, 
-          'black', 
+          'Energy', 
           selectedAssetData.state, 
           periodData.timeInterval
         );
-        const bundledPrice = merchantGreenPrice + merchantBlackPrice;
+        const bundledPrice = merchantGreenPrice + merchantEnergyPrice;
         
         return {
           ...periodData,
           merchantGreenPrice: roundNumber(merchantGreenPrice),
-          merchantBlackPrice: roundNumber(merchantBlackPrice),
+          merchantEnergyPrice: roundNumber(merchantEnergyPrice),
           bundledPrice: roundNumber(bundledPrice)
         };
       }
@@ -122,10 +122,10 @@ const AssetDetailChart = ({
               <Legend />
               <Bar 
                 yAxisId="left"
-                dataKey={`${selectedAssetData?.name} Contracted Black`} 
+                dataKey={`${selectedAssetData?.name} Contracted Energy`} 
                 stackId="a"
                 fill="#171717"
-                name="Black Contracted"
+                name="Energy Contracted"
                 isAnimationActive={false}
               />
               {!isStorage && (
@@ -140,10 +140,10 @@ const AssetDetailChart = ({
               )}
               <Bar 
                 yAxisId="left"
-                dataKey={`${selectedAssetData?.name} Merchant Black`} 
+                dataKey={`${selectedAssetData?.name} Merchant Energy`} 
                 stackId="a"
                 fill="#737373"
-                name="Black Merchant"
+                name="Energy Merchant"
                 isAnimationActive={false}
               />
               {!isStorage && (
@@ -182,10 +182,10 @@ const AssetDetailChart = ({
                   <Line
                     yAxisId="right"
                     type="monotone"
-                    dataKey="merchantBlackPrice"
+                    dataKey="merchantEnergyPrice"
                     stroke="#171717"
                     strokeWidth={2}
-                    name="Merchant Black Price"
+                    name="Merchant Energy Price"
                     dot={false}
                     isAnimationActive={false}
                   />

@@ -90,7 +90,7 @@ const features = [
     description: "Define and manage portfolio assets",
     details: [
       "Define assets for portfolio analysis",
-      "Configure contracts by asset (bundled, black, green)",
+      "Configure contracts by asset (bundled, Energy, green)",
       "Manage uncontracted merchant assets"
     ]
   },
@@ -101,7 +101,7 @@ const features = [
     details: [
       "Revenue and contract fraction portfolio view",
       "Individual asset revenue analysis",
-      "Breakdown by black, green, and contracted merchant"
+      "Breakdown by Energy, green, and contracted merchant"
     ]
   },
   {

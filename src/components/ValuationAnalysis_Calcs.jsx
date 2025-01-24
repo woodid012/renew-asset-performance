@@ -35,32 +35,32 @@ export const DEFAULT_VALUES = {
 export const calculateStressRevenue = (baseRevenue, scenario, constants) => {
   const volumeVar = constants.volumeVariation || 0;
   const greenVar = constants.greenPriceVariation || 0;
-  const blackVar = constants.blackPriceVariation || 0;
+  const EnergyVar = constants.EnergyPriceVariation || 0;
 
   switch (scenario) {
     case 'worst':
       return {
         ...baseRevenue,
         merchantGreen: baseRevenue.merchantGreen * (1 - volumeVar/100) * (1 - greenVar/100),
-        merchantBlack: baseRevenue.merchantBlack * (1 - volumeVar/100) * (1 - blackVar/100),
+        merchantEnergy: baseRevenue.merchantEnergy * (1 - volumeVar/100) * (1 - EnergyVar/100),
         contractedGreen: baseRevenue.contractedGreen * (1 - volumeVar/100),
-        contractedBlack: baseRevenue.contractedBlack * (1 - volumeVar/100),
+        contractedEnergy: baseRevenue.contractedEnergy * (1 - volumeVar/100),
       };
     case 'volume':
       return {
         ...baseRevenue,
         merchantGreen: baseRevenue.merchantGreen * (1 - volumeVar/100),
-        merchantBlack: baseRevenue.merchantBlack * (1 - volumeVar/100),
+        merchantEnergy: baseRevenue.merchantEnergy * (1 - volumeVar/100),
         contractedGreen: baseRevenue.contractedGreen * (1 - volumeVar/100),
-        contractedBlack: baseRevenue.contractedBlack * (1 - volumeVar/100),
+        contractedEnergy: baseRevenue.contractedEnergy * (1 - volumeVar/100),
       };
     case 'price':
       return {
         ...baseRevenue,
         merchantGreen: baseRevenue.merchantGreen * (1 - greenVar/100),
-        merchantBlack: baseRevenue.merchantBlack * (1 - blackVar/100),
+        merchantEnergy: baseRevenue.merchantEnergy * (1 - EnergyVar/100),
         contractedGreen: baseRevenue.contractedGreen,
-        contractedBlack: baseRevenue.contractedBlack,
+        contractedEnergy: baseRevenue.contractedEnergy,
       };
     default:
       return baseRevenue;
@@ -144,8 +144,8 @@ export const calculateNPVData = (
         const baseRevenue = calculateAssetRevenue(asset, year, constants, getMerchantPrice);
         const stressedRevenue = calculateStressRevenue(baseRevenue, selectedRevenueCase, constants);
         
-        totalContractRevenue += (stressedRevenue.contractedGreen + stressedRevenue.contractedBlack) * partialYearFactor;
-        totalMerchantRevenue += (stressedRevenue.merchantGreen + stressedRevenue.merchantBlack) * partialYearFactor;
+        totalContractRevenue += (stressedRevenue.contractedGreen + stressedRevenue.contractedEnergy) * partialYearFactor;
+        totalMerchantRevenue += (stressedRevenue.merchantGreen + stressedRevenue.merchantEnergy) * partialYearFactor;
 
         const fixedCostInflation = Math.pow(1 + (assetCosts[asset.name]?.fixedCostIndex || 2.5)/100, yearIndex);
         totalFixedCosts += (assetCosts[asset.name]?.fixedCost || 0) * fixedCostInflation * partialYearFactor;

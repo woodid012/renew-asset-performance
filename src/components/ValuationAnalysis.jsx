@@ -23,7 +23,7 @@ const ValuationAnalysis = () => {
   const [selectedAsset, setSelectedAsset] = useState('Total');
   const [isInitialized, setIsInitialized] = useState(false);
   const volumeStress = constants?.volumeVariation;
-  const priceStress = constants?.blackPriceVariation;
+  const priceStress = constants?.EnergyPriceVariation;
   const discountRates = constants.discountRates;
   const assetCosts = constants.assetCosts;
 

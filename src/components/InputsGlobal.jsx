@@ -28,7 +28,7 @@ const InputsGlobal = () => {
   const getAvailableYears = () => {
     const years = new Set();
     const profiles = ['solar', 'wind', 'baseload'];
-    const types = ['black', 'green'];
+    const types = ['Energy', 'green'];
     const states = ['NSW', 'QLD', 'SA', 'VIC'];
     
     profiles.forEach(profile => {
@@ -225,7 +225,7 @@ const InputsGlobal = () => {
   const handleExport = () => {
     const rows = [];
     const profiles = ['solar', 'wind', 'baseload'];
-    const types = ['black', 'green'];
+    const types = ['Energy', 'green'];
     const states = ['NSW', 'QLD', 'SA', 'VIC'];
     
     profiles.forEach(profile => {

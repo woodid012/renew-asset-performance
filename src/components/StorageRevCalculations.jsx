@@ -91,11 +91,11 @@ export const calculateStorageRevenue = (asset, timeInterval, year, assetStartYea
   return {
     total: contractedRevenue + merchantRevenue,
     contractedGreen: 0,
-    contractedBlack: contractedRevenue,
+    contractedEnergy: contractedRevenue,
     merchantGreen: 0,
-    merchantBlack: merchantRevenue,
+    merchantEnergy: merchantRevenue,
     greenPercentage: 0,
-    blackPercentage: totalContractedPercentage,
+    EnergyPercentage: totalContractedPercentage,
     annualGeneration: annualVolume * degradationFactor * (volumeLossAdjustment/100)
   };
 };

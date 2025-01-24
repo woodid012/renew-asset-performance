@@ -50,14 +50,14 @@ const PPATableInputs = ({ yearLimit }) => {
 
             // Handle price calculation based on asset and contract type
             if (asset.type === 'storage') {
-              // Storage assets only have black price
+              // Storage assets only have Energy price
               if (contract.type === 'fixed' || contract.type === 'cfd' || contract.type === 'tolling') {
                 basePrice = parseFloat(contract.strikePrice);
                 contractType = contract.type; // Keep original contract type for storage
               }
             } else {
               if (contract.type === 'bundled') {
-                basePrice = parseFloat(contract.greenPrice) + parseFloat(contract.blackPrice);
+                basePrice = parseFloat(contract.greenPrice) + parseFloat(contract.EnergyPrice);
               } else {
                 basePrice = parseFloat(contract.strikePrice);
               }
@@ -85,7 +85,7 @@ const PPATableInputs = ({ yearLimit }) => {
 
         // Handle merchant entries based on asset type
         if (asset.type === 'storage') {
-          // Storage only has black merchant
+          // Storage only has Energy merchant
           const merchantPercentage = 100 - asset.contracts.reduce((sum, contract) => {
             const contractStart = new Date(contract.startDate).getFullYear();
             const contractEnd = new Date(contract.endDate).getFullYear();
@@ -127,7 +127,7 @@ const PPATableInputs = ({ yearLimit }) => {
               state: asset.state,
               type: capitalizeType(asset.type),
               ppaNumber: 'Merchant',
-              contractType: 'black',
+              contractType: 'Energy',
               buyerPercentage: merchantPercentage,
               basePrice: basePrice.toFixed(2),
               indexation: constants.escalation,
@@ -137,7 +137,7 @@ const PPATableInputs = ({ yearLimit }) => {
             });
           }
         } else {
-          // Non-storage assets can have both green and black merchant
+          // Non-storage assets can have both green and Energy merchant
           const contractedGreenPercentage = asset.contracts.reduce((sum, contract) => {
             const contractStart = new Date(contract.startDate).getFullYear();
             const contractEnd = new Date(contract.endDate).getFullYear();
@@ -149,11 +149,11 @@ const PPATableInputs = ({ yearLimit }) => {
             return sum;
           }, 0);
 
-          const contractedBlackPercentage = asset.contracts.reduce((sum, contract) => {
+          const contractedEnergyPercentage = asset.contracts.reduce((sum, contract) => {
             const contractStart = new Date(contract.startDate).getFullYear();
             const contractEnd = new Date(contract.endDate).getFullYear();
             if (year >= contractStart && year <= contractEnd) {
-              if (contract.type === 'bundled' || contract.type === 'black') {
+              if (contract.type === 'bundled' || contract.type === 'Energy') {
                 return sum + parseFloat(contract.buyersPercentage);
               }
             }
@@ -161,7 +161,7 @@ const PPATableInputs = ({ yearLimit }) => {
           }, 0);
 
           const merchantGreenPercentage = 100 - contractedGreenPercentage;
-          const merchantBlackPercentage = 100 - contractedBlackPercentage;
+          const merchantEnergyPercentage = 100 - contractedEnergyPercentage;
 
           if (merchantGreenPercentage > 0) {
             const merchantGreenVolume = annualGeneration * (merchantGreenPercentage / 100);
@@ -184,10 +184,10 @@ const PPATableInputs = ({ yearLimit }) => {
             });
           }
 
-          if (merchantBlackPercentage > 0) {
-            const merchantBlackVolume = annualGeneration * (merchantBlackPercentage / 100);
-            const baseBlackPrice = getMerchantPrice(asset.type, 'black', asset.state, year);
-            const escalatedBlackPrice = applyEscalation(baseBlackPrice, year, constants);
+          if (merchantEnergyPercentage > 0) {
+            const merchantEnergyVolume = annualGeneration * (merchantEnergyPercentage / 100);
+            const baseEnergyPrice = getMerchantPrice(asset.type, 'Energy', asset.state, year);
+            const escalatedEnergyPrice = applyEscalation(baseEnergyPrice, year, constants);
 
             yearlyData.push({
               year,
@@ -195,13 +195,13 @@ const PPATableInputs = ({ yearLimit }) => {
               state: asset.state,
               type: capitalizeType(asset.type),
               ppaNumber: 'Merchant',
-              contractType: 'black',
-              buyerPercentage: merchantBlackPercentage,
-              basePrice: baseBlackPrice.toFixed(2),
+              contractType: 'Energy',
+              buyerPercentage: merchantEnergyPercentage,
+              basePrice: baseEnergyPrice.toFixed(2),
               indexation: constants.escalation,
-              indexedPrice: escalatedBlackPrice.toFixed(2),
+              indexedPrice: escalatedEnergyPrice.toFixed(2),
               term: `${year}`,
-              volume: Math.round(merchantBlackVolume)
+              volume: Math.round(merchantEnergyVolume)
             });
           }
         }
