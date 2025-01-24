@@ -8,26 +8,23 @@ export const applyEscalation = (basePrice, year, constants) => {
 };
 
 export const calculateAssetRevenue = (asset, timeInterval, constants, getMerchantPrice) => {
-  // Convert number to string if it's a year
   if (typeof timeInterval === 'number') {
     timeInterval = timeInterval.toString();
   }
   
-  // Extract year and quarter from timeInterval for contract calculations
   let year, quarter;
   if (!timeInterval.includes('/') && !timeInterval.includes('-')) {
-    year = parseInt(timeInterval); // Simple year string
+    year = parseInt(timeInterval);
   } else if (timeInterval.includes('-Q')) {
     const [yearStr, quarterStr] = timeInterval.split('-Q');
     year = parseInt(yearStr);
     quarter = parseInt(quarterStr);
   } else if (timeInterval.includes('/')) {
-    year = parseInt(timeInterval.split('/')[2]); // Month format
+    year = parseInt(timeInterval.split('/')[2]);
   } else {
     throw new Error('Invalid time interval format');
   }
 
-  // Check if current year is before asset start date
   const assetStartYear = new Date(asset.assetStartDate).getFullYear();
   if (year < assetStartYear) {
     return {
@@ -42,12 +39,10 @@ export const calculateAssetRevenue = (asset, timeInterval, constants, getMerchan
     };
   }
 
-  // Different calculation path for storage assets
   if (asset.type === 'storage') {
-    return calculateStorageRevenue(asset, timeInterval, year, assetStartYear);
+    return calculateStorageRevenue(asset, timeInterval, year, assetStartYear, getMerchantPrice);
   }
 
-  // Calculate revenue for wind/solar assets
   return calculateRenewablesRevenue(asset, timeInterval, year, quarter, assetStartYear, constants, getMerchantPrice);
 };
 
@@ -65,32 +60,27 @@ export const processPortfolioData = (portfolioData, assets, visibleAssets) => {
       weightedBlackPercentage: 0
     };
 
-    let totalRenewableGeneration = 0; // Only for renewable assets (non-storage)
+    let totalRenewableGeneration = 0;
 
     Object.entries(periodData.assets).forEach(([assetName, assetData]) => {
       if (visibleAssets[assetName]) {
         const asset = Object.values(assets).find(a => a.name === assetName);
         const isStorage = asset.type === 'storage';
 
-        // Add to total revenue regardless of asset type
         processedPeriodData.total += Number((assetData.contractedGreen + assetData.contractedBlack + 
           assetData.merchantGreen + assetData.merchantBlack).toFixed(2));
 
-        // Add to contracted/merchant totals
         processedPeriodData.contractedGreen += Number(assetData.contractedGreen.toFixed(2));
         processedPeriodData.contractedBlack += Number(assetData.contractedBlack.toFixed(2));
         processedPeriodData.merchantGreen += Number(assetData.merchantGreen.toFixed(2));
         processedPeriodData.merchantBlack += Number(assetData.merchantBlack.toFixed(2));
 
-        // Add to total generation
         processedPeriodData.totalGeneration += parseFloat(asset.capacity) || 0;
         
-        // Only add to renewable generation total if not storage
         if (!isStorage) {
           totalRenewableGeneration += assetData.annualGeneration;
         }
 
-        // Store individual asset data
         processedPeriodData[`${assetName} Contracted Green`] = Number(assetData.contractedGreen.toFixed(2));
         processedPeriodData[`${assetName} Contracted Black`] = Number(assetData.contractedBlack.toFixed(2));
         processedPeriodData[`${assetName} Merchant Green`] = Number(assetData.merchantGreen.toFixed(2));
@@ -98,13 +88,12 @@ export const processPortfolioData = (portfolioData, assets, visibleAssets) => {
       }
     });
     
-    // Calculate weighted percentages only considering renewable assets
     if (totalRenewableGeneration > 0) {
       processedPeriodData.weightedGreenPercentage = Object.entries(periodData.assets)
         .filter(([assetName]) => {
           if (!visibleAssets[assetName]) return false;
           const asset = Object.values(assets).find(a => a.name === assetName);
-          return asset.type !== 'storage'; // Exclude storage assets
+          return asset.type !== 'storage';
         })
         .reduce((acc, [_, assetData]) => 
           acc + (assetData.greenPercentage * assetData.annualGeneration / totalRenewableGeneration), 0);
@@ -113,7 +102,7 @@ export const processPortfolioData = (portfolioData, assets, visibleAssets) => {
         .filter(([assetName]) => {
           if (!visibleAssets[assetName]) return false;
           const asset = Object.values(assets).find(a => a.name === assetName);
-          return asset.type !== 'storage'; // Exclude storage assets
+          return asset.type !== 'storage';
         })
         .reduce((acc, [_, assetData]) => 
           acc + (assetData.blackPercentage * assetData.annualGeneration / totalRenewableGeneration), 0);

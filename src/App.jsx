@@ -22,11 +22,20 @@ import EarningsRiskAnalysis from "@/components/EaR_Dashboard";
 import ValuationAnalysis from "@/components/ValuationAnalysis";
 import PortfolioSettings from "@/components/PortfolioSettings";
 
+import TestDashboard from "@/components/TestDashboard";
+
 const App = () => {
   const [activeTab, setActiveTab] = useState("landingpage");
 
   // Tab configuration with colors
   const tabs = [
+//    {
+//      id: "test",
+//      label: "test",
+//      icon: HelpCircle,
+//      component: TestDashboard,
+//      colors: "hover:bg-blue-100 data-[state=active]:bg-blue-500 data-[state=active]:text-white",
+//   },
     {
       id: "landingpage",
       label: "Usage",

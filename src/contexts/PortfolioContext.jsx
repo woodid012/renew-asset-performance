@@ -42,7 +42,7 @@ export function usePortfolio() {
 
 // Internal wrapper component that has access to merchant prices
 function PortfolioProviderInner({ children }) {
-  const { merchantPrices, getMerchantPrice, priceSource, setPriceSource } = useMerchantPrices();
+  const { merchantPrices, getMerchantPrice, getMerchantSpread, priceSource, setPriceSource } = useMerchantPrices();
   const [portfolioSource, setPortfolioSource] = useState('aula_2025-01-13.json');
   const [analysisMode, setAnalysisMode] = useState('simple');
   const [portfolioName, setPortfolioName] = useState("Portfolio Name");
@@ -198,6 +198,7 @@ function PortfolioProviderInner({ children }) {
     constants,
     updateConstants,
     getMerchantPrice,
+    getMerchantSpread,
     portfolioSource,
     setPortfolioSource,
     priceCurveSource: priceSource,

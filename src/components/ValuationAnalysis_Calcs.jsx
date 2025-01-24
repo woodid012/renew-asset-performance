@@ -106,7 +106,10 @@ export const calculateNPVData = (
   // Find the earliest start date
   const startDates = Object.values(assets).map(asset => new Date(asset.assetStartDate).getFullYear());
   const firstStartYear = Math.min(...startDates);
-  const lastEndYear = Math.max(...startDates) + 30; // Assuming 30-year asset life
+  
+  const lastEndYear = Math.max(...Object.values(assets).map(asset => 
+    new Date(asset.assetStartDate).getFullYear() + (asset.assetLife || 30)
+  ));
   const evaluationPeriod = lastEndYear - firstStartYear;
   
   const npvData = Array.from({ length: evaluationPeriod }, (_, yearIndex) => {
@@ -125,9 +128,10 @@ export const calculateNPVData = (
     filteredAssets.forEach(asset => {
       // Check if asset has started operations and is within its life
       const assetStartYear = new Date(asset.assetStartDate).getFullYear(); // Include partial first year
-      const assetEndYear = new Date(asset.assetStartDate).getFullYear() + 30;
+      const assetEndYear = assetStartYear + (asset.assetLife || 30);
       
-      if (year >= assetStartYear && year <= assetEndYear) {
+      // Stop calculations exactly at asset end of life
+      if (year >= assetStartYear && year < assetEndYear) {
         // Calculate partial year factor for first year
         let partialYearFactor = 1;
         if (year === assetStartYear) {
@@ -146,8 +150,8 @@ export const calculateNPVData = (
         const fixedCostInflation = Math.pow(1 + (assetCosts[asset.name]?.fixedCostIndex || 2.5)/100, yearIndex);
         totalFixedCosts += (assetCosts[asset.name]?.fixedCost || 0) * fixedCostInflation * partialYearFactor;
         
-        // Add terminal value in final year
-        if (year === assetEndYear) {
+        // Add terminal value at end of asset life
+        if (year === (assetEndYear - 1)) {
           totalTerminalValue += (assetCosts[asset.name]?.terminalValue || 0);
         }
       }
