@@ -11,7 +11,9 @@ const AssetFormContract = ({
   removeContract, 
   isStorage = false, 
   capacity,
-  capacityFactor = 0
+  capacityFactor = 0,
+  volumeLossAdjustment = 95,
+  volume
 }) => {
   // Helper function to safely handle numeric inputs
   const handleNumericInput = (field, value) => {
@@ -151,10 +153,10 @@ const AssetFormContract = ({
               {contract.type === 'cfd' && (
                 <>
                   <div className="text-lg font-semibold">
-                    ${((365 * contract.strikePrice * (contract.buyersPercentage / 100)) / 1000000).toFixed(2)}M per year
+                    ${((contract.strikePrice * volume * 365 * (volumeLossAdjustment/100) * (contract.buyersPercentage / 100)) / 1000000).toFixed(2)}M per year
                   </div>
                   <p className="text-xs text-gray-500">
-                    Based on 365 days × ${contract.strikePrice} spread × {contract.buyersPercentage}% contracted
+                    Based on {volume} MWh × 365 days × ${contract.strikePrice} spread × {volumeLossAdjustment}% efficiency × {contract.buyersPercentage}% contracted
                   </p>
                 </>
               )}

@@ -8,39 +8,43 @@ const PriceChart = () => {
   const { constants, getMerchantPrice } = usePortfolio();
   const [selectedRegion, setSelectedRegion] = useState('All Regions');
   const [selectedType, setSelectedType] = useState('Baseload');
+  const [selectedDuration, setSelectedDuration] = useState('0.5');
+  const [interval, setInterval] = useState('yearly');
   const [chartData, setChartData] = useState([]);
   const [yAxisDomain, setYAxisDomain] = useState([0, 100]);
-  const [interval, setInterval] = useState('quarterly');
   const [globalPriceRange, setGlobalPriceRange] = useState({ min: Infinity, max: -Infinity });
 
   const states = ['All Regions', 'NSW', 'QLD', 'SA', 'VIC'];
-  const types = ['All', 'Baseload', 'Solar', 'Wind', 'Green'];
+  const types = ['All', 'Baseload', 'Solar', 'Wind', 'Green', 'Storage'];
+  const durations = ['0.5', '1', '2', '4'];
 
-  // Handle region selection with type defaults
   const handleRegionSelection = (region) => {
     setSelectedRegion(region);
     setSelectedType(region === 'All Regions' ? 'Baseload' : 'All');
   };
+
   const typeColors = {
-    baseloadBlack: '#000000',  // Black
-    solarBlack: '#FFD700',     // Yellow
-    windBlack: '#0000FF',      // Blue
-    green: '#00FF00'           // Green
+    baseloadBlack: '#000000',
+    solarBlack: '#FFD700',
+    windBlack: '#0000FF',
+    green: '#00FF00',
+    storage: '#FF00FF'
   };
+
   const regionColors = {
     NSW: '#1f77b4',
     QLD: '#ff7f0e',
     SA: '#2ca02c',
     VIC: '#d62728'
   };
-  
+
   const getTimePeriods = () => {
     const years = Array.from(
       { length: constants.analysisEndYear - constants.analysisStartYear + 1 },
       (_, i) => constants.analysisStartYear + i
     );
 
-    if (interval === 'yearly') {
+    if (selectedType === 'Storage' || interval === 'yearly') {
       return years.map(year => ({ 
         year, 
         display: year.toString()
@@ -64,48 +68,15 @@ const PriceChart = () => {
     }
   };
 
-  const getTimeString = (period) => {
-    if (interval === 'yearly') {
-      return period.year.toString();
-    } else if (interval === 'quarterly') {
-      return `${period.year}-Q${period.quarter}`;
-    } else { // monthly
-      return `1/${period.month.toString().padStart(2, '0')}/${period.year}`;
-    }
-  };
-
-  const calculateInterval = () => 0;
-
-  const formatXAxisTick = (props) => {
-    const { x, y, payload } = props;
-    const year = interval === 'yearly' 
-      ? payload.value 
-      : payload.value.split('-')[0];
-    
-    if (!payload.index || chartData[payload.index]?.year !== chartData[payload.index - 1]?.year) {
-      return (
-        <g transform={`translate(${x},${y})`}>
-          <text x={0} y={0} dy={16} textAnchor="middle" fill="#666" fontSize={10}>
-            {interval === 'yearly' ? year : `20${year}`}
-          </text>
-        </g>
-      );
-    }
-    return null;
-  };
-
-  // Calculate global price range across all regions
   useEffect(() => {
     let globalMax = -Infinity;
     let globalMin = Infinity;
     
     const regionsToProcess = ['NSW', 'QLD', 'SA', 'VIC'];
+    const timePeriods = getTimePeriods();
     
     regionsToProcess.forEach(region => {
-      const timePeriods = getTimePeriods();
-      
       timePeriods.forEach(period => {
-        const timeStr = getTimeString(period);
         const priceTypes = [
           { profile: 'baseload', type: 'black' },
           { profile: 'solar', type: 'black' },
@@ -114,7 +85,7 @@ const PriceChart = () => {
         ];
         
         priceTypes.forEach(({ profile, type }) => {
-          const realPrice = getMerchantPrice(profile, type, region, timeStr);
+          const realPrice = getMerchantPrice(profile, type, region, period.year);
           if (realPrice) {
             const nominalPrice = constants.referenceYear && constants.escalation && period.year >= constants.ForecastStartYear
               ? realPrice * Math.pow(1 + constants.escalation / 100, period.year - constants.referenceYear)
@@ -124,6 +95,15 @@ const PriceChart = () => {
             globalMin = Math.min(globalMin, nominalPrice);
           }
         });
+
+        // Add storage spreads to global range
+        if (selectedType === 'Storage') {
+          const storagePrice = getMerchantPrice('storage', parseFloat(selectedDuration), region, period.year);
+          if (storagePrice) {
+            globalMax = Math.max(globalMax, storagePrice);
+            globalMin = Math.min(globalMin, storagePrice);
+          }
+        }
       });
     });
     
@@ -135,15 +115,7 @@ const PriceChart = () => {
       max: roundedMax
     });
     setYAxisDomain([roundedMin, roundedMax]);
-  }, [
-    getMerchantPrice,
-    constants.escalation,
-    constants.referenceYear,
-    interval,
-    constants.analysisStartYear,
-    constants.analysisEndYear,
-    constants.ForecastStartYear
-  ]);
+  }, [getMerchantPrice, constants, selectedType, selectedDuration]);
 
   useEffect(() => {
     const timePeriods = getTimePeriods();
@@ -155,50 +127,48 @@ const PriceChart = () => {
         year: period.year
       };
       
-      const priceTypes = [
-        { key: 'baseloadBlack', profile: 'baseload', type: 'black' },
-        { key: 'solarBlack', profile: 'solar', type: 'black' },
-        { key: 'windBlack', profile: 'wind', type: 'black' },
-        { key: 'green', profile: 'solar', type: 'green' }
-      ];
-
       regionsToProcess.forEach(region => {
-        priceTypes.forEach(({ key, profile, type }) => {
-          const timeStr = getTimeString(period);
-          const realPrice = getMerchantPrice(profile, type, region, timeStr);
-          if (realPrice) {
-            const nominalPrice = constants.referenceYear && constants.escalation && period.year >= constants.ForecastStartYear
-              ? realPrice * Math.pow(1 + constants.escalation / 100, period.year - constants.referenceYear)
-              : realPrice;
-            
-            // Create separate keys for each region and price type
-            dataPoint[`${region}_${key}`] = nominalPrice;
+        if (selectedType === 'Storage') {
+          const storagePrice = getMerchantPrice('storage', parseFloat(selectedDuration), region, period.year);
+          if (storagePrice) {
+            dataPoint[`${region}_storage`] = storagePrice;
           }
-        });
+        } else {
+          const priceTypes = [
+            { key: 'baseloadBlack', profile: 'baseload', type: 'black' },
+            { key: 'solarBlack', profile: 'solar', type: 'black' },
+            { key: 'windBlack', profile: 'wind', type: 'black' },
+            { key: 'green', profile: 'solar', type: 'green' }
+          ];
+
+          priceTypes.forEach(({ key, profile, type }) => {
+            const realPrice = getMerchantPrice(profile, type, region, period.year);
+            if (realPrice) {
+              const nominalPrice = constants.referenceYear && constants.escalation && period.year >= constants.ForecastStartYear
+                ? realPrice * Math.pow(1 + constants.escalation / 100, period.year - constants.referenceYear)
+                : realPrice;
+              
+              dataPoint[`${region}_${key}`] = nominalPrice;
+            }
+          });
+        }
       });
       
       return dataPoint;
     });
 
     setChartData(data);
-  }, [
-    selectedRegion, 
-    getMerchantPrice, 
-    constants.escalation, 
-    constants.referenceYear, 
-    interval,
-    constants.analysisStartYear,
-    constants.analysisEndYear,
-    constants.ForecastStartYear
-  ]);
+  }, [selectedRegion, selectedType, selectedDuration, getMerchantPrice, constants]);
 
   const getVisibleLines = () => {
     const regions = selectedRegion === 'All Regions' ? ['NSW', 'QLD', 'SA', 'VIC'] : [selectedRegion];
     const lines = [];
     
     if (selectedRegion === 'All Regions') {
-      // When All Regions is selected, show the selected type for all regions
       switch (selectedType) {
+        case 'Storage':
+          regions.forEach(region => lines.push(`${region}_storage`));
+          break;
         case 'Baseload':
           regions.forEach(region => lines.push(`${region}_baseloadBlack`));
           break;
@@ -213,14 +183,16 @@ const PriceChart = () => {
           break;
       }
     } else {
-      // For individual states, show all types if 'All' is selected, otherwise show selected type
       if (selectedType === 'All') {
         lines.push(
           `${selectedRegion}_baseloadBlack`,
           `${selectedRegion}_solarBlack`,
           `${selectedRegion}_windBlack`,
-          `${selectedRegion}_green`
+          `${selectedRegion}_green`,
+          `${selectedRegion}_storage`
         );
+      } else if (selectedType === 'Storage') {
+        lines.push(`${selectedRegion}_storage`);
       } else {
         switch (selectedType) {
           case 'Baseload':
@@ -243,39 +215,27 @@ const PriceChart = () => {
   };
 
   const getLineName = (dataKey) => {
-    const [region, ...rest] = dataKey.split('_');
-    const type = rest.join('_');
+    const [region, type] = dataKey.split('_');
     let name = '';
     
     if (type === 'baseloadBlack') name = 'Baseload';
     if (type === 'solarBlack') name = 'Solar';
     if (type === 'windBlack') name = 'Wind';
     if (type === 'green') name = 'Green Certificate';
+    if (type === 'storage') name = `${selectedDuration}hr Storage`;
     
     return selectedRegion === 'All Regions' ? `${region} ${name}` : name;
   };
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
-      const priceFormat = (value) => value?.toFixed(2);
-      
-      let periodDisplay = label;
-      if (interval === 'monthly') {
-        const [year, month] = label.split('-');
-        const date = new Date(parseInt('20' + year), parseInt(month) - 1);
-        periodDisplay = date.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
-      } else if (interval === 'quarterly') {
-        const [year, quarter] = label.split('-');
-        periodDisplay = `20${year} ${quarter}`;
-      }
-
       return (
         <div className="bg-white p-4 border rounded-lg shadow-lg">
-          <p className="font-medium">{periodDisplay}</p>
+          <p className="font-medium">{label}</p>
           {payload.map((entry, index) => (
             <div key={index} style={{ color: entry.color }} className="mb-1">
               <p className="font-medium">
-                {`${getLineName(entry.dataKey)}: $${priceFormat(entry.value)}/MWh`}
+                {`${getLineName(entry.dataKey)}: $${entry.value?.toFixed(2)}/MWh`}
               </p>
             </div>
           ))}
@@ -306,29 +266,31 @@ const PriceChart = () => {
                   </Button>
                 ))}
               </div>
-              <div className="flex gap-2">
-                <Button
-                  variant={interval === 'monthly' ? "default" : "outline"}
-                  onClick={() => setInterval('monthly')}
-                  className="w-24"
-                >
-                  Monthly
-                </Button>
-                <Button
-                  variant={interval === 'quarterly' ? "default" : "outline"}
-                  onClick={() => setInterval('quarterly')}
-                  className="w-24"
-                >
-                  Quarterly
-                </Button>
-                <Button
-                  variant={interval === 'yearly' ? "default" : "outline"}
-                  onClick={() => setInterval('yearly')}
-                  className="w-24"
-                >
-                  Yearly
-                </Button>
-              </div>
+              {selectedType !== 'Storage' && (
+                <div className="flex gap-2">
+                  <Button
+                    variant={interval === 'monthly' ? "default" : "outline"}
+                    onClick={() => setInterval('monthly')}
+                    className="w-24"
+                  >
+                    Monthly
+                  </Button>
+                  <Button
+                    variant={interval === 'quarterly' ? "default" : "outline"}
+                    onClick={() => setInterval('quarterly')}
+                    className="w-24"
+                  >
+                    Quarterly
+                  </Button>
+                  <Button
+                    variant={interval === 'yearly' ? "default" : "outline"}
+                    onClick={() => setInterval('yearly')}
+                    className="w-24"
+                  >
+                    Yearly
+                  </Button>
+                </div>
+              )}
             </div>
             <div className="flex gap-2">
               {types.map(type => (
@@ -343,6 +305,20 @@ const PriceChart = () => {
                 </Button>
               ))}
             </div>
+            {selectedType === 'Storage' && (
+              <div className="flex gap-2">
+                {durations.map(duration => (
+                  <Button
+                    key={duration}
+                    variant={selectedDuration === duration ? "default" : "outline"}
+                    onClick={() => setSelectedDuration(duration)}
+                    className="w-24"
+                  >
+                    {duration}hr
+                  </Button>
+                ))}
+              </div>
+            )}
           </div>
         </CardTitle>
       </CardHeader>
@@ -353,21 +329,22 @@ const PriceChart = () => {
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis 
                 dataKey="period"
-                interval={calculateInterval()}
-                tick={formatXAxisTick}
-                height={40}
                 padding={{ left: 20, right: 20 }}
               />
               <YAxis 
                 domain={yAxisDomain}
                 tickFormatter={(value) => Math.round(value)}
-                label={{ value: 'Price (Nominal $/MWh)', angle: -90, position: 'insideLeft', offset: 0 }}
+                label={{ 
+                  value: selectedType === 'Storage' ? 'Price Spread ($/MWh)' : 'Price (Nominal $/MWh)', 
+                  angle: -90, 
+                  position: 'insideLeft', 
+                  offset: 0 
+                }}
               />
               <Tooltip content={<CustomTooltip />} />
               <Legend />
               {getVisibleLines().map((line) => {
-                const [region, ...rest] = line.split('_');
-                const type = rest.join('_');
+                const [region, type] = line.split('_');
                 const color = selectedRegion === 'All Regions' ? regionColors[region] : typeColors[type];
                 return (
                   <Line 

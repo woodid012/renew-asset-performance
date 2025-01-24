@@ -17,33 +17,63 @@ const AssetDetailChart = ({
   tooltipLabelFormatter,
   roundNumber,
 }) => {
+  const selectedAssetData = assets[selectedAsset];
+  const isStorage = selectedAssetData?.type === 'storage';
+
   const processedDataWithPrices = useMemo(() => {
     return processedData.map(periodData => {
-      const selectedAssetData = assets[selectedAsset];
       if (!selectedAssetData) return periodData;
 
-      const merchantGreenPrice = getMerchantPrice(
-        selectedAssetData.type, 
-        'green', 
-        selectedAssetData.state, 
-        periodData.timeInterval
-      );
-      const merchantBlackPrice = getMerchantPrice(
-        selectedAssetData.type, 
-        'black', 
-        selectedAssetData.state, 
-        periodData.timeInterval
-      );
-      const bundledPrice = merchantGreenPrice + merchantBlackPrice;
-      
-      return {
-        ...periodData,
-        merchantGreenPrice: roundNumber(merchantGreenPrice),
-        merchantBlackPrice: roundNumber(merchantBlackPrice),
-        bundledPrice: roundNumber(bundledPrice)
-      };
+      if (isStorage) {
+        const calculatedDuration = selectedAssetData.volume / selectedAssetData.capacity;
+        const standardDurations = [0.5, 1, 2, 4];
+        
+        let lowerDuration = standardDurations[0];
+        let upperDuration = standardDurations[standardDurations.length - 1];
+        let interpolationRatio = 0.5;
+        
+        for (let i = 0; i < standardDurations.length - 1; i++) {
+          if (calculatedDuration >= standardDurations[i] && calculatedDuration <= standardDurations[i + 1]) {
+            lowerDuration = standardDurations[i];
+            upperDuration = standardDurations[i + 1];
+            interpolationRatio = (calculatedDuration - lowerDuration) / (upperDuration - lowerDuration);
+            break;
+          }
+        }
+
+        const lowerPrice = getMerchantPrice('storage', lowerDuration, selectedAssetData.state, periodData.timeInterval);
+        const upperPrice = getMerchantPrice('storage', upperDuration, selectedAssetData.state, periodData.timeInterval);
+        
+        const merchantPriceSpread = (lowerPrice * (1 - interpolationRatio)) + (upperPrice * interpolationRatio);
+        
+        return {
+          ...periodData,
+          merchantPriceSpread: roundNumber(merchantPriceSpread)
+        };
+      } else {
+        const merchantGreenPrice = getMerchantPrice(
+          selectedAssetData.type, 
+          'green', 
+          selectedAssetData.state, 
+          periodData.timeInterval
+        );
+        const merchantBlackPrice = getMerchantPrice(
+          selectedAssetData.type, 
+          'black', 
+          selectedAssetData.state, 
+          periodData.timeInterval
+        );
+        const bundledPrice = merchantGreenPrice + merchantBlackPrice;
+        
+        return {
+          ...periodData,
+          merchantGreenPrice: roundNumber(merchantGreenPrice),
+          merchantBlackPrice: roundNumber(merchantBlackPrice),
+          bundledPrice: roundNumber(bundledPrice)
+        };
+      }
     });
-  }, [processedData, selectedAsset, assets, getMerchantPrice, roundNumber]);
+  }, [processedData, selectedAsset, assets, getMerchantPrice, roundNumber, isStorage, selectedAssetData]);
 
   return (
     <Card>
@@ -92,66 +122,85 @@ const AssetDetailChart = ({
               <Legend />
               <Bar 
                 yAxisId="left"
-                dataKey={`${assets[selectedAsset]?.name} Contracted Black`} 
+                dataKey={`${selectedAssetData?.name} Contracted Black`} 
                 stackId="a"
                 fill="#171717"
                 name="Black Contracted"
                 isAnimationActive={false}
               />
+              {!isStorage && (
+                <Bar 
+                  yAxisId="left"
+                  dataKey={`${selectedAssetData?.name} Contracted Green`} 
+                  stackId="a"
+                  fill="#16A34A"
+                  name="Green Contracted"
+                  isAnimationActive={false}
+                />
+              )}
               <Bar 
                 yAxisId="left"
-                dataKey={`${assets[selectedAsset]?.name} Contracted Green`} 
-                stackId="a"
-                fill="#16A34A"
-                name="Green Contracted"
-                isAnimationActive={false}
-              />
-              <Bar 
-                yAxisId="left"
-                dataKey={`${assets[selectedAsset]?.name} Merchant Black`} 
+                dataKey={`${selectedAssetData?.name} Merchant Black`} 
                 stackId="a"
                 fill="#737373"
                 name="Black Merchant"
                 isAnimationActive={false}
               />
-              <Bar 
-                yAxisId="left"
-                dataKey={`${assets[selectedAsset]?.name} Merchant Green`} 
-                stackId="a"
-                fill="#86EFAC"
-                name="Green Merchant"
-                isAnimationActive={false}
-              />
-              <Line
-                yAxisId="right"
-                type="monotone"
-                dataKey="merchantGreenPrice"
-                stroke="#16A34A"
-                strokeWidth={2}
-                name="Merchant Green Price"
-                dot={false}
-                isAnimationActive={false}
-              />
-              <Line
-                yAxisId="right"
-                type="monotone"
-                dataKey="merchantBlackPrice"
-                stroke="#171717"
-                strokeWidth={2}
-                name="Merchant Black Price"
-                dot={false}
-                isAnimationActive={false}
-              />
-              <Line
-                yAxisId="right"
-                type="monotone"
-                dataKey="bundledPrice"
-                stroke="#EF4444"
-                strokeWidth={2}
-                name="Bundled Price"
-                dot={false}
-                isAnimationActive={false}
-              />
+              {!isStorage && (
+                <Bar 
+                  yAxisId="left"
+                  dataKey={`${selectedAssetData?.name} Merchant Green`} 
+                  stackId="a"
+                  fill="#86EFAC"
+                  name="Green Merchant"
+                  isAnimationActive={false}
+                />
+              )}
+              {isStorage ? (
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="merchantPriceSpread"
+                  stroke="#171717"
+                  strokeWidth={2}
+                  name="Merchant Price Spread"
+                  dot={false}
+                  isAnimationActive={false}
+                />
+              ) : (
+                <>
+                  <Line
+                    yAxisId="right"
+                    type="monotone"
+                    dataKey="merchantGreenPrice"
+                    stroke="#16A34A"
+                    strokeWidth={2}
+                    name="Merchant Green Price"
+                    dot={false}
+                    isAnimationActive={false}
+                  />
+                  <Line
+                    yAxisId="right"
+                    type="monotone"
+                    dataKey="merchantBlackPrice"
+                    stroke="#171717"
+                    strokeWidth={2}
+                    name="Merchant Black Price"
+                    dot={false}
+                    isAnimationActive={false}
+                  />
+                  <Line
+                    yAxisId="right"
+                    type="monotone"
+                    dataKey="bundledPrice"
+                    stroke="#EF4444"
+                    strokeWidth={2}
+                    name="Bundled Price"
+                    dot={false}
+                    isAnimationActive={false}
+                  />
+                </>
+              )}
             </ComposedChart>
           </ResponsiveContainer>
         </div>

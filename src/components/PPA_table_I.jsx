@@ -97,7 +97,28 @@ const PPATableInputs = ({ yearLimit }) => {
 
           if (merchantPercentage > 0) {
             const merchantVolume = annualGeneration * (merchantPercentage / 100);
-            const basePrice = getMerchantPrice(asset.type, 'black', asset.state, year);
+            
+            // Calculate storage merchant price using duration interpolation
+            const calculatedDuration = asset.volume / asset.capacity;
+            const standardDurations = [0.5, 1, 2, 4];
+            
+            let lowerDuration = standardDurations[0];
+            let upperDuration = standardDurations[standardDurations.length - 1];
+            let interpolationRatio = 0.5;
+            
+            for (let i = 0; i < standardDurations.length - 1; i++) {
+              if (calculatedDuration >= standardDurations[i] && calculatedDuration <= standardDurations[i + 1]) {
+                lowerDuration = standardDurations[i];
+                upperDuration = standardDurations[i + 1];
+                interpolationRatio = (calculatedDuration - lowerDuration) / (upperDuration - lowerDuration);
+                break;
+              }
+            }
+
+            const lowerPrice = getMerchantPrice('storage', lowerDuration, asset.state, year);
+            const upperPrice = getMerchantPrice('storage', upperDuration, asset.state, year);
+            
+            const basePrice = (lowerPrice * (1 - interpolationRatio)) + (upperPrice * interpolationRatio);
             const escalatedPrice = applyEscalation(basePrice, year, constants);
 
             yearlyData.push({

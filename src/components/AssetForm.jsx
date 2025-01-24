@@ -364,14 +364,16 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
         <CardContent>
           {asset.contracts.map((contract) => (
             <AssetFormContract
-            key={contract.id}
-            contract={contract}
-            updateContract={(field, value) => handleContractUpdate(contract.id, field, value)}
-            removeContract={() => removeContract(contract.id)}
-            isStorage={asset.type === 'storage'}
-            capacity={asset.capacity}
-            capacityFactor={asset.capacityFactor} // Just pass the annual value directly
-          />
+              key={contract.id}
+              contract={contract}
+              updateContract={(field, value) => handleContractUpdate(contract.id, field, value)}
+              removeContract={() => removeContract(contract.id)}
+              isStorage={asset.type === 'storage'}
+              capacity={asset.capacity}
+              capacityFactor={asset.capacityFactor}
+              volumeLossAdjustment={asset.volumeLossAdjustment || 95}
+              volume={asset.volume}
+            />
           ))}
           {asset.contracts.length === 0 && (
             <div className="text-center py-4 text-gray-500">No contracts added yet</div>
