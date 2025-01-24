@@ -38,15 +38,92 @@ const PriceChart = () => {
     VIC: '#d62728'
   };
 
+  const getTimeString = (period) => {
+    if (interval === 'yearly') {
+      return period.year.toString();
+    } else if (interval === 'quarterly') {
+      return `${period.year}-Q${period.quarter}`;
+    } else { // monthly
+      return `1/${period.month.toString().padStart(2, '0')}/${period.year}`;
+    }
+  };
+
+  const getLineName = (dataKey) => {
+    const [region, type] = dataKey.split('_');
+    let name = '';
+    
+    if (type === 'baseloadEnergy') name = 'Baseload';
+    if (type === 'solarEnergy') name = 'Solar';
+    if (type === 'windEnergy') name = 'Wind';
+    if (type === 'green') name = 'Green Certificate';
+    if (type === 'storage') name = `${selectedDuration}hr Storage`;
+    
+    return selectedRegion === 'All Regions' ? `${region} ${name}` : name;
+  };
+
+  useEffect(() => {
+    let globalMax = -Infinity;
+    let globalMin = Infinity;
+    
+    const regionsToProcess = ['NSW', 'QLD', 'SA', 'VIC'];
+    const timePeriods = getTimePeriods();
+    
+    regionsToProcess.forEach(region => {
+      timePeriods.forEach(period => {
+        const timeStr = selectedType === 'Storage' ? period.year : getTimeString(period);
+        const priceTypes = [
+          { profile: 'baseload', type: 'Energy' },
+          { profile: 'solar', type: 'Energy' },
+          { profile: 'wind', type: 'Energy' },
+          { profile: 'solar', type: 'green' }
+        ];
+        
+        priceTypes.forEach(({ profile, type }) => {
+          const realPrice = getMerchantPrice(profile, type, region, timeStr);
+          if (realPrice) {
+            const nominalPrice = constants.referenceYear && constants.escalation && period.year >= constants.ForecastStartYear
+              ? realPrice * Math.pow(1 + constants.escalation / 100, period.year - constants.referenceYear)
+              : realPrice;
+            
+            globalMax = Math.max(globalMax, nominalPrice);
+            globalMin = Math.min(globalMin, nominalPrice);
+          }
+        });
+
+        if (selectedType === 'Storage') {
+          const storagePrice = getMerchantPrice('storage', parseFloat(selectedDuration), region, timeStr);
+          if (storagePrice) {
+            globalMax = Math.max(globalMax, storagePrice);
+            globalMin = Math.min(globalMin, storagePrice);
+          }
+        }
+      });
+    });
+    
+    const roundedMax = Math.ceil(globalMax / 50) * 50;
+    const roundedMin = Math.floor(globalMin / 50) * 50;
+    
+    setGlobalPriceRange({
+      min: roundedMin,
+      max: roundedMax
+    });
+    setYAxisDomain([roundedMin, roundedMax]);
+  }, [getMerchantPrice, constants, selectedType, selectedDuration, interval]);
+
   const getTimePeriods = () => {
     const years = Array.from(
       { length: constants.analysisEndYear - constants.analysisStartYear + 1 },
       (_, i) => constants.analysisStartYear + i
     );
 
-    if (selectedType === 'Storage' || interval === 'yearly') {
+    if (selectedType === 'Storage') {
       return years.map(year => ({ 
         year, 
+        display: year.toString()
+      }));
+    } else if (interval === 'yearly') {
+      return years.map(year => ({
+        year,
         display: year.toString()
       }));
     } else if (interval === 'quarterly') {
@@ -67,55 +144,6 @@ const PriceChart = () => {
       );
     }
   };
-
-  useEffect(() => {
-    let globalMax = -Infinity;
-    let globalMin = Infinity;
-    
-    const regionsToProcess = ['NSW', 'QLD', 'SA', 'VIC'];
-    const timePeriods = getTimePeriods();
-    
-    regionsToProcess.forEach(region => {
-      timePeriods.forEach(period => {
-        const priceTypes = [
-          { profile: 'baseload', type: 'Energy' },
-          { profile: 'solar', type: 'Energy' },
-          { profile: 'wind', type: 'Energy' },
-          { profile: 'solar', type: 'green' }
-        ];
-        
-        priceTypes.forEach(({ profile, type }) => {
-          const realPrice = getMerchantPrice(profile, type, region, period.year);
-          if (realPrice) {
-            const nominalPrice = constants.referenceYear && constants.escalation && period.year >= constants.ForecastStartYear
-              ? realPrice * Math.pow(1 + constants.escalation / 100, period.year - constants.referenceYear)
-              : realPrice;
-            
-            globalMax = Math.max(globalMax, nominalPrice);
-            globalMin = Math.min(globalMin, nominalPrice);
-          }
-        });
-
-        // Add storage spreads to global range
-        if (selectedType === 'Storage') {
-          const storagePrice = getMerchantPrice('storage', parseFloat(selectedDuration), region, period.year);
-          if (storagePrice) {
-            globalMax = Math.max(globalMax, storagePrice);
-            globalMin = Math.min(globalMin, storagePrice);
-          }
-        }
-      });
-    });
-    
-    const roundedMax = Math.ceil(globalMax / 50) * 50;
-    const roundedMin = Math.floor(globalMin / 50) * 50;
-    
-    setGlobalPriceRange({
-      min: roundedMin,
-      max: roundedMax
-    });
-    setYAxisDomain([roundedMin, roundedMax]);
-  }, [getMerchantPrice, constants, selectedType, selectedDuration]);
 
   useEffect(() => {
     const timePeriods = getTimePeriods();
@@ -142,7 +170,7 @@ const PriceChart = () => {
           ];
 
           priceTypes.forEach(({ key, profile, type }) => {
-            const realPrice = getMerchantPrice(profile, type, region, period.year);
+            const realPrice = getMerchantPrice(profile, type, region, getTimeString(period));
             if (realPrice) {
               const nominalPrice = constants.referenceYear && constants.escalation && period.year >= constants.ForecastStartYear
                 ? realPrice * Math.pow(1 + constants.escalation / 100, period.year - constants.referenceYear)
@@ -158,7 +186,7 @@ const PriceChart = () => {
     });
 
     setChartData(data);
-  }, [selectedRegion, selectedType, selectedDuration, getMerchantPrice, constants]);
+  }, [selectedRegion, selectedType, selectedDuration, interval, getMerchantPrice, constants]);
 
   const getVisibleLines = () => {
     const regions = selectedRegion === 'All Regions' ? ['NSW', 'QLD', 'SA', 'VIC'] : [selectedRegion];
@@ -212,19 +240,6 @@ const PriceChart = () => {
     }
     
     return lines;
-  };
-
-  const getLineName = (dataKey) => {
-    const [region, type] = dataKey.split('_');
-    let name = '';
-    
-    if (type === 'baseloadEnergy') name = 'Baseload';
-    if (type === 'solarEnergy') name = 'Solar';
-    if (type === 'windEnergy') name = 'Wind';
-    if (type === 'green') name = 'Green Certificate';
-    if (type === 'storage') name = `${selectedDuration}hr Storage`;
-    
-    return selectedRegion === 'All Regions' ? `${region} ${name}` : name;
   };
 
   const CustomTooltip = ({ active, payload, label }) => {

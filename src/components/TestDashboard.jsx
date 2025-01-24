@@ -1,182 +1,323 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { useMerchantPrices } from '../contexts/MerchantPriceProvider';
-import { calculateStorageRevenue } from '@/components/StorageRevCalculations';
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { usePortfolio } from '@/contexts/PortfolioContext';
+import { initializeProjectValues, calculateProjectMetrics, calculateIRR, DEFAULT_PROJECT_FINANCE } from './TestDashboard_Calcs';
 
 const TestDashboard = () => {
-  const { getMerchantPrice } = useMerchantPrices();
-  const [selectedRegion, setSelectedRegion] = useState('NSW');
-  const [selectedDuration, setSelectedDuration] = useState('2');
-  const [spreadData, setSpreadData] = useState([]);
-  const [revenueExample, setRevenueExample] = useState(null);
-  const [currentSpread, setCurrentSpread] = useState(0);
-
-  const getExampleAsset = (duration) => ({
-    volume: (parseFloat(duration) * 100).toString(),
-    capacity: "100",
-    volumeLossAdjustment: "95",
-    annualDegradation: "0.5",
-    region: selectedRegion,
-    assetStartDate: '2025-01-01',
-    contracts: []
+  const { assets, constants, getMerchantPrice } = usePortfolio();
+  const [selectedRevenueCase, setSelectedRevenueCase] = useState('base');
+  const [selectedAsset, setSelectedAsset] = useState(() => {
+    const firstAsset = Object.values(assets)[0];
+    return firstAsset ? firstAsset.name : '';
   });
+  const [projectValues, setProjectValues] = useState(() => Object.keys(assets).length > 0 ? initializeProjectValues(assets) : {});
+  const [solveGearing, setSolveGearing] = useState(false);
 
   useEffect(() => {
-    const currentSpreadValue = getMerchantPrice('storage', parseFloat(selectedDuration), selectedRegion, 2025);
-    setCurrentSpread(currentSpreadValue);
+    if (Object.keys(assets).length > 0) {
+      setProjectValues(initializeProjectValues(assets));
+    }
+  }, [assets]);
 
-    const years = Array.from({length: 21}, (_, i) => 2025 + i);
-    const asset = getExampleAsset(selectedDuration);
-    
-    const newSpreadData = years.map(year => {
-      const spread = getMerchantPrice('storage', parseFloat(selectedDuration), selectedRegion, year);
-      const revenue = calculateStorageRevenue(
-        asset,
-        year.toString(),
-        year,
-        2025,
-        (profile, type, region, y) => getMerchantPrice('storage', parseFloat(selectedDuration), region, y)
-      );
-      return {
-        year,
-        spread,
-        revenue: revenue.total,
-        generation: revenue.annualGeneration
-      };
-    });
-    setSpreadData(newSpreadData);
+  const projectMetrics = useMemo(() => calculateProjectMetrics(
+    assets,
+    projectValues,
+    constants,
+    getMerchantPrice,
+    selectedRevenueCase,
+    solveGearing
+  ), [assets, projectValues, selectedRevenueCase, constants, getMerchantPrice, solveGearing]);
 
-    const revenue = calculateStorageRevenue(
-      asset,
-      '2025',
-      2025,
-      2025,
-      (profile, type, region, year) => getMerchantPrice('storage', parseFloat(selectedDuration), region, year)
-    );
-    setRevenueExample(revenue);
-  }, [selectedRegion, selectedDuration, getMerchantPrice]);
+  const handleProjectValueChange = (assetName, field, value) => {
+    setProjectValues(prev => ({
+      ...prev,
+      [assetName]: {
+        ...prev[assetName],
+        [field]: value === '' ? '' : parseFloat(value)
+      }
+    }));
+  };
 
-  const currentAsset = getExampleAsset(selectedDuration);
-  const volumeMWh = parseInt(currentAsset.capacity) * parseFloat(selectedDuration);
-  const cycles = 365;
-  const theoreticalRevenue = revenueExample ? (volumeMWh * cycles * currentSpread * (parseInt(currentAsset.volumeLossAdjustment)/100)) / 1000000 : 0;
+  const handleSolveGearing = () => {
+    setSolveGearing(true);
+    setTimeout(() => setSolveGearing(false), 0);
+  };
 
-  if (!revenueExample) return null;
+  const formatPercent = (value) => `${(value * 100).toFixed(1)}%`;
 
   return (
-    <div className="space-y-6">
+    <div className="w-full p-4 space-y-4">
+      {/* Project Parameters Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Battery Storage Merchant Spread Analysis - {selectedRegion}</CardTitle>
+          <CardTitle>Project Parameters</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex space-x-4 mb-6">
-            <div className="w-48">
-              <Select value={selectedRegion} onValueChange={setSelectedRegion}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select Region" />
-                </SelectTrigger>
-                <SelectContent>
-                  {['NSW', 'VIC', 'QLD', 'SA'].map(region => (
-                    <SelectItem key={region} value={region}>{region}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="w-48">
-              <Select value={selectedDuration} onValueChange={setSelectedDuration}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select Duration" />
-                </SelectTrigger>
-                <SelectContent>
-                  {[0.5, 1, 2, 4].map(hours => (
-                    <SelectItem key={hours} value={hours.toString()}>{hours} Hour</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          
-          <div className="h-96">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={spreadData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="year" />
-                <YAxis label={{ value: 'Spread ($/MWh)', angle: -90, position: 'insideLeft' }} />
-                <Tooltip formatter={(value) => `$${value.toFixed(2)}`} />
-                <Legend />
-                <Line 
-                  type="monotone" 
-                  dataKey="spread" 
-                  stroke="#8884d8" 
-                  name={`${selectedDuration}hr Battery Spread`}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Asset Name</TableHead>
+                <TableHead>CAPEX ($M)</TableHead>
+                <TableHead>Opex ($M/pa)</TableHead>
+                <TableHead>Opex Esc. (%)</TableHead>
+                <TableHead>Capacity (MW)</TableHead>
+                <TableHead>Start Date</TableHead>
+                <TableHead>Asset Life (Years)</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {Object.values(assets).map((asset) => (
+                <TableRow key={asset.name}>
+                  <TableCell>{asset.name}</TableCell>
+                  <TableCell>
+                    <input
+                      type="number"
+                      value={projectValues[asset.name]?.capex ?? ''}
+                      onChange={(e) => handleProjectValueChange(asset.name, 'capex', e.target.value)}
+                      className="w-32 border rounded p-2"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <input
+                      type="number"
+                      value={projectValues[asset.name]?.opex ?? ''}
+                      onChange={(e) => handleProjectValueChange(asset.name, 'opex', e.target.value)}
+                      className="w-32 border rounded p-2"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <input
+                      type="number"
+                      value={projectValues[asset.name]?.opexEscalation ?? ''}
+                      onChange={(e) => handleProjectValueChange(asset.name, 'opexEscalation', e.target.value)}
+                      className="w-32 border rounded p-2"
+                    />
+                  </TableCell>
+                  <TableCell>{asset.capacity}</TableCell>
+                  <TableCell>{asset.assetStartDate ? new Date(asset.assetStartDate).toLocaleDateString() : "-"}</TableCell>
+                  <TableCell>{asset.assetLife}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
 
+      {/* Debt Parameters */}
       <Card>
         <CardHeader>
-          <CardTitle>Revenue Calculation for {selectedDuration}hr Battery in {selectedRegion} (2025)</CardTitle>
+          <div className="flex justify-between items-center">
+            <CardTitle>Debt Parameters</CardTitle>
+            <Button onClick={handleSolveGearing}>
+              Solve Individual Gearing
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <h3 className="font-semibold mb-2">Asset Parameters:</h3>
-              <p>Power Capacity: {currentAsset.capacity} MW</p>
-              <p>Duration: {selectedDuration} hours</p>
-              <p>Energy Volume: {volumeMWh} MWh</p>
-              <p>Annual Cycles: {cycles}</p>
-              <p>Volume Loss: {currentAsset.volumeLossAdjustment}%</p>
-              <p>Annual Degradation: {currentAsset.annualDegradation}%</p>
-              <p>Current Spread: ${currentSpread}/MWh</p>
-              <div className="mt-4">
-                <h4 className="font-semibold">Merchant Revenue Over Time:</h4>
-                {spreadData.slice(0, 5).map(yearData => (
-                  <p key={yearData.year} className="text-sm">
-                    {yearData.year}: ${yearData.revenue.toFixed(2)}M @ ${yearData.spread}/MWh ({(yearData.generation/1000).toFixed(1)}k MWh)
-                  </p>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Asset Name</TableHead>
+                <TableHead>Max Gearing (%)</TableHead>
+                <TableHead>Target DSCR Merchant (x)</TableHead>
+                <TableHead>Target DSCR Contract (x)</TableHead>
+                <TableHead>Interest Rate (%)</TableHead>
+                <TableHead>Tenor (Years)</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {Object.values(assets).map((asset) => (
+                <TableRow key={asset.name}>
+                  <TableCell>{asset.name}</TableCell>
+                  <TableCell>
+                    <input
+                      type="number"
+                      value={(projectValues[asset.name]?.maxGearing * 100) ?? ''}
+                      onChange={(e) => handleProjectValueChange(asset.name, 'maxGearing', e.target.value / 100)}
+                      className="w-32 border rounded p-2"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <input
+                      type="number"
+                      value={projectValues[asset.name]?.targetDSCRMerchant ?? ''}
+                      onChange={(e) => handleProjectValueChange(asset.name, 'targetDSCRMerchant', e.target.value)}
+                      className="w-32 border rounded p-2"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <input
+                      type="number"
+                      value={projectValues[asset.name]?.targetDSCRContract ?? ''}
+                      onChange={(e) => handleProjectValueChange(asset.name, 'targetDSCRContract', e.target.value)}
+                      className="w-32 border rounded p-2"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <input
+                      type="number"
+                      value={(projectValues[asset.name]?.interestRate * 100) ?? ''}
+                      onChange={(e) => handleProjectValueChange(asset.name, 'interestRate', e.target.value / 100)}
+                      className="w-32 border rounded p-2"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <input
+                      type="number"
+                      value={projectValues[asset.name]?.tenorYears ?? ''}
+                      onChange={(e) => handleProjectValueChange(asset.name, 'tenorYears', e.target.value)}
+                      className="w-32 border rounded p-2"
+                    />
+                  </TableCell>
+                </TableRow>
+              ))}
+              {Object.keys(assets).length >= 2 && (
+                <TableRow className="bg-muted/50">
+                  <TableCell>Portfolio Financing</TableCell>
+                  <TableCell>
+                    <input
+                      type="number"
+                      value={(projectValues.portfolio?.maxGearing * 100) ?? ''}
+                      onChange={(e) => handleProjectValueChange('portfolio', 'maxGearing', e.target.value / 100)}
+                      className="w-32 border rounded p-2"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <input
+                      type="number"
+                      value={projectValues.portfolio?.targetDSCRMerchant ?? ''}
+                      onChange={(e) => handleProjectValueChange('portfolio', 'targetDSCRMerchant', e.target.value)}
+                      className="w-32 border rounded p-2"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <input
+                      type="number"
+                      value={projectValues.portfolio?.targetDSCRContract ?? ''}
+                      onChange={(e) => handleProjectValueChange('portfolio', 'targetDSCRContract', e.target.value)}
+                      className="w-32 border rounded p-2"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <input
+                      type="number"
+                      value={(projectValues.portfolio?.interestRate * 100) ?? ''}
+                      onChange={(e) => handleProjectValueChange('portfolio', 'interestRate', e.target.value / 100)}
+                      className="w-32 border rounded p-2"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <input
+                      type="number"
+                      value={projectValues.portfolio?.tenorYears ?? ''}
+                      onChange={(e) => handleProjectValueChange('portfolio', 'tenorYears', e.target.value)}
+                      className="w-32 border rounded p-2"
+                    />
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* Project Metrics */}
+      <Card>
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <CardTitle>Project Metrics</CardTitle>
+            <Select value={selectedRevenueCase} onValueChange={setSelectedRevenueCase}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Select case" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="base">Base Case</SelectItem>
+                <SelectItem value="worst">Downside Volume & Price</SelectItem>
+                <SelectItem value="volume">Volume Stress</SelectItem>
+                <SelectItem value="price">Price Stress</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Asset</TableHead>
+                <TableHead>Total CAPEX ($M)</TableHead>
+                <TableHead>Calculated Gearing (%)</TableHead>
+                <TableHead>Debt Amount ($M)</TableHead>
+                <TableHead>Annual Debt Service ($M)</TableHead>
+                <TableHead>Min DSCR</TableHead>
+                <TableHead>Equity IRR</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {Object.entries(projectMetrics).map(([assetName, metrics]) => (
+                <TableRow key={assetName}>
+                  <TableCell>{assetName}</TableCell>
+                  <TableCell>${metrics.capex.toLocaleString(undefined, { maximumFractionDigits: 1 })}</TableCell>
+                  <TableCell>{formatPercent(metrics.calculatedGearing)}</TableCell>
+                  <TableCell>${metrics.debtAmount.toLocaleString(undefined, { maximumFractionDigits: 1 })}</TableCell>
+                  <TableCell>${metrics.annualDebtService.toLocaleString(undefined, { maximumFractionDigits: 1 })}</TableCell>
+                  <TableCell>{metrics.minDSCR.toFixed(2)}x</TableCell>
+                  <TableCell>{calculateIRR(metrics.equityCashFlows) ? formatPercent(calculateIRR(metrics.equityCashFlows)) : 'N/A'}</TableCell>
+                </TableRow>
+              ))}
+              {Object.keys(assets).length >= 2 && projectMetrics.portfolio && (
+                <TableRow className="bg-muted/50">
+                  <TableCell>Portfolio Financed</TableCell>
+                  <TableCell>${projectMetrics.portfolio.capex.toLocaleString(undefined, { maximumFractionDigits: 1 })}</TableCell>
+                  <TableCell>{formatPercent(projectMetrics.portfolio.calculatedGearing)}</TableCell>
+                  <TableCell>${projectMetrics.portfolio.debtAmount.toLocaleString(undefined, { maximumFractionDigits: 1 })}</TableCell>
+                  <TableCell>${projectMetrics.portfolio.annualDebtService.toLocaleString(undefined, { maximumFractionDigits: 1 })}</TableCell>
+                  <TableCell>{projectMetrics.portfolio.minDSCR.toFixed(2)}x</TableCell>
+                  <TableCell>{calculateIRR(projectMetrics.portfolio.equityCashFlows) ? formatPercent(calculateIRR(projectMetrics.portfolio.equityCashFlows)) : 'N/A'}</TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* Cash Flow Chart */}
+      <Card>
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <CardTitle>Project Cash Flows</CardTitle>
+            <Select value={selectedAsset} onValueChange={setSelectedAsset}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Select asset" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Portfolio">Portfolio</SelectItem>
+                {Object.values(assets).map(asset => (
+                  <SelectItem key={asset.name} value={asset.name}>
+                    {asset.name}
+                  </SelectItem>
                 ))}
-              </div>
-            </div>
-            <div>
-              <h3 className="font-semibold mb-2">Calculated Revenue:</h3>
-              <p>Simple Revenue: ${theoreticalRevenue.toFixed(2)}M</p>
-              <p className="text-sm text-gray-500">
-                {volumeMWh} MWh × {cycles} cycles × ${currentSpread}/MWh × {currentAsset.volumeLossAdjustment}% ÷ 1,000,000
-              </p>
-              <div className="mt-4">
-                <p>Model Revenue: ${revenueExample.total.toFixed(2)}M</p>
-                <p>Annual Generation: {revenueExample.annualGeneration.toFixed(2)} MWh</p>
-              </div>
-            </div>
+              </SelectContent>
+            </Select>
           </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Projected Annual Revenue</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="h-96">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={spreadData}>
+              <LineChart data={projectMetrics[selectedAsset]?.cashFlows || []}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="year" />
-                <YAxis label={{ value: 'Revenue ($M)', angle: -90, position: 'insideLeft' }} />
-                <Tooltip formatter={(value) => `$${value.toFixed(2)}M`} />
+                <YAxis />
+                <Tooltip formatter={(value) => `$${value.toLocaleString()}M`} />
                 <Legend />
-                <Line 
-                  type="monotone" 
-                  dataKey="revenue" 
-                  stroke="#82ca9d" 
-                  name={`${selectedDuration}hr Battery Revenue`}
-                />
+                <Line type="monotone" dataKey="revenue" name="Revenue" stroke="#FFB74D" />
+                <Line type="monotone" dataKey="opex" name="Operating Costs" stroke="#f44336" />
+                <Line type="monotone" dataKey="operatingCashFlow" name="CFADS" stroke="#4CAF50" />
+                <Line type="monotone" dataKey="debtService" name="Debt Service" stroke="#9C27B0" />
+                <Line type="monotone" dataKey="equityCashFlow" name="Equity Cash Flow" stroke="#2196F3" />
               </LineChart>
             </ResponsiveContainer>
           </div>

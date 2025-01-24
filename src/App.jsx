@@ -29,13 +29,13 @@ const App = () => {
 
   // Tab configuration with colors
   const tabs = [
-//    {
-//      id: "test",
-//      label: "test",
-//      icon: HelpCircle,
-//      component: TestDashboard,
-//      colors: "hover:bg-blue-100 data-[state=active]:bg-blue-500 data-[state=active]:text-white",
-//   },
+  //  {
+   //   id: "test",
+    //  label: "test",
+      //icon: HelpCircle,
+      //component: TestDashboard,
+      //colors: "hover:bg-blue-100 data-[state=active]:bg-blue-500 data-[state=active]:text-white",
+   //},
     {
       id: "landingpage",
       label: "Usage",
