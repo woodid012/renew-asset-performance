@@ -19,22 +19,22 @@ import AssetDashboard from "@/components/AssetDashboard";
 import PortfolioRevenue from "@/components/OutputC_Main";
 import PPASummaryTable from "@/components/PPA_general_Summary";
 import EarningsRiskAnalysis from "@/components/EaR_Dashboard";
-import ValuationAnalysis from "@/components/ValuationAnalysis";
+import ValuationTabs from "@/components/ValuationTabs";
 import PortfolioSettings from "@/components/PortfolioSettings";
 
-import TestDashboard from "@/components/TestDashboard";
+// import TestDashboard from "@/components/TestDashboard";
 
 const App = () => {
   const [activeTab, setActiveTab] = useState("landingpage");
 
   // Tab configuration with colors
   const tabs = [
-  //  {
+   // {
    //   id: "test",
     //  label: "test",
-      //icon: HelpCircle,
-      //component: TestDashboard,
-      //colors: "hover:bg-blue-100 data-[state=active]:bg-blue-500 data-[state=active]:text-white",
+     // icon: HelpCircle,
+     //component: TestDashboard,
+     // colors: "hover:bg-blue-100 data-[state=active]:bg-blue-500 data-[state=active]:text-white",
    //},
     {
       id: "landingpage",
@@ -75,7 +75,7 @@ const App = () => {
       id: "valuation",
       label: "Valuation",
       icon: Calculator,
-      component: ValuationAnalysis,
+      component: ValuationTabs,
       colors: "hover:bg-blue-100 data-[state=active]:bg-blue-500 data-[state=active]:text-white",
     },
     {

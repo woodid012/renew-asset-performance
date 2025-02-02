@@ -54,7 +54,9 @@ export const initializeProjectValues = (assets) => {
       targetDSCRMerchant: DEFAULT_PROJECT_FINANCE.targetDSCRMerchant - 0.2,
       targetDSCRContract: DEFAULT_PROJECT_FINANCE.targetDSCRContract - 0.05,
       interestRate: DEFAULT_PROJECT_FINANCE.interestRate - 0.005,
-      tenorYears: DEFAULT_PROJECT_FINANCE.tenorYears
+      tenorYears: DEFAULT_PROJECT_FINANCE.tenorYears,
+      capex: 0,  // This will be calculated from sum of assets
+      calculatedGearing: (DEFAULT_PROJECT_FINANCE.maxGearing + 0.05)  // Initialize to max
     };
   }
 
@@ -73,15 +75,25 @@ const calculateDSCR = (cashFlow, debtService) => {
 };
 
 const solveGearing = (
-  asset,
+  cashFlows, 
   projectValue,
-  constants,
-  getMerchantPrice,
-  selectedRevenueCase
+  maxGearing,
+  targetDSCRContract,
+  targetDSCRMerchant = null, // Optional for portfolio which only uses contract DSCR
+  isPortfolio = false
 ) => {
+  console.log('Solving gearing for:', isPortfolio ? 'Portfolio' : 'Asset');
+  console.log('Initial params:', {
+    maxGearing,
+    targetDSCRContract,
+    targetDSCRMerchant,
+    capex: projectValue.capex,
+    interestRate: projectValue.interestRate,
+    tenorYears: projectValue.tenorYears
+  });
   const tolerance = 0.0001;
   let low = 0;
-  let high = projectValue.maxGearing;
+  let high = maxGearing;
   let iterations = 0;
   const maxIterations = 50;
 
@@ -94,99 +106,67 @@ const solveGearing = (
       projectValue.tenorYears
     );
 
-    const assetStartYear = new Date(asset.assetStartDate).getFullYear();
-    // Only evaluate DSCRs during debt tenor period
-    const dscrsByYear = Array.from({ length: projectValue.tenorYears }, (_, yearIndex) => {
-      const year = assetStartYear + yearIndex;
-      // Skip if before start date
-      if (year < assetStartYear) return null;
-
-      const baseRevenue = calculateAssetRevenue(asset, year, constants, getMerchantPrice);
-      const stressedRevenue = calculateStressRevenue(baseRevenue, selectedRevenueCase, constants);
-      
-      // Separate contracted and merchant revenues
-      const contractedRevenue = stressedRevenue.contractedGreen + stressedRevenue.contractedEnergy;
-      const merchantRevenue = stressedRevenue.merchantGreen + stressedRevenue.merchantEnergy;
-      const totalRevenue = contractedRevenue + merchantRevenue;
-      
-      // Calculate OPEX
-      const opexInflation = Math.pow(1 + projectValue.opexEscalation/100, yearIndex);
-      const yearOpex = projectValue.opex * opexInflation;
-      
-      // Calculate blended DSCR target based on revenue mix
-      const contractedShare = totalRevenue > 0 ? contractedRevenue / totalRevenue : 0;
-      const merchantShare = totalRevenue > 0 ? merchantRevenue / totalRevenue : 0;
-      
-      // Calculate CFADS for each revenue stream
-      const contractedCFADS = contractedRevenue - (yearOpex * contractedShare);
-      const merchantCFADS = merchantRevenue - (yearOpex * merchantShare);
-      const totalCFADS = contractedCFADS + merchantCFADS;
-      
-      // Calculate actual DSCR
-      const actualDSCR = calculateDSCR(totalCFADS, annualDebtService);
-      
-      // Calculate required DSCR based on revenue mix
-      const requiredDSCR = (
-        contractedShare * projectValue.targetDSCRContract + 
-        merchantShare * projectValue.targetDSCRMerchant
-      );
-
-      return {
-        year,
-        actualDSCR,
-        requiredDSCR,
-        contractedShare,
-        merchantShare,
-        totalCFADS,
-        annualDebtService
-      };
-    });
-
-    // Compare DSCR at each year interval during debt period
     let failedYears = 0;
-    let totalDSCRShortfall = 0;
     
-    // Filter out any null entries and only evaluate years during debt period
-    const validYears = dscrsByYear.filter(year => year !== null);
+    // Only evaluate during debt tenor
+    // For debugging
+    let dscrValues = [];
     
-    validYears.forEach(year => {
-      if (year.actualDSCR < year.requiredDSCR) {
+    cashFlows.slice(0, projectValue.tenorYears).forEach(cf => {
+      const dscr = calculateDSCR(cf.operatingCashFlow, annualDebtService);
+      dscrValues.push(dscr);
+      
+      const requiredDSCR = calculateRequiredDSCR(
+        cf.contractedRevenue,
+        cf.merchantRevenue,
+        targetDSCRContract,
+        targetDSCRMerchant
+      );
+      
+      if (dscr < requiredDSCR) {
         failedYears++;
-        totalDSCRShortfall += (year.requiredDSCR - year.actualDSCR) / year.requiredDSCR;
       }
     });
+    
+    // For debugging
+    if (iterations % 10 === 0) {
+      console.log('Iteration:', iterations, {
+        gearing: mid,
+        dscrValues,
+        failedYears,
+        annualDebtService
+      });
+    }
 
-    // If we have any failed years, we need less debt
     if (failedYears > 0) {
       high = mid;
     } else {
-      // All years pass - see if we can take on more debt
-      // Calculate how close we are to the required DSCRs
-      const averageExcess = validYears.reduce((acc, year) => 
-        acc + (year.actualDSCR - year.requiredDSCR) / year.requiredDSCR, 0
-      ) / validYears.length;
-      
-      if (averageExcess < 0.001) { // Within 0.1% of target
-        break;
-      } else {
-        low = mid;
-      }
+      low = mid;
     }
     
     iterations++;
   }
 
-  const finalGearing = Math.min((low + high) / 2, projectValue.maxGearing);
-  return finalGearing;
+  return Math.min((low + high) / 2, maxGearing);
 };
+
+const calculateRequiredDSCR = (contractedRevenue, merchantRevenue, targetDSCRContract, targetDSCRMerchant) => {
+  const totalRevenue = contractedRevenue + merchantRevenue;
+  if (totalRevenue === 0) return targetDSCRMerchant; // Default to merchant if no revenue
+  
+  const contractedShare = contractedRevenue / totalRevenue;
+  const merchantShare = merchantRevenue / totalRevenue;
+  
+  return (contractedShare * targetDSCRContract + merchantShare * targetDSCRMerchant);
+};
+
 export const calculateProjectMetrics = (
   assets,
   projectValues,
   constants,
   getMerchantPrice,
   selectedRevenueCase = 'base',
-  solveGearingFlag = false,
-  solvePortfolio = false
+  solveGearingFlag = false
 ) => {
   const metrics = {};
   const individualMetrics = {};
@@ -198,14 +178,43 @@ export const calculateProjectMetrics = (
     const projectValue = projectValues[asset.name] || {};
     const capex = projectValue.capex || 0;
     
+    const cashFlows = [];
+    const assetStartYear = new Date(asset.assetStartDate).getFullYear();
+    const assetEndYear = assetStartYear + (asset.assetLife || 30);
+
+    // Calculate cash flows first as we need them for gearing calculation
+    for (let year = assetStartYear; year < assetEndYear; year++) {
+      const baseRevenue = calculateAssetRevenue(asset, year, constants, getMerchantPrice);
+      const stressedRevenue = calculateStressRevenue(baseRevenue, selectedRevenueCase, constants);
+      const contractedRevenue = stressedRevenue.contractedGreen + stressedRevenue.contractedEnergy;
+      const merchantRevenue = stressedRevenue.merchantGreen + stressedRevenue.merchantEnergy;
+      const yearRevenue = contractedRevenue + merchantRevenue;
+      
+      const yearIndex = year - assetStartYear;
+      const opexInflation = Math.pow(1 + projectValue.opexEscalation/100, yearIndex);
+      const yearOpex = projectValue.opex * opexInflation;
+      
+      const operatingCashFlow = yearRevenue - yearOpex;
+
+      cashFlows.push({
+        year,
+        revenue: yearRevenue,
+        contractedRevenue,
+        merchantRevenue,
+        opex: -yearOpex,
+        operatingCashFlow
+      });
+    }
+    
+    // Calculate or use existing gearing
     let gearing = projectValue.calculatedGearing;
     if (solveGearingFlag) {
       gearing = solveGearing(
-        asset,
+        cashFlows,
         projectValue,
-        constants,
-        getMerchantPrice,
-        selectedRevenueCase
+        projectValue.maxGearing,
+        projectValue.targetDSCRContract,
+        projectValue.targetDSCRMerchant
       );
     }
 
@@ -216,33 +225,12 @@ export const calculateProjectMetrics = (
       projectValue.tenorYears
     );
 
-    const cashFlows = [];
-    const assetStartYear = new Date(asset.assetStartDate).getFullYear();
-    const assetEndYear = assetStartYear + (asset.assetLife || 30);
-
-    for (let year = assetStartYear; year < assetEndYear; year++) {
-      const baseRevenue = calculateAssetRevenue(asset, year, constants, getMerchantPrice);
-      const stressedRevenue = calculateStressRevenue(baseRevenue, selectedRevenueCase, constants);
-      const yearRevenue = stressedRevenue.contractedGreen + stressedRevenue.contractedEnergy + 
-                         stressedRevenue.merchantGreen + stressedRevenue.merchantEnergy;
-      
-      const yearIndex = year - assetStartYear;
-      const opexInflation = Math.pow(1 + projectValue.opexEscalation/100, yearIndex);
-      const yearOpex = projectValue.opex * opexInflation;
-      
-      const operatingCashFlow = yearRevenue - yearOpex;
-      const yearDebtService = year < (assetStartYear + projectValue.tenorYears) ? annualDebtService : 0;
-      const equityCashFlow = operatingCashFlow - yearDebtService;
-
-      cashFlows.push({
-        year,
-        revenue: yearRevenue,
-        opex: -yearOpex,
-        operatingCashFlow,
-        debtService: -yearDebtService,
-        equityCashFlow
-      });
-    }
+    // Add debt service to cash flows
+    cashFlows.forEach(cf => {
+      const yearDebtService = cf.year < (assetStartYear + projectValue.tenorYears) ? annualDebtService : 0;
+      cf.debtService = -yearDebtService;
+      cf.equityCashFlow = cf.operatingCashFlow - yearDebtService;
+    });
 
     const equityCashFlows = [-capex * (1 - gearing), ...cashFlows.map(cf => cf.equityCashFlow)];
     const dscrValues = cashFlows.map(cf => calculateDSCR(cf.operatingCashFlow, -cf.debtService));
@@ -264,33 +252,23 @@ export const calculateProjectMetrics = (
 
   // Calculate portfolio metrics if there are multiple assets
   if (Object.keys(assets).length >= 2) {
-    const totalCapex = Object.values(individualMetrics).reduce((sum, m) => sum + m.capex, 0);
     const portfolioValue = projectValues.portfolio || {};
-    const portfolioGearing = solveGearingFlag && portfolioValue.maxGearing ? 
-      Math.min(portfolioValue.maxGearing, portfolioValue.maxGearing) : 
-      (portfolioValue.maxGearing || DEFAULT_PROJECT_FINANCE.maxGearing);
-
-    const portfolioDebtAmount = totalCapex * portfolioGearing;
-    const portfolioDebtService = calculateDebtService(
-      portfolioDebtAmount,
-      portfolioValue.interestRate || DEFAULT_PROJECT_FINANCE.interestRate,
-      portfolioValue.tenorYears || DEFAULT_PROJECT_FINANCE.tenorYears
-    );
-
+    const totalCapex = Object.values(individualMetrics).reduce((sum, m) => sum + m.capex, 0);
+    
     // Get the range of years across all projects
     const startYear = Math.min(...Object.values(individualMetrics).flatMap(m => m.cashFlows.map(cf => cf.year)));
     const endYear = Math.max(...Object.values(individualMetrics).flatMap(m => m.cashFlows.map(cf => cf.year)));
     
-    // Initialize portfolio cash flows
+    // Combine all project cash flows
     const portfolioCashFlows = [];
     for (let year = startYear; year <= endYear; year++) {
       const yearlySum = {
         year,
         revenue: 0,
+        contractedRevenue: 0,
+        merchantRevenue: 0,
         opex: 0,
-        operatingCashFlow: 0,
-        debtService: 0,
-        equityCashFlow: 0
+        operatingCashFlow: 0
       };
 
       // Sum up cash flows from all projects for this year
@@ -298,24 +276,43 @@ export const calculateProjectMetrics = (
         const yearCashFlow = projectMetrics.cashFlows.find(cf => cf.year === year);
         if (yearCashFlow) {
           yearlySum.revenue += yearCashFlow.revenue;
+          yearlySum.contractedRevenue += yearCashFlow.contractedRevenue;
+          yearlySum.merchantRevenue += yearCashFlow.merchantRevenue;
           yearlySum.opex += yearCashFlow.opex;
           yearlySum.operatingCashFlow += yearCashFlow.operatingCashFlow;
         }
       });
 
-      // Apply portfolio debt service if within tenor
-      if (year < (startYear + (portfolioValue.tenorYears || DEFAULT_PROJECT_FINANCE.tenorYears))) {
-        yearlySum.debtService = -portfolioDebtService;
-      }
-      
-      yearlySum.equityCashFlow = yearlySum.operatingCashFlow + yearlySum.debtService;
       portfolioCashFlows.push(yearlySum);
     }
 
-    // Calculate portfolio equity cash flows (including initial investment)
+    // Calculate portfolio gearing using the same solver but with combined cash flows
+    const portfolioGearing = solveGearingFlag ? 
+      solveGearing(
+        portfolioCashFlows,
+        { ...portfolioValue, capex: totalCapex },
+        portfolioValue.maxGearing,
+        portfolioValue.targetDSCRContract,
+        portfolioValue.targetDSCRMerchant,  // Include merchant DSCR target
+        true   // Is portfolio
+      ) : 
+      (portfolioValue.maxGearing || DEFAULT_PROJECT_FINANCE.maxGearing);
+
+    const portfolioDebtAmount = totalCapex * portfolioGearing;
+    const portfolioDebtService = calculateDebtService(
+      portfolioDebtAmount,
+      portfolioValue.interestRate,
+      portfolioValue.tenorYears
+    );
+
+    // Add debt service to portfolio cash flows
+    portfolioCashFlows.forEach(cf => {
+      const yearDebtService = cf.year < (startYear + portfolioValue.tenorYears) ? portfolioDebtService : 0;
+      cf.debtService = -yearDebtService;
+      cf.equityCashFlow = cf.operatingCashFlow - yearDebtService;
+    });
+
     const portfolioEquityCashFlows = [-totalCapex * (1 - portfolioGearing), ...portfolioCashFlows.map(cf => cf.equityCashFlow)];
-    
-    // Calculate portfolio DSCR
     const portfolioDSCRs = portfolioCashFlows
       .filter(cf => cf.debtService !== 0)
       .map(cf => calculateDSCR(cf.operatingCashFlow, -cf.debtService));

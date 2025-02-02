@@ -272,7 +272,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
               <Input
                 type="number"
                 min="0"
-                value={formatNumericValue(asset.assetLife) || '35'}
+                value={formatNumericValue(asset.assetLife)}
                 onChange={(e) => handleFieldUpdate('assetLife', e.target.value, { round: true })}
               />
             </div>

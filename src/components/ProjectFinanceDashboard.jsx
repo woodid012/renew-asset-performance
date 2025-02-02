@@ -5,17 +5,21 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { usePortfolio } from '@/contexts/PortfolioContext';
-import { initializeProjectValues, calculateProjectMetrics, calculateIRR, DEFAULT_PROJECT_FINANCE } from './TestDashboard_Calcs';
+import { initializeProjectValues, calculateProjectMetrics, calculateIRR, DEFAULT_PROJECT_FINANCE } from './ProjectFinance_Calcs';
 
-const TestDashboard = () => {
+
+
+const ProjectFinanceDashboard = () => {
   const { assets, constants, getMerchantPrice } = usePortfolio();
   const [selectedRevenueCase, setSelectedRevenueCase] = useState('base');
   const [selectedAsset, setSelectedAsset] = useState(() => {
     const firstAsset = Object.values(assets)[0];
     return firstAsset ? firstAsset.name : '';
   });
+  
   const [projectValues, setProjectValues] = useState(() => Object.keys(assets).length > 0 ? initializeProjectValues(assets) : {});
-  const [solveGearing, setSolveGearing] = useState(false);
+  const [isGearingSolved, setIsGearingSolved] = useState(false);
+
 
   useEffect(() => {
     if (Object.keys(assets).length > 0) {
@@ -29,10 +33,11 @@ const TestDashboard = () => {
     constants,
     getMerchantPrice,
     selectedRevenueCase,
-    solveGearing
-  ), [assets, projectValues, selectedRevenueCase, constants, getMerchantPrice, solveGearing]);
+    false  // Never solve gearing in metrics calculation
+  ), [assets, projectValues, selectedRevenueCase, constants, getMerchantPrice]);
 
   const handleProjectValueChange = (assetName, field, value) => {
+    setIsGearingSolved(false); // Reset solved state when values change
     setProjectValues(prev => ({
       ...prev,
       [assetName]: {
@@ -43,9 +48,31 @@ const TestDashboard = () => {
   };
 
   const handleSolveGearing = () => {
-    setSolveGearing(true);
-    setTimeout(() => setSolveGearing(false), 0);
-  };
+    // Calculate new gearing values
+    const newMetrics = calculateProjectMetrics(
+      assets,
+      projectValues,
+      constants,
+      getMerchantPrice,
+      selectedRevenueCase,
+      true
+    );
+  
+  // Update projectValues with the solved gearing
+  setProjectValues(prev => {
+    const newValues = { ...prev };
+    Object.entries(newMetrics).forEach(([assetName, metrics]) => {
+      if (assetName !== 'portfolio') {
+        newValues[assetName] = {
+          ...newValues[assetName],
+          calculatedGearing: metrics.calculatedGearing
+        };
+      }
+    });
+    return newValues;
+  });
+  setIsGearingSolved(true);
+};
 
   const formatPercent = (value) => `${(value * 100).toFixed(1)}%`;
 
@@ -61,18 +88,21 @@ const TestDashboard = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>Asset Name</TableHead>
-                <TableHead>CAPEX ($M)</TableHead>
-                <TableHead>Opex ($M/pa)</TableHead>
-                <TableHead>Opex Esc. (%)</TableHead>
                 <TableHead>Capacity (MW)</TableHead>
                 <TableHead>Start Date</TableHead>
                 <TableHead>Asset Life (Years)</TableHead>
+                <TableHead>Capex ($M)</TableHead>
+                <TableHead>Opex ($M/pa)</TableHead>
+                <TableHead>Opex Esc. (%)</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {Object.values(assets).map((asset) => (
                 <TableRow key={asset.name}>
                   <TableCell>{asset.name}</TableCell>
+                  <TableCell>{asset.capacity}</TableCell>
+                  <TableCell>{asset.assetStartDate ? new Date(asset.assetStartDate).toLocaleDateString() : "-"}</TableCell>
+                  <TableCell>{asset.assetLife}</TableCell>
                   <TableCell>
                     <input
                       type="number"
@@ -97,9 +127,7 @@ const TestDashboard = () => {
                       className="w-32 border rounded p-2"
                     />
                   </TableCell>
-                  <TableCell>{asset.capacity}</TableCell>
-                  <TableCell>{asset.assetStartDate ? new Date(asset.assetStartDate).toLocaleDateString() : "-"}</TableCell>
-                  <TableCell>{asset.assetLife}</TableCell>
+
                 </TableRow>
               ))}
             </TableBody>
@@ -112,8 +140,11 @@ const TestDashboard = () => {
         <CardHeader>
           <div className="flex justify-between items-center">
             <CardTitle>Debt Parameters</CardTitle>
-            <Button onClick={handleSolveGearing}>
-              Solve Individual Gearing
+            <Button 
+              onClick={handleSolveGearing}
+              className={isGearingSolved ? "bg-green-500 hover:bg-green-600" : "bg-red-500 hover:bg-red-600"}
+            >
+              {isGearingSolved ? "Gearing Solved" : "Solve Gearing"}
             </Button>
           </div>
         </CardHeader>
@@ -123,8 +154,8 @@ const TestDashboard = () => {
               <TableRow>
                 <TableHead>Asset Name</TableHead>
                 <TableHead>Max Gearing (%)</TableHead>
-                <TableHead>Target DSCR Merchant (x)</TableHead>
                 <TableHead>Target DSCR Contract (x)</TableHead>
+                <TableHead>Target DSCR Merchant (x)</TableHead>
                 <TableHead>Interest Rate (%)</TableHead>
                 <TableHead>Tenor (Years)</TableHead>
               </TableRow>
@@ -144,19 +175,20 @@ const TestDashboard = () => {
                   <TableCell>
                     <input
                       type="number"
-                      value={projectValues[asset.name]?.targetDSCRMerchant ?? ''}
-                      onChange={(e) => handleProjectValueChange(asset.name, 'targetDSCRMerchant', e.target.value)}
+                      value={projectValues[asset.name]?.targetDSCRContract ?? ''}
+                      onChange={(e) => handleProjectValueChange(asset.name, 'targetDSCRContract', e.target.value)}
                       className="w-32 border rounded p-2"
                     />
                   </TableCell>
                   <TableCell>
                     <input
                       type="number"
-                      value={projectValues[asset.name]?.targetDSCRContract ?? ''}
-                      onChange={(e) => handleProjectValueChange(asset.name, 'targetDSCRContract', e.target.value)}
+                      value={projectValues[asset.name]?.targetDSCRMerchant ?? ''}
+                      onChange={(e) => handleProjectValueChange(asset.name, 'targetDSCRMerchant', e.target.value)}
                       className="w-32 border rounded p-2"
                     />
                   </TableCell>
+
                   <TableCell>
                     <input
                       type="number"
@@ -257,7 +289,9 @@ const TestDashboard = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {Object.entries(projectMetrics).map(([assetName, metrics]) => (
+              {Object.entries(projectMetrics)
+                .filter(([assetName]) => assetName !== 'portfolio')
+                .map(([assetName, metrics]) => (
                 <TableRow key={assetName}>
                   <TableCell>{assetName}</TableCell>
                   <TableCell>${metrics.capex.toLocaleString(undefined, { maximumFractionDigits: 1 })}</TableCell>
@@ -268,15 +302,15 @@ const TestDashboard = () => {
                   <TableCell>{calculateIRR(metrics.equityCashFlows) ? formatPercent(calculateIRR(metrics.equityCashFlows)) : 'N/A'}</TableCell>
                 </TableRow>
               ))}
-              {Object.keys(assets).length >= 2 && projectMetrics.portfolio && (
+              {Object.keys(assets).length >= 2 && (
                 <TableRow className="bg-muted/50">
-                  <TableCell>Portfolio Financed</TableCell>
-                  <TableCell>${projectMetrics.portfolio.capex.toLocaleString(undefined, { maximumFractionDigits: 1 })}</TableCell>
-                  <TableCell>{formatPercent(projectMetrics.portfolio.calculatedGearing)}</TableCell>
-                  <TableCell>${projectMetrics.portfolio.debtAmount.toLocaleString(undefined, { maximumFractionDigits: 1 })}</TableCell>
-                  <TableCell>${projectMetrics.portfolio.annualDebtService.toLocaleString(undefined, { maximumFractionDigits: 1 })}</TableCell>
-                  <TableCell>{projectMetrics.portfolio.minDSCR.toFixed(2)}x</TableCell>
-                  <TableCell>{calculateIRR(projectMetrics.portfolio.equityCashFlows) ? formatPercent(calculateIRR(projectMetrics.portfolio.equityCashFlows)) : 'N/A'}</TableCell>
+                  <TableCell>Portfolio Financing</TableCell>
+                  <TableCell>${projectMetrics.portfolio?.capex.toLocaleString(undefined, { maximumFractionDigits: 1 })}</TableCell>
+                  <TableCell>{projectMetrics.portfolio ? formatPercent(projectMetrics.portfolio.calculatedGearing) : formatPercent(projectValues.portfolio?.maxGearing || 0)}</TableCell>
+                  <TableCell>${projectMetrics.portfolio?.debtAmount.toLocaleString(undefined, { maximumFractionDigits: 1 })}</TableCell>
+                  <TableCell>${projectMetrics.portfolio?.annualDebtService.toLocaleString(undefined, { maximumFractionDigits: 1 })}</TableCell>
+                  <TableCell>{projectMetrics.portfolio ? (projectMetrics.portfolio.minDSCR.toFixed(2) + 'x') : 'N/A'}</TableCell>
+                  <TableCell>{projectMetrics.portfolio && calculateIRR(projectMetrics.portfolio.equityCashFlows) ? formatPercent(calculateIRR(projectMetrics.portfolio.equityCashFlows)) : 'N/A'}</TableCell>
                 </TableRow>
               )}
             </TableBody>
@@ -294,7 +328,9 @@ const TestDashboard = () => {
                 <SelectValue placeholder="Select asset" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Portfolio">Portfolio</SelectItem>
+                {Object.keys(assets).length >= 2 && (
+                  <SelectItem value="portfolio">Portfolio</SelectItem>
+                )}
                 {Object.values(assets).map(asset => (
                   <SelectItem key={asset.name} value={asset.name}>
                     {asset.name}
@@ -327,4 +363,4 @@ const TestDashboard = () => {
   );
 };
 
-export default TestDashboard;
+export default ProjectFinanceDashboard;

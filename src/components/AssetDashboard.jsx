@@ -96,6 +96,7 @@ const AssetDashboard = () => {
         capacity: '100',
         type: 'solar',
         volumeLossAdjustment: '100',
+        assetLife: '35',
         contracts: []
       }
     }));

@@ -30,7 +30,8 @@
       "qtrCapacityFactor_q2": "32",
       "qtrCapacityFactor_q3": "35",
       "qtrCapacityFactor_q4": "32",
-      "capacityFactor": "32"
+      "capacityFactor": "32",
+      "assetLife": 35
     },
     "2": {
       "id": "2",
@@ -56,7 +57,14 @@
           "endDate": "2037-12-31",
           "indexationReferenceYear": 2028
         }
-      ]
+      ],
+      "qtrCapacityFactor_q1": "37",
+      "qtrCapacityFactor_q2": "40",
+      "qtrCapacityFactor_q3": "44",
+      "qtrCapacityFactor_q4": "39",
+      "capacityFactor": "40",
+      "annualDegradation": 0.6,
+      "assetLife": 35
     },
     "3": {
       "id": "3",
@@ -97,10 +105,17 @@
           "endDate": "2038-12-31",
           "indexationReferenceYear": 2029
         }
-      ]
+      ],
+      "qtrCapacityFactor_q1": "32",
+      "qtrCapacityFactor_q2": "35",
+      "qtrCapacityFactor_q3": "38",
+      "qtrCapacityFactor_q4": "35",
+      "capacityFactor": "35",
+      "annualDegradation": 0.6,
+      "assetLife": 35
     }
   },
   "portfolioName": "Aula",
-  "exportDate": "2025-01-13T23:01:28.627Z",
+  "exportDate": "2025-02-01T23:50:27.709Z",
   "version": "1.0"
 }
