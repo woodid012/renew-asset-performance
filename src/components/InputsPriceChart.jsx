@@ -17,6 +17,7 @@ const PriceChart = () => {
   const states = ['All Regions', 'NSW', 'QLD', 'SA', 'VIC'];
   const types = ['All', 'Baseload', 'Solar', 'Wind', 'Green', 'Storage'];
   const durations = ['0.5', '1', '2', '4'];
+  
 
   const handleRegionSelection = (region) => {
     setSelectedRegion(region);
@@ -81,7 +82,7 @@ const PriceChart = () => {
         priceTypes.forEach(({ profile, type }) => {
           const realPrice = getMerchantPrice(profile, type, region, timeStr);
           if (realPrice) {
-            const nominalPrice = constants.referenceYear && constants.escalation && period.year >= constants.ForecastStartYear
+            const nominalPrice = constants.referenceYear && constants.escalation
               ? realPrice * Math.pow(1 + constants.escalation / 100, period.year - constants.referenceYear)
               : realPrice;
             
@@ -172,7 +173,7 @@ const PriceChart = () => {
           priceTypes.forEach(({ key, profile, type }) => {
             const realPrice = getMerchantPrice(profile, type, region, getTimeString(period));
             if (realPrice) {
-              const nominalPrice = constants.referenceYear && constants.escalation && period.year >= constants.ForecastStartYear
+              const nominalPrice = constants.referenceYear && constants.escalation
                 ? realPrice * Math.pow(1 + constants.escalation / 100, period.year - constants.referenceYear)
                 : realPrice;
               

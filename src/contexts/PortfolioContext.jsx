@@ -73,9 +73,6 @@ function PortfolioProviderInner({ children }) {
       wind: 0.6
     },
     merchantPrices: merchantPrices,
-    analysisStartYear: 2025,
-    analysisEndYear: 2045,
-    ForecastStartYear: 2024,
     volumeVariation: 20,
     greenPriceVariation: 20,
     EnergyPriceVariation: 20,
@@ -83,7 +80,13 @@ function PortfolioProviderInner({ children }) {
       contract: 0.08,
       merchant: 0.10
     },
-    assetCosts: {}
+    assetCosts: {},
+    // Added from InputsGlobal
+    escalation: 2.5,
+    referenceYear: new Date().getFullYear(),
+    priceAggregation: 'yearly',
+    analysisStartYear: new Date().getFullYear(),
+    analysisEndYear: new Date().getFullYear() + 30
   });
 
   // Update constants when merchant prices change

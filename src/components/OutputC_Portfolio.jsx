@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { usePortfolio } from '@/contexts/PortfolioContext';
 import { 
   ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, Legend, 
   ResponsiveContainer, CartesianGrid 
@@ -19,15 +20,37 @@ const PortfolioOverviewChart = ({
   tooltipLabelFormatter,
   roundNumber,
 }) => {
+  const { constants } = usePortfolio();
   const [viewMode, setViewMode] = useState('all');
   const [colorMode, setColorMode] = useState('all');
 
+  console.log("Analysis Period:", {
+    start: constants.analysisStartYear,
+    end: constants.analysisEndYear,
+    firstDataPoint: processedData[0]?.timeInterval,
+    lastDataPoint: processedData[processedData.length - 1]?.timeInterval,
+    totalPoints: processedData.length
+  });
+  
   const toggleAsset = (assetName) => {
     setVisibleAssets(prev => ({
       ...prev,
       [assetName]: !prev[assetName]
     }));
   };
+
+  // Filter the data based on analysis period
+  const filteredData = processedData.filter(data => {
+    let year;
+    if (data.timeInterval.includes('-')) {
+      year = parseInt(data.timeInterval.split('-')[0]);
+    } else if (data.timeInterval.includes('/')) {
+      year = parseInt(data.timeInterval.split('/')[2]);
+    } else {
+      year = parseInt(data.timeInterval);
+    }
+    return year >= constants.analysisStartYear && year <= constants.analysisEndYear;
+  });
 
   const renderBars = () => {
     return Object.values(assets).map((asset, index) => {
@@ -36,7 +59,6 @@ const PortfolioOverviewChart = ({
       const bars = [];
       
       if (colorMode === 'all') {
-        // Simplified view - combine Energy and green
         if (viewMode === 'all' || viewMode === 'contracted') {
           bars.push(
             <Bar 
@@ -64,7 +86,6 @@ const PortfolioOverviewChart = ({
           );
         }
       } else {
-        // Detailed view - separate Energy and green
         if ((viewMode === 'all' || viewMode === 'contracted')) {
           if (colorMode === 'Energy') {
             bars.push(
@@ -137,7 +158,6 @@ const PortfolioOverviewChart = ({
           <p className="font-medium">{tooltipLabelFormatter(label)}</p>
           {payload.map((entry, index) => {
             let value = roundNumber(entry.value);
-            // For 'all' colorMode, simplify the display names
             let displayName = entry.name;
             if (colorMode === 'all') {
               displayName = displayName.replace(' Energy', '').replace(' Green', '');
@@ -212,9 +232,13 @@ const PortfolioOverviewChart = ({
       <CardContent className="space-y-6">
         <div className="h-96">
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={processedData}>
+            <ComposedChart data={filteredData}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="timeInterval" {...xAxisConfig} />
+              <XAxis 
+                dataKey="timeInterval" 
+                {...xAxisConfig} 
+                domain={[constants.analysisStartYear, constants.analysisEndYear]}
+              />
               <YAxis 
                 yAxisId="left"
                 label={{ value: 'Revenue (Million $)', angle: -90, position: 'insideLeft' }} 

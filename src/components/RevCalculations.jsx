@@ -38,12 +38,55 @@ export const calculateAssetRevenue = (asset, timeInterval, constants, getMerchan
       annualGeneration: 0
     };
   }
+  
+  // Function to get merchant price with fallback to average of last 2 years
+  const getExtendedMerchantPrice = (profile, type, state, timeStr) => {
+    const price = getMerchantPrice(profile, type, state, timeStr);
+    
+    // If price exists, return it
+    if (price !== undefined && price !== null && price !== 0) {
+      return price;
+    }
+    
+    // If no price, search backwards for last 2 valid prices
+    const date = new Date(timeStr);
+    const targetYear = date.getFullYear();
+    const month = date.getMonth() + 1;
+    let yearToTry = targetYear;
+    let validPrices = [];
+    
+    // Keep trying previous years until we find 2 valid prices
+    while (yearToTry > targetYear - 10 && validPrices.length < 2) { // Limit to 10 years back
+      yearToTry--;
+      const previousTimeStr = `1/${month.toString().padStart(2, '0')}/${yearToTry}`;
+      const previousPrice = getMerchantPrice(profile, type, state, previousTimeStr);
+      
+      if (previousPrice !== undefined && previousPrice !== null && previousPrice !== 0) {
+        validPrices.push({
+          year: yearToTry,
+          price: previousPrice
+        });
+      }
+    }
+    
+    // If we found at least one price
+    if (validPrices.length > 0) {
+      // Calculate average price (if only one price found, it will be used as is)
+      const avgPrice = validPrices.reduce((sum, p) => sum + p.price, 0) / validPrices.length;
+      // Use the most recent year for calculating escalation
+      const mostRecentYear = Math.max(...validPrices.map(p => p.year));
+      const yearDiff = targetYear - mostRecentYear;
+      return avgPrice * Math.pow(1 + (constants?.escalation || 0) / 100, yearDiff);
+    }
+    
+    return 0; // Return 0 if no valid prices found within 10 years
+  };
 
   if (asset.type === 'storage') {
     return calculateStorageRevenue(asset, timeInterval, year, assetStartYear, getMerchantPrice);
   }
 
-  return calculateRenewablesRevenue(asset, timeInterval, year, quarter, assetStartYear, constants, getMerchantPrice);
+  return calculateRenewablesRevenue(asset, timeInterval, year, quarter, assetStartYear, constants, getExtendedMerchantPrice);
 };
 
 export const processPortfolioData = (portfolioData, assets, visibleAssets) => {

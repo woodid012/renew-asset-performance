@@ -142,20 +142,7 @@ const WaterfallChart = React.memo(({ data, constants }) => (
             <Line dataKey="worstCase" stroke="#ff0000" name="Combined Downside Case" dot={false} strokeWidth={2} strokeDasharray="5 5" />
             <Line dataKey="volumeStress" stroke="#FFA500" name="Volume Stress" dot={false} strokeWidth={2} strokeDasharray="5 5" />
             <Line dataKey="priceStress" stroke="#800080" name="Price Stress" dot={false} strokeWidth={2} strokeDasharray="5 5" />
-            <ReferenceArea 
-              x1={constants.analysisStartYear} 
-              x2={constants.ForecastStartYear-1} 
-              fillOpacity={0.3}
-              fill="#808080"
-              strokeOpacity={0.3}
-              label={{
-                value: "Actuals\nWIP",
-                position: "center",
-                fontSize: 12,
-                fontWeight: "bold",
-                fill: "#000000"
-              }}
-            />
+            
           </LineChart>
         </ResponsiveContainer>
       </div>

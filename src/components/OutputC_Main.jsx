@@ -19,9 +19,12 @@ const assetColors = {
 
 const roundNumber = (num) => Number(Number(num).toFixed(2));
 
-const generateTimeIntervals = (startYear, endYear, intervalType) => {
+const generateTimeIntervals = (intervalType) => {
   const intervals = [];
-  for (let year = startYear; year <= endYear; year++) {
+  const currentYear = new Date().getFullYear();
+  const endYear = currentYear + 35;
+  
+  for (let year = currentYear; year <= endYear; year++) {
     if (intervalType === 'yearly') {
       intervals.push(year.toString());
     } else if (intervalType === 'quarterly') {
@@ -81,12 +84,8 @@ const PortfolioDashboard = () => {
   const [selectedAsset, setSelectedAsset] = useState(null);
 
   const timeIntervals = useMemo(() => 
-    generateTimeIntervals(
-      constants.analysisStartYear, 
-      constants.analysisEndYear, 
-      intervalType
-    ),
-    [constants.analysisStartYear, constants.analysisEndYear, intervalType]
+    generateTimeIntervals(intervalType),
+    [intervalType]
   );
 
   const portfolioData = useMemo(() => 

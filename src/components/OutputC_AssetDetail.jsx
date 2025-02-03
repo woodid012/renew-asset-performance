@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { usePortfolio } from '@/contexts/PortfolioContext';
 import { 
   ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, Legend, 
   ResponsiveContainer, CartesianGrid 
@@ -17,63 +18,76 @@ const AssetDetailChart = ({
   tooltipLabelFormatter,
   roundNumber,
 }) => {
+  const { constants } = usePortfolio();
   const selectedAssetData = assets[selectedAsset];
   const isStorage = selectedAssetData?.type === 'storage';
 
   const processedDataWithPrices = useMemo(() => {
-    return processedData.map(periodData => {
-      if (!selectedAssetData) return periodData;
-
-      if (isStorage) {
-        const calculatedDuration = selectedAssetData.volume / selectedAssetData.capacity;
-        const standardDurations = [0.5, 1, 2, 4];
-        
-        let lowerDuration = standardDurations[0];
-        let upperDuration = standardDurations[standardDurations.length - 1];
-        let interpolationRatio = 0.5;
-        
-        for (let i = 0; i < standardDurations.length - 1; i++) {
-          if (calculatedDuration >= standardDurations[i] && calculatedDuration <= standardDurations[i + 1]) {
-            lowerDuration = standardDurations[i];
-            upperDuration = standardDurations[i + 1];
-            interpolationRatio = (calculatedDuration - lowerDuration) / (upperDuration - lowerDuration);
-            break;
-          }
+    return processedData
+      .filter(periodData => {
+        let year;
+        if (periodData.timeInterval.includes('-')) {
+          year = parseInt(periodData.timeInterval.split('-')[0]);
+        } else if (periodData.timeInterval.includes('/')) {
+          year = parseInt(periodData.timeInterval.split('/')[2]);
+        } else {
+          year = parseInt(periodData.timeInterval);
         }
+        return year >= constants.analysisStartYear && year <= constants.analysisEndYear;
+      })
+      .map(periodData => {
+        if (!selectedAssetData) return periodData;
 
-        const lowerPrice = getMerchantPrice('storage', lowerDuration, selectedAssetData.state, periodData.timeInterval);
-        const upperPrice = getMerchantPrice('storage', upperDuration, selectedAssetData.state, periodData.timeInterval);
-        
-        const merchantPriceSpread = (lowerPrice * (1 - interpolationRatio)) + (upperPrice * interpolationRatio);
-        
-        return {
-          ...periodData,
-          merchantPriceSpread: roundNumber(merchantPriceSpread)
-        };
-      } else {
-        const merchantGreenPrice = getMerchantPrice(
-          selectedAssetData.type, 
-          'green', 
-          selectedAssetData.state, 
-          periodData.timeInterval
-        );
-        const merchantEnergyPrice = getMerchantPrice(
-          selectedAssetData.type, 
-          'Energy', 
-          selectedAssetData.state, 
-          periodData.timeInterval
-        );
-        const bundledPrice = merchantGreenPrice + merchantEnergyPrice;
-        
-        return {
-          ...periodData,
-          merchantGreenPrice: roundNumber(merchantGreenPrice),
-          merchantEnergyPrice: roundNumber(merchantEnergyPrice),
-          bundledPrice: roundNumber(bundledPrice)
-        };
-      }
-    });
-  }, [processedData, selectedAsset, assets, getMerchantPrice, roundNumber, isStorage, selectedAssetData]);
+        if (isStorage) {
+          const calculatedDuration = selectedAssetData.volume / selectedAssetData.capacity;
+          const standardDurations = [0.5, 1, 2, 4];
+          
+          let lowerDuration = standardDurations[0];
+          let upperDuration = standardDurations[standardDurations.length - 1];
+          let interpolationRatio = 0.5;
+          
+          for (let i = 0; i < standardDurations.length - 1; i++) {
+            if (calculatedDuration >= standardDurations[i] && calculatedDuration <= standardDurations[i + 1]) {
+              lowerDuration = standardDurations[i];
+              upperDuration = standardDurations[i + 1];
+              interpolationRatio = (calculatedDuration - lowerDuration) / (upperDuration - lowerDuration);
+              break;
+            }
+          }
+
+          const lowerPrice = getMerchantPrice('storage', lowerDuration, selectedAssetData.state, periodData.timeInterval);
+          const upperPrice = getMerchantPrice('storage', upperDuration, selectedAssetData.state, periodData.timeInterval);
+          
+          const merchantPriceSpread = (lowerPrice * (1 - interpolationRatio)) + (upperPrice * interpolationRatio);
+          
+          return {
+            ...periodData,
+            merchantPriceSpread: roundNumber(merchantPriceSpread)
+          };
+        } else {
+          const merchantGreenPrice = getMerchantPrice(
+            selectedAssetData.type, 
+            'green', 
+            selectedAssetData.state, 
+            periodData.timeInterval
+          );
+          const merchantEnergyPrice = getMerchantPrice(
+            selectedAssetData.type, 
+            'Energy', 
+            selectedAssetData.state, 
+            periodData.timeInterval
+          );
+          const bundledPrice = merchantGreenPrice + merchantEnergyPrice;
+          
+          return {
+            ...periodData,
+            merchantGreenPrice: roundNumber(merchantGreenPrice),
+            merchantEnergyPrice: roundNumber(merchantEnergyPrice),
+            bundledPrice: roundNumber(bundledPrice)
+          };
+        }
+      });
+  }, [processedData, selectedAsset, assets, getMerchantPrice, roundNumber, isStorage, selectedAssetData, constants]);
 
   return (
     <Card>
