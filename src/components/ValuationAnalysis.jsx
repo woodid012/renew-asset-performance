@@ -237,20 +237,44 @@ const ValuationAnalysis = () => {
                   <TableHead>Present Value ($M)</TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody>
-                {(valuationResults?.npvData || []).map((year) => (
-                  <TableRow key={year.year}>
-                    <TableCell>{year.year}</TableCell>
-                    <TableCell>${(year.contractRevenue || 0).toLocaleString(undefined, { maximumFractionDigits: 1 })}</TableCell>
-                    <TableCell>${(year.merchantRevenue || 0).toLocaleString(undefined, { maximumFractionDigits: 1 })}</TableCell>
-                    <TableCell>${((year.contractRevenue || 0) + (year.merchantRevenue || 0)).toLocaleString(undefined, { maximumFractionDigits: 1 })}</TableCell>
-                    <TableCell>${(year.fixedCosts || 0).toLocaleString(undefined, { maximumFractionDigits: 1 })}</TableCell>
-                    <TableCell>${(year.terminalValue || 0).toLocaleString(undefined, { maximumFractionDigits: 1 })}</TableCell>
-                    <TableCell>${((year.netCashFlow || 0) + (year.terminalValue || 0)).toLocaleString(undefined, { maximumFractionDigits: 1 })}</TableCell>
-                    <TableCell>${(year.presentValue || 0).toLocaleString(undefined, { maximumFractionDigits: 1 })}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
+              // In ValuationAnalysis.jsx, modify the input table:
+
+            <TableBody>
+              {Object.values(assets).map((asset) => (
+                <TableRow key={asset.name}>
+                  <TableCell>{asset.name}</TableCell>
+                  <TableCell>{asset.capacity || "-"}</TableCell>
+                  <TableCell>{asset.assetStartDate ? new Date(asset.assetStartDate).toLocaleDateString() : "-"}</TableCell>
+                  <TableCell>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      value={assetCosts[asset.name]?.operatingCosts ?? ''} // Changed from fixedCost
+                      onChange={(e) => handleAssetCostChange(asset.name, 'operatingCosts', e.target.value)}
+                      className="w-32 border rounded p-2"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      value={assetCosts[asset.name]?.operatingCostEscalation ?? ''} // Changed from fixedCostIndex
+                      onChange={(e) => handleAssetCostChange(asset.name, 'operatingCostEscalation', e.target.value)}
+                      className="w-32 border rounded p-2"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      value={assetCosts[asset.name]?.terminalValue ?? ''}
+                      onChange={(e) => handleAssetCostChange(asset.name, 'terminalValue', e.target.value)}
+                      className="w-32 border rounded p-2"
+                    />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
             </Table>
           </div>
         </CardContent>

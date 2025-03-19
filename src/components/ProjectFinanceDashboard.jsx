@@ -5,30 +5,29 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { usePortfolio } from '@/contexts/PortfolioContext';
-import { initializeProjectValues, calculateProjectMetrics, calculateIRR, DEFAULT_PROJECT_FINANCE } from './ProjectFinance_Calcs';
+import { initializeProjectValues, calculateProjectMetrics, calculateIRR } from './ProjectFinance_Calcs';
 
 const ProjectFinanceDashboard = () => {
-  const { assets, constants, getMerchantPrice } = usePortfolio();
+  const { assets, constants, getMerchantPrice, updateConstants } = usePortfolio();
   const [selectedRevenueCase, setSelectedRevenueCase] = useState('base');
   const [selectedAsset, setSelectedAsset] = useState(() => {
     const firstAsset = Object.values(assets)[0];
     return firstAsset ? firstAsset.name : '';
   });
   
-  const [projectValues, setProjectValues] = useState(() => Object.keys(assets).length > 0 ? initializeProjectValues(assets) : {});
   const [isGearingSolved, setIsGearingSolved] = useState(false);
 
   useEffect(() => {
     if (Object.keys(assets).length > 0) {
-      setProjectValues(initializeProjectValues(assets));
       // Add slight delay to ensure state is updated before solving
       setTimeout(() => handleSolveGearing(), 100);
     }
   }, [assets]);
+
   const projectMetrics = useMemo(() => {
     const metrics = calculateProjectMetrics(
       assets,
-      projectValues,
+      constants.assetCosts, // Pass assetCosts instead of projectValues
       constants,
       getMerchantPrice,
       selectedRevenueCase,
@@ -37,24 +36,26 @@ const ProjectFinanceDashboard = () => {
     // Remove portfolio from metrics if it exists
     const { portfolio, ...assetMetrics } = metrics;
     return assetMetrics;
-  }, [assets, projectValues, selectedRevenueCase, constants, getMerchantPrice]);
+  }, [assets, constants.assetCosts, selectedRevenueCase, constants, getMerchantPrice]);
 
-  const handleProjectValueChange = (assetName, field, value) => {
+  const handleAssetCostChange = (assetName, field, value) => {
     setIsGearingSolved(false); // Reset solved state when values change
-    setProjectValues(prev => ({
-      ...prev,
+    const newValue = value === '' ? '' : parseFloat(value);
+    
+    updateConstants('assetCosts', {
+      ...constants.assetCosts,
       [assetName]: {
-        ...prev[assetName],
-        [field]: value === '' ? '' : parseFloat(value)
+        ...constants.assetCosts[assetName],
+        [field]: field === 'maxGearing' || field === 'interestRate' ? newValue / 100 : newValue
       }
-    }));
+    });
   };
 
   const handleSolveGearing = () => {
     // Calculate new gearing values
     const newMetrics = calculateProjectMetrics(
       assets,
-      projectValues,
+      constants.assetCosts,
       constants,
       getMerchantPrice,
       selectedRevenueCase,
@@ -64,17 +65,16 @@ const ProjectFinanceDashboard = () => {
     // Remove portfolio from metrics if it exists
     const { portfolio, ...assetMetrics } = newMetrics;
     
-    // Update projectValues with the solved gearing for assets only
-    setProjectValues(prev => {
-      const newValues = { ...prev };
-      Object.entries(assetMetrics).forEach(([assetName, metrics]) => {
-        newValues[assetName] = {
-          ...prev[assetName],
-          calculatedGearing: metrics.calculatedGearing
-        };
-      });
-      return newValues;
+    // Update assetCosts with the solved gearing for assets only
+    const updatedAssetCosts = { ...constants.assetCosts };
+    Object.entries(assetMetrics).forEach(([assetName, metrics]) => {
+      updatedAssetCosts[assetName] = {
+        ...updatedAssetCosts[assetName],
+        calculatedGearing: metrics.calculatedGearing
+      };
     });
+    
+    updateConstants('assetCosts', updatedAssetCosts);
     setIsGearingSolved(true);
   };
 
@@ -110,24 +110,24 @@ const ProjectFinanceDashboard = () => {
                   <TableCell>
                     <input
                       type="number"
-                      value={projectValues[asset.name]?.capex ?? ''}
-                      onChange={(e) => handleProjectValueChange(asset.name, 'capex', e.target.value)}
+                      value={constants.assetCosts[asset.name]?.capex ?? ''}
+                      onChange={(e) => handleAssetCostChange(asset.name, 'capex', e.target.value)}
                       className="w-32 border rounded p-2"
                     />
                   </TableCell>
                   <TableCell>
                     <input
                       type="number"
-                      value={projectValues[asset.name]?.opex ?? ''}
-                      onChange={(e) => handleProjectValueChange(asset.name, 'opex', e.target.value)}
+                      value={constants.assetCosts[asset.name]?.operatingCosts ?? ''}
+                      onChange={(e) => handleAssetCostChange(asset.name, 'operatingCosts', e.target.value)}
                       className="w-32 border rounded p-2"
                     />
                   </TableCell>
                   <TableCell>
                     <input
                       type="number"
-                      value={projectValues[asset.name]?.opexEscalation ?? ''}
-                      onChange={(e) => handleProjectValueChange(asset.name, 'opexEscalation', e.target.value)}
+                      value={constants.assetCosts[asset.name]?.operatingCostEscalation ?? ''}
+                      onChange={(e) => handleAssetCostChange(asset.name, 'operatingCostEscalation', e.target.value)}
                       className="w-32 border rounded p-2"
                     />
                   </TableCell>
@@ -164,40 +164,40 @@ const ProjectFinanceDashboard = () => {
                   <TableCell>
                     <input
                       type="number"
-                      value={(projectValues[asset.name]?.maxGearing * 100) ?? ''}
-                      onChange={(e) => handleProjectValueChange(asset.name, 'maxGearing', e.target.value / 100)}
+                      value={(constants.assetCosts[asset.name]?.maxGearing * 100) ?? ''}
+                      onChange={(e) => handleAssetCostChange(asset.name, 'maxGearing', e.target.value)}
                       className="w-32 border rounded p-2"
                     />
                   </TableCell>
                   <TableCell>
                     <input
                       type="number"
-                      value={projectValues[asset.name]?.targetDSCRContract ?? ''}
-                      onChange={(e) => handleProjectValueChange(asset.name, 'targetDSCRContract', e.target.value)}
+                      value={constants.assetCosts[asset.name]?.targetDSCRContract ?? ''}
+                      onChange={(e) => handleAssetCostChange(asset.name, 'targetDSCRContract', e.target.value)}
                       className="w-32 border rounded p-2"
                     />
                   </TableCell>
                   <TableCell>
                     <input
                       type="number"
-                      value={projectValues[asset.name]?.targetDSCRMerchant ?? ''}
-                      onChange={(e) => handleProjectValueChange(asset.name, 'targetDSCRMerchant', e.target.value)}
+                      value={constants.assetCosts[asset.name]?.targetDSCRMerchant ?? ''}
+                      onChange={(e) => handleAssetCostChange(asset.name, 'targetDSCRMerchant', e.target.value)}
                       className="w-32 border rounded p-2"
                     />
                   </TableCell>
                   <TableCell>
                     <input
                       type="number"
-                      value={(projectValues[asset.name]?.interestRate * 100) ?? ''}
-                      onChange={(e) => handleProjectValueChange(asset.name, 'interestRate', e.target.value / 100)}
+                      value={(constants.assetCosts[asset.name]?.interestRate * 100) ?? ''}
+                      onChange={(e) => handleAssetCostChange(asset.name, 'interestRate', e.target.value)}
                       className="w-32 border rounded p-2"
                     />
                   </TableCell>
                   <TableCell>
                     <input
                       type="number"
-                      value={projectValues[asset.name]?.tenorYears ?? ''}
-                      onChange={(e) => handleProjectValueChange(asset.name, 'tenorYears', e.target.value)}
+                      value={constants.assetCosts[asset.name]?.tenorYears ?? ''}
+                      onChange={(e) => handleAssetCostChange(asset.name, 'tenorYears', e.target.value)}
                       className="w-32 border rounded p-2"
                     />
                   </TableCell>

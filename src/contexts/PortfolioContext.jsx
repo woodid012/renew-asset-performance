@@ -3,6 +3,76 @@ import Papa from 'papaparse';
 import _ from 'lodash';
 import { MerchantPriceProvider, useMerchantPrices } from './MerchantPriceProvider';
 
+// Valuation defaults
+const DEFAULT_COSTS = {
+  solar: {
+    fixedCostBase: 5.0,    // Base fixed cost for a 100MW solar farm
+    fixedCostScale: 0.75,  // Scale factor for economies of scale
+    terminalValue: 15,     // Default terminal value for 100MW
+  },
+  wind: {
+    fixedCostBase: 10.0,
+    fixedCostScale: 0.75,
+    terminalValue: 20,
+  },
+  battery: {
+    fixedCostBase: 5,
+    fixedCostScale: 0.75,
+    terminalValue: 10,
+  },
+  default: {
+    fixedCostBase: 5,
+    fixedCostScale: 0.75,
+    terminalValue: 15,
+  }
+};
+
+const DEFAULT_VALUATION = {
+  discountRates: {
+    contract: 0.08,
+    merchant: 0.10,
+  },
+  costEscalation: 2.5,
+  baseCapacity: 100  // Reference capacity for base costs (MW)
+};
+
+// Project finance defaults
+const DEFAULT_CAPEX = {
+  solar: 1.2,   // $M per MW
+  wind: 2.5,    // $M per MW
+  battery: 1.6,  // $M per MW
+  default: 2.0   // $M per MW
+};
+
+const DEFAULT_OPEX = {
+  solar: 0.014,    // $M per MW
+  wind: 0.040,     // $M per MW
+  battery: 0.015,  // $M per MW
+  default: 0.040   // Using wind as default
+};
+
+const DEFAULT_PROJECT_FINANCE = {
+  maxGearing: 0.70,
+  targetDSCRMerchant: 2.00,
+  targetDSCRContract: 1.35,
+  interestRate: 0.060,
+  opexEscalation: 2.5,
+  structuring: 0.01,
+  commitment: 0.005,
+};
+
+const DEFAULT_TENORS = {
+  solar: 22,
+  wind: 22,
+  battery: 18,
+  default: 20
+};
+
+// Helper function for cost scaling
+const calculateFixedCost = (baseFixedCost, capacity, baseCapacity, scaleFactor) => {
+  return baseFixedCost * Math.pow(capacity / baseCapacity, scaleFactor);
+};
+
 // Date helper functions
 const transformDateFormat = (dateStr) => {
   if (!dateStr) return '';
@@ -76,18 +146,52 @@ function PortfolioProviderInner({ children }) {
     volumeVariation: 20,
     greenPriceVariation: 20,
     EnergyPriceVariation: 20,
-    discountRates: {
-      contract: 0.08,
-      merchant: 0.10
-    },
+    discountRates: DEFAULT_VALUATION.discountRates,
     assetCosts: {},
-    // Added from InputsGlobal
     escalation: 2.5,
     referenceYear: new Date().getFullYear(),
     priceAggregation: 'yearly',
     analysisStartYear: new Date().getFullYear(),
     analysisEndYear: new Date().getFullYear() + 30
   });
+
+  // Initialize asset costs with default values
+  const initializeAssetCosts = useCallback((assets) => {
+    const newAssetCosts = {};
+    Object.values(assets).forEach(asset => {
+      const defaultCosts = DEFAULT_COSTS[asset.type] || DEFAULT_COSTS.default;
+      const defaultProjCosts = {
+        capex: (DEFAULT_CAPEX[asset.type] || DEFAULT_CAPEX.default) * asset.capacity,
+        opex: (DEFAULT_OPEX[asset.type] || DEFAULT_OPEX.default) * asset.capacity
+      };
+      
+      // Calculate scaled operating costs (use the smaller of valuation/project defaults)
+      const scaledOperatingCost = Math.min(
+        calculateFixedCost(
+          defaultCosts.fixedCostBase,
+          asset.capacity,
+          DEFAULT_VALUATION.baseCapacity,
+          defaultCosts.fixedCostScale
+        ),
+        defaultProjCosts.opex
+      );
+
+      newAssetCosts[asset.name] = {
+        operatingCosts: Number(scaledOperatingCost.toFixed(2)),
+        operatingCostEscalation: DEFAULT_PROJECT_FINANCE.opexEscalation,
+        terminalValue: Number((defaultCosts.terminalValue * 
+                    (asset.capacity / DEFAULT_VALUATION.baseCapacity)).toFixed(2)),
+        capex: Number(defaultProjCosts.capex.toFixed(1)),
+        maxGearing: DEFAULT_PROJECT_FINANCE.maxGearing,
+        targetDSCRContract: DEFAULT_PROJECT_FINANCE.targetDSCRContract,
+        targetDSCRMerchant: DEFAULT_PROJECT_FINANCE.targetDSCRMerchant,
+        interestRate: DEFAULT_PROJECT_FINANCE.interestRate,
+        tenorYears: DEFAULT_TENORS[asset.type] || DEFAULT_TENORS.default,
+        calculatedGearing: DEFAULT_PROJECT_FINANCE.maxGearing
+      };
+    });
+    return newAssetCosts;
+  }, []);
 
   // Update constants when merchant prices change
   useEffect(() => {
@@ -96,6 +200,16 @@ function PortfolioProviderInner({ children }) {
       merchantPrices
     }));
   }, [merchantPrices]);
+
+  // Initialize asset costs when assets change
+  useEffect(() => {
+    if (Object.keys(assets).length > 0) {
+      setConstants(prev => ({
+        ...prev,
+        assetCosts: initializeAssetCosts(assets)
+      }));
+    }
+  }, [assets, initializeAssetCosts]);
 
   // Load portfolio data whenever source changes
   useEffect(() => {
@@ -111,11 +225,19 @@ function PortfolioProviderInner({ children }) {
         if (data.portfolioName) {
           setPortfolioName(data.portfolioName);
         }
+        
+        // Import constants if they exist in the loaded data
+        if (data.constants) {
+          setConstants(prev => ({
+            ...prev,
+            ...data.constants
+          }));
+        }
 
         console.log('Portfolio loaded successfully:', portfolioSource);
       } catch (error) {
         console.error('Error loading portfolio:', error);
-        setAssets({});  // Reset assets on error
+        setAssets({});
       }
     };
 
@@ -159,6 +281,69 @@ function PortfolioProviderInner({ children }) {
       console.error('Error loading merchant prices:', error);
     }
   }, []);
+
+  // Export all portfolio data including valuation and project finance inputs
+  const exportPortfolioData = useCallback(() => {
+    const exportData = {
+      version: '2.0',
+      exportDate: new Date().toISOString(),
+      portfolioName,
+      assets,
+      constants: {
+        discountRates: constants.discountRates,
+        assetCosts: constants.assetCosts,
+        volumeVariation: constants.volumeVariation,
+        greenPriceVariation: constants.greenPriceVariation,
+        EnergyPriceVariation: constants.EnergyPriceVariation,
+        escalation: constants.escalation,
+        referenceYear: constants.referenceYear,
+        priceAggregation: constants.priceAggregation,
+        analysisStartYear: constants.analysisStartYear,
+        analysisEndYear: constants.analysisEndYear
+      },
+      analysisMode,
+      activePortfolio,
+      portfolioSource,
+      priceSource
+    };
+
+    return exportData;
+  }, [assets, portfolioName, constants, analysisMode, activePortfolio, portfolioSource, priceSource]);
+
+  // Import portfolio data including valuation and project finance inputs
+  const importPortfolioData = useCallback((importedData) => {
+    try {
+      // Basic validation
+      if (!importedData.assets || !importedData.version) {
+        throw new Error('Invalid import data structure');
+      }
+
+      // Set portfolio data
+      setAssets(importedData.assets);
+      if (importedData.portfolioName) {
+        setPortfolioName(importedData.portfolioName);
+      }
+
+      // Update constants with imported data
+      if (importedData.constants) {
+        setConstants(prev => ({
+          ...prev,
+          ...importedData.constants,
+        }));
+      }
+
+      // Set other state if present
+      if (importedData.analysisMode) setAnalysisMode(importedData.analysisMode);
+      if (importedData.activePortfolio) setActivePortfolio(importedData.activePortfolio);
+      if (importedData.portfolioSource) setPortfolioSource(importedData.portfolioSource);
+      if (importedData.priceSource) setPriceSource(importedData.priceSource);
+
+      console.log('Portfolio data imported successfully');
+    } catch (error) {
+      console.error('Error importing portfolio data:', error);
+      throw error;
+    }
+  }, [setPriceSource]);
 
   const updateAnalysisMode = useCallback((mode) => {
     setAnalysisMode(mode);
@@ -208,7 +393,9 @@ function PortfolioProviderInner({ children }) {
     setPriceCurveSource: setPriceSource,
     analysisMode,
     updateAnalysisMode,
-    loadMerchantPrices
+    loadMerchantPrices,
+    exportPortfolioData,
+    importPortfolioData
   };
 
   return (

@@ -72,6 +72,7 @@ export const calculateFixedCost = (baseFixedCost, capacity, baseCapacity, scaleF
   return baseFixedCost * Math.pow(capacity / baseCapacity, scaleFactor);
 };
 
+// Note: This function can be removed as initialization is now handled in PortfolioContext
 export const initializeAssetCosts = (assets) => {
   return Object.values(assets).reduce((acc, asset) => {
     const defaultCosts = DEFAULT_COSTS[asset.type] || DEFAULT_COSTS.default;
@@ -85,8 +86,8 @@ export const initializeAssetCosts = (assets) => {
     return {
       ...acc,
       [asset.name]: {
-        fixedCost: Number(scaledFixedCost.toFixed(2)),
-        fixedCostIndex: Number(DEFAULT_VALUES.costEscalation.toFixed(2)),
+        operatingCosts: Number(scaledFixedCost.toFixed(2)),
+        operatingCostEscalation: Number(DEFAULT_VALUES.costEscalation.toFixed(2)),
         terminalValue: Number((defaultCosts.terminalValue * 
                       (asset.capacity / DEFAULT_VALUES.baseCapacity)).toFixed(2))
       }
@@ -127,7 +128,7 @@ export const calculateNPVData = (
 
     filteredAssets.forEach(asset => {
       // Check if asset has started operations and is within its life
-      const assetStartYear = new Date(asset.assetStartDate).getFullYear(); // Include partial first year
+      const assetStartYear = new Date(asset.assetStartDate).getFullYear();
       const assetEndYear = assetStartYear + (asset.assetLife || 30);
       
       // Stop calculations exactly at asset end of life
@@ -137,7 +138,6 @@ export const calculateNPVData = (
         if (year === assetStartYear) {
           const startDate = new Date(asset.assetStartDate);
           const startMonth = startDate.getMonth();
-          // Convert month to quarter (0-2 = Q1, 3-5 = Q2, etc) and get remaining quarters
           partialYearFactor = (4 - Math.floor(startMonth / 3)) / 4;
         }
 
@@ -147,8 +147,9 @@ export const calculateNPVData = (
         totalContractRevenue += (stressedRevenue.contractedGreen + stressedRevenue.contractedEnergy) * partialYearFactor;
         totalMerchantRevenue += (stressedRevenue.merchantGreen + stressedRevenue.merchantEnergy) * partialYearFactor;
 
-        const fixedCostInflation = Math.pow(1 + (assetCosts[asset.name]?.fixedCostIndex || 2.5)/100, yearIndex);
-        totalFixedCosts += (assetCosts[asset.name]?.fixedCost || 0) * fixedCostInflation * partialYearFactor;
+        // Updated to use unified operating cost fields
+        const operatingCostInflation = Math.pow(1 + (assetCosts[asset.name]?.operatingCostEscalation || 2.5)/100, yearIndex);
+        totalFixedCosts += (assetCosts[asset.name]?.operatingCosts || 0) * operatingCostInflation * partialYearFactor;
         
         // Add terminal value at end of asset life
         if (year === (assetEndYear - 1)) {

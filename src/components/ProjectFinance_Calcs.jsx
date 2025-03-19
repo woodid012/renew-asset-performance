@@ -187,6 +187,7 @@ const calculateRequiredDSCR = (contractedRevenue, merchantRevenue, targetDSCRCon
   return (contractedShare * targetDSCRContract + merchantShare * targetDSCRMerchant);
 };
 
+// In calculateProjectMetrics
 export const calculateProjectMetrics = (
   assets,
   projectValues,
@@ -202,8 +203,11 @@ export const calculateProjectMetrics = (
   
   // First calculate individual project metrics
   Object.values(assets).forEach(asset => {
+    const assetCosts = constants.assetCosts[asset.name] || {};
     const projectValue = projectValues[asset.name] || {};
-    const capex = projectValue.capex || 0;
+    
+    // Use capex from assetCosts instead of projectValues
+    const capex = assetCosts.capex || 0;
     
     const cashFlows = [];
     const assetStartYear = new Date(asset.assetStartDate).getFullYear();
@@ -218,17 +222,19 @@ export const calculateProjectMetrics = (
       const yearRevenue = contractedRevenue + merchantRevenue;
       
       const yearIndex = year - assetStartYear;
-      const opexInflation = Math.pow(1 + projectValue.opexEscalation/100, yearIndex);
-      const yearOpex = projectValue.opex * opexInflation;
       
-      const operatingCashFlow = yearRevenue - yearOpex;
+      // Use unified operating cost fields from assetCosts
+      const operatingCostInflation = Math.pow(1 + (assetCosts.operatingCostEscalation || 2.5)/100, yearIndex);
+      const yearOperatingCosts = (assetCosts.operatingCosts || 0) * operatingCostInflation;
+      
+      const operatingCashFlow = yearRevenue - yearOperatingCosts;
 
       cashFlows.push({
         year,
         revenue: yearRevenue,
         contractedRevenue,
         merchantRevenue,
-        opex: -yearOpex,
+        opex: -yearOperatingCosts,
         operatingCashFlow
       });
     }
@@ -238,23 +244,31 @@ export const calculateProjectMetrics = (
     if (solveGearingFlag) {
       gearing = solveGearing(
         cashFlows,
-        projectValue,
-        projectValue.maxGearing,
-        projectValue.targetDSCRContract,
-        projectValue.targetDSCRMerchant
+        {
+          ...projectValue,
+          capex: capex,  // Use capex from assetCosts
+          maxGearing: assetCosts.maxGearing,
+          targetDSCRContract: assetCosts.targetDSCRContract,
+          targetDSCRMerchant: assetCosts.targetDSCRMerchant,
+          interestRate: assetCosts.interestRate,
+          tenorYears: assetCosts.tenorYears
+        },
+        assetCosts.maxGearing,
+        assetCosts.targetDSCRContract,
+        assetCosts.targetDSCRMerchant
       );
     }
 
     const debtAmount = capex * gearing;
     const annualDebtService = calculateDebtService(
       debtAmount, 
-      projectValue.interestRate, 
-      projectValue.tenorYears
+      assetCosts.interestRate, 
+      assetCosts.tenorYears
     );
 
     // Add debt service to cash flows
     cashFlows.forEach(cf => {
-      const yearDebtService = cf.year < (assetStartYear + projectValue.tenorYears) ? annualDebtService : 0;
+      const yearDebtService = cf.year < (assetStartYear + assetCosts.tenorYears) ? annualDebtService : 0;
       cf.debtService = -yearDebtService;
       cf.equityCashFlow = cf.operatingCashFlow - yearDebtService;
     });
