@@ -1,4 +1,7 @@
 {
+  "version": "2.0",
+  "exportDate": "2025-03-20T00:05:56.558Z",
+  "portfolioName": "ZEBRE",
   "assets": {
     "1": {
       "id": "1",
@@ -250,7 +253,87 @@
       "volume": 800
     }
   },
-  "portfolioName": "ZEBRE",
-  "exportDate": "2025-03-19T23:42:44.402Z",
-  "version": "1.0"
+  "constants": {
+    "discountRates": {
+      "contract": 0.08,
+      "merchant": 0.1
+    },
+    "assetCosts": {
+      "Templers BESS": {
+        "operatingCosts": 5.41,
+        "operatingCostEscalation": 2.5,
+        "terminalValue": 16.65,
+        "fixedCostIndex": 2.5,
+        "fixedCost": 4,
+        "calculatedGearing": null,
+        "capex": 223
+      },
+      "Solar River Solar": {
+        "operatingCosts": 9.4,
+        "operatingCostEscalation": 2.5,
+        "terminalValue": 34.8,
+        "fixedCost": 10,
+        "fixedCostIndex": 2.5,
+        "calculatedGearing": null,
+        "capex": 415
+      },
+      "Solar River BESS": {
+        "operatingCosts": 10.12,
+        "operatingCostEscalation": 2.5,
+        "terminalValue": 38.4,
+        "fixedCost": 3,
+        "fixedCostIndex": 2.5,
+        "calculatedGearing": null,
+        "capex": 340
+      },
+      "Wagga North": {
+        "operatingCosts": 5.19,
+        "operatingCostEscalation": 2.5,
+        "terminalValue": 15.75,
+        "fixedCost": 2.3,
+        "fixedCostIndex": 3,
+        "calculatedGearing": null,
+        "capex": 205
+      },
+      "North Yarragon": {
+        "operatingCosts": 8.72,
+        "operatingCostEscalation": 2.5,
+        "terminalValue": 31.5,
+        "fixedCost": 4,
+        "fixedCostIndex": 2.5,
+        "calculatedGearing": null,
+        "capex": 475
+      },
+      "Noblevale": {
+        "operatingCosts": 7.77,
+        "operatingCostEscalation": 2.5,
+        "terminalValue": 27,
+        "fixedCost": 3.77,
+        "fixedCostIndex": 2.5,
+        "calculatedGearing": null,
+        "capex": 269
+      },
+      "Hookey Creek (BESS)": {
+        "operatingCosts": 8.41,
+        "operatingCostEscalation": 2.5,
+        "terminalValue": 30,
+        "fixedCost": 6.85,
+        "fixedCostIndex": 2.5,
+        "calculatedGearing": null,
+        "capex": 414
+      }
+    },
+    "volumeVariation": 20,
+    "greenPriceVariation": 20,
+    "EnergyPriceVariation": 20,
+    "escalation": 2.5,
+    "referenceYear": 2025,
+    "priceAggregation": "yearly",
+    "analysisStartYear": 2025,
+    "analysisEndYear": 2055
+  },
+  "analysisMode": "simple",
+  "activePortfolio": "zebre",
+  "portfolioSource": "aula_2025-01-13.json",
+  "priceSource": "merchant_price_monthly.csv"
 }
