@@ -224,7 +224,7 @@
       "capacity": 200,
       "type": "storage",
       "volumeLossAdjustment": "100",
-      "assetLife": 21,
+      "assetLife": 25,
       "contracts": [
         {
           "id": "1",
