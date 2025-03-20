@@ -5,7 +5,8 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { usePortfolio } from '@/contexts/PortfolioContext';
-import { initializeProjectValues, calculateProjectMetrics, calculateIRR } from './ProjectFinance_Calcs';
+import { calculateProjectMetrics, calculateIRR } from './ProjectFinance_Calcs';
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const ProjectFinanceDashboard = () => {
   const { assets, constants, getMerchantPrice, updateConstants } = usePortfolio();
@@ -16,18 +17,41 @@ const ProjectFinanceDashboard = () => {
   });
   
   const [isGearingSolved, setIsGearingSolved] = useState(false);
+  const [missingData, setMissingData] = useState(false);
 
+  // Check if asset costs data is complete
   useEffect(() => {
     if (Object.keys(assets).length > 0) {
-      // Add slight delay to ensure state is updated before solving
-      setTimeout(() => handleSolveGearing(), 100);
+      let dataIsMissing = false;
+      
+      Object.values(assets).forEach(asset => {
+        const assetCosts = constants.assetCosts[asset.name];
+        if (!assetCosts || 
+            assetCosts.capex === undefined || 
+            assetCosts.operatingCosts === undefined ||
+            assetCosts.operatingCostEscalation === undefined ||
+            assetCosts.maxGearing === undefined ||
+            assetCosts.targetDSCRContract === undefined ||
+            assetCosts.targetDSCRMerchant === undefined ||
+            assetCosts.interestRate === undefined ||
+            assetCosts.tenorYears === undefined) {
+          dataIsMissing = true;
+        }
+      });
+      
+      setMissingData(dataIsMissing);
+      
+      // Auto-solve gearing when loading
+      if (!dataIsMissing && !isGearingSolved) {
+        setTimeout(() => handleSolveGearing(), 100);
+      }
     }
-  }, [assets]);
+  }, [assets, constants.assetCosts, isGearingSolved]);
 
   const projectMetrics = useMemo(() => {
     const metrics = calculateProjectMetrics(
       assets,
-      constants.assetCosts, // Pass assetCosts instead of projectValues
+      constants.assetCosts, // Pass assetCosts
       constants,
       getMerchantPrice,
       selectedRevenueCase,
@@ -82,6 +106,14 @@ const ProjectFinanceDashboard = () => {
 
   return (
     <div className="w-full p-4 space-y-4">
+      {missingData && (
+        <Alert variant="destructive" className="mb-4 bg-red-50 border-red-200">
+          <AlertDescription className="text-red-600">
+            Missing or incomplete asset finance data. Default values have been created. Please review and update as needed.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Project Parameters Table */}
       <Card>
         <CardHeader>

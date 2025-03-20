@@ -55,8 +55,8 @@ const portfolios = [
     displayName: 'ZEBRE',
     description: 'Mixed technology portfolio with storage',
     details: [
-      '3 Assets including storage',
-      'Total capacity 511MW',
+      '6 Assets including storage',
+      'Total capacity BESS 1.1GW + 232 MW Solar',
       'Mix of merchant and contracted'
     ]
   },

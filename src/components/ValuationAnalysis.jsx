@@ -16,24 +16,43 @@ import {
   calculateStressRevenue,
   calculateNPVData 
 } from './ValuationAnalysis_Calcs';
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const ValuationAnalysis = () => {
   const { assets, constants, getMerchantPrice, updateConstants } = usePortfolio();
   const [selectedRevenueCase, setSelectedRevenueCase] = useState('base');
   const [selectedAsset, setSelectedAsset] = useState('Total');
   const [isInitialized, setIsInitialized] = useState(false);
+  const [missingData, setMissingData] = useState(false);
   const volumeStress = constants?.volumeVariation;
   const priceStress = constants?.EnergyPriceVariation;
   const discountRates = constants.discountRates;
-  const assetCosts = constants.assetCosts;
+  const assetCosts = constants.assetCosts || {};
 
   useEffect(() => {
-    // Reset initialization when assets change
+    // Check if asset costs exist and have necessary values
     if (Object.keys(assets).length > 0) {
-      updateConstants('assetCosts', initializeAssetCosts(assets));
-      setIsInitialized(true);
+      let dataIsMissing = false;
+      
+      // Check if any asset is missing cost data
+      Object.values(assets).forEach(asset => {
+        if (!assetCosts[asset.name] || 
+            assetCosts[asset.name].operatingCosts === undefined || 
+            assetCosts[asset.name].operatingCostEscalation === undefined ||
+            assetCosts[asset.name].terminalValue === undefined) {
+          dataIsMissing = true;
+        }
+      });
+      
+      setMissingData(dataIsMissing);
+      
+      // If data is missing, initialize with defaults
+      if (dataIsMissing && !isInitialized) {
+        updateConstants('assetCosts', initializeAssetCosts(assets));
+        setIsInitialized(true);
+      }
     }
-  }, [assets, updateConstants]);
+  }, [assets, assetCosts, isInitialized, updateConstants]);
 
   const valuationResults = useMemo(() => calculateNPVData(
     assets,
@@ -58,6 +77,14 @@ const ValuationAnalysis = () => {
 
   return (
     <div className="w-full p-4 space-y-2">
+      {missingData && (
+        <Alert variant="destructive" className="mb-4 bg-red-50 border-red-200">
+          <AlertDescription className="text-red-600">
+            Missing or incomplete asset cost data. Default values have been created. Please review and update as needed.
+          </AlertDescription>
+        </Alert>
+      )}
+      
       {/* Input Parameters Table */}
       <Card>
         <CardHeader>
@@ -79,7 +106,7 @@ const ValuationAnalysis = () => {
                     <input
                       type="number"
                       inputMode="numeric"
-                      value={((discountRates.contract * 100).toFixed(1).replace(/\.?0+$/, '') + '.0')}
+                      value={((discountRates.contract * 100).toFixed(1))}
                       onChange={(e) => updateConstants('discountRates.contract', parseFloat(e.target.value) / 100)}
                       className="w-32 border rounded p-2"
                     />
@@ -90,7 +117,7 @@ const ValuationAnalysis = () => {
                     <input
                       type="number"
                       inputMode="numeric"
-                      value={((discountRates.merchant * 100).toFixed(1).replace(/\.?0+$/, '') + '.0')}
+                      value={((discountRates.merchant * 100).toFixed(1))}
                       onChange={(e) => updateConstants('discountRates.merchant', parseFloat(e.target.value) / 100)}
                       className="w-32 border rounded p-2"
                     />
@@ -131,8 +158,8 @@ const ValuationAnalysis = () => {
                     <input
                       type="number"
                       inputMode="numeric"
-                      value={assetCosts[asset.name]?.fixedCost ?? ''}
-                      onChange={(e) => handleAssetCostChange(asset.name, 'fixedCost', e.target.value)}
+                      value={assetCosts[asset.name]?.operatingCosts ?? ''}
+                      onChange={(e) => handleAssetCostChange(asset.name, 'operatingCosts', e.target.value)}
                       className="w-32 border rounded p-2"
                     />
                   </TableCell>
@@ -140,8 +167,8 @@ const ValuationAnalysis = () => {
                     <input
                       type="number"
                       inputMode="numeric"
-                      value={assetCosts[asset.name]?.fixedCostIndex ?? ''}
-                      onChange={(e) => handleAssetCostChange(asset.name, 'fixedCostIndex', e.target.value)}
+                      value={assetCosts[asset.name]?.operatingCostEscalation ?? ''}
+                      onChange={(e) => handleAssetCostChange(asset.name, 'operatingCostEscalation', e.target.value)}
                       className="w-32 border rounded p-2"
                     />
                   </TableCell>
@@ -237,44 +264,20 @@ const ValuationAnalysis = () => {
                   <TableHead>Present Value ($M)</TableHead>
                 </TableRow>
               </TableHeader>
-              // In ValuationAnalysis.jsx, modify the input table:
-
-            <TableBody>
-              {Object.values(assets).map((asset) => (
-                <TableRow key={asset.name}>
-                  <TableCell>{asset.name}</TableCell>
-                  <TableCell>{asset.capacity || "-"}</TableCell>
-                  <TableCell>{asset.assetStartDate ? new Date(asset.assetStartDate).toLocaleDateString() : "-"}</TableCell>
-                  <TableCell>
-                    <input
-                      type="number"
-                      inputMode="numeric"
-                      value={assetCosts[asset.name]?.operatingCosts ?? ''} // Changed from fixedCost
-                      onChange={(e) => handleAssetCostChange(asset.name, 'operatingCosts', e.target.value)}
-                      className="w-32 border rounded p-2"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <input
-                      type="number"
-                      inputMode="numeric"
-                      value={assetCosts[asset.name]?.operatingCostEscalation ?? ''} // Changed from fixedCostIndex
-                      onChange={(e) => handleAssetCostChange(asset.name, 'operatingCostEscalation', e.target.value)}
-                      className="w-32 border rounded p-2"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <input
-                      type="number"
-                      inputMode="numeric"
-                      value={assetCosts[asset.name]?.terminalValue ?? ''}
-                      onChange={(e) => handleAssetCostChange(asset.name, 'terminalValue', e.target.value)}
-                      className="w-32 border rounded p-2"
-                    />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
+              <TableBody>
+                {valuationResults?.npvData.map((row, index) => (
+                  <TableRow key={row.year} className={index % 2 === 0 ? "bg-muted/20" : ""}>
+                    <TableCell>{row.year}</TableCell>
+                    <TableCell>${row.contractRevenue.toFixed(1)}</TableCell>
+                    <TableCell>${row.merchantRevenue.toFixed(1)}</TableCell>
+                    <TableCell>${row.totalRevenue.toFixed(1)}</TableCell>
+                    <TableCell>${Math.abs(row.fixedCosts).toFixed(1)}</TableCell>
+                    <TableCell>${row.terminalValue.toFixed(1)}</TableCell>
+                    <TableCell>${row.netCashFlow.toFixed(1)}</TableCell>
+                    <TableCell>${row.presentValue.toFixed(1)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
             </Table>
           </div>
         </CardContent>

@@ -113,10 +113,10 @@ export function usePortfolio() {
 // Internal wrapper component that has access to merchant prices
 function PortfolioProviderInner({ children }) {
   const { merchantPrices, getMerchantPrice, getMerchantSpread, priceSource, setPriceSource } = useMerchantPrices();
-  const [portfolioSource, setPortfolioSource] = useState('aula_2025-01-13.json');
+  const [portfolioSource, setPortfolioSource] = useState('zebre_2025-01-13.json');
+  const [activePortfolio, setActivePortfolio] = useState('zebre');
   const [analysisMode, setAnalysisMode] = useState('simple');
   const [portfolioName, setPortfolioName] = useState("Portfolio Name");
-  const [activePortfolio, setActivePortfolio] = useState('aula');
   const [assets, setAssets] = useState({});
   const [constants, setConstants] = useState({
     HOURS_IN_YEAR: 8760,
@@ -324,11 +324,41 @@ function PortfolioProviderInner({ children }) {
         setPortfolioName(importedData.portfolioName);
       }
 
-      // Update constants with imported data
+      // First, ensure we have asset costs initialized for all assets
+      const tmpAssets = {};
+      Object.entries(importedData.assets).forEach(([id, asset]) => {
+        tmpAssets[asset.name] = asset;
+      });
+      
+      const initializedAssetCosts = initializeAssetCosts(tmpAssets);
+      
+      // Now merge with any imported asset costs
+      let mergedAssetCosts = { ...initializedAssetCosts };
+      
+      // If importedData has assetCosts, merge them carefully
+      if (importedData.constants && importedData.constants.assetCosts) {
+        Object.entries(importedData.constants.assetCosts).forEach(([assetName, costs]) => {
+          if (mergedAssetCosts[assetName]) {
+            mergedAssetCosts[assetName] = {
+              ...mergedAssetCosts[assetName], // Keep defaults as fallback
+              ...costs // Override with imported values where they exist
+            };
+          }
+        });
+      }
+      
+      // Update constants with imported data and merged asset costs
       if (importedData.constants) {
         setConstants(prev => ({
           ...prev,
           ...importedData.constants,
+          assetCosts: mergedAssetCosts
+        }));
+      } else {
+        // Even if no constants are imported, ensure we set the asset costs
+        setConstants(prev => ({
+          ...prev,
+          assetCosts: mergedAssetCosts
         }));
       }
 
@@ -343,7 +373,7 @@ function PortfolioProviderInner({ children }) {
       console.error('Error importing portfolio data:', error);
       throw error;
     }
-  }, [setPriceSource]);
+  }, [setPriceSource, initializeAssetCosts]);
 
   const updateAnalysisMode = useCallback((mode) => {
     setAnalysisMode(mode);
