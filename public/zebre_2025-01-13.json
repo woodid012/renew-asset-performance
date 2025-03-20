@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "exportDate": "2025-03-20T00:07:22.968Z",
+  "exportDate": "2025-03-20T00:45:23.659Z",
   "portfolioName": "ZEBRE",
   "assets": {
     "1": {
@@ -260,102 +260,88 @@
     },
     "assetCosts": {
       "Templers BESS": {
-        "operatingCosts": 5.41,
+        "operatingCosts": 4.44,
         "operatingCostEscalation": 2.5,
         "terminalValue": 16.65,
-        "fixedCostIndex": 2.5,
-        "fixedCost": 4,
-        "calculatedGearing": 0.6447235107421876,
-        "capex": 223,
-        "maxGearing": 0.65,
+        "capex": 222,
+        "maxGearing": 0.7,
         "targetDSCRContract": 1.35,
         "targetDSCRMerchant": 2,
         "interestRate": 0.06,
-        "tenorYears": 18
+        "tenorYears": 20,
+        "calculatedGearing": 0.6999572753906249
       },
       "Solar River Solar": {
-        "operatingCosts": 9.4,
+        "operatingCosts": 3.25,
         "operatingCostEscalation": 2.5,
         "terminalValue": 34.8,
-        "fixedCost": 10,
-        "fixedCostIndex": 2.5,
-        "calculatedGearing": 0.3699493408203124,
-        "capex": 415,
-        "maxGearing": 0.65,
+        "capex": 278.4,
+        "maxGearing": 0.7,
         "targetDSCRContract": 1.35,
         "targetDSCRMerchant": 2,
         "interestRate": 0.06,
-        "tenorYears": 22
+        "tenorYears": 22,
+        "calculatedGearing": 0.6999572753906249
       },
       "Solar River BESS": {
         "operatingCosts": 10.12,
         "operatingCostEscalation": 2.5,
         "terminalValue": 38.4,
-        "fixedCost": 3,
-        "fixedCostIndex": 2.5,
-        "calculatedGearing": 0.3364654541015626,
-        "capex": 340,
-        "maxGearing": 0.65,
+        "capex": 512,
+        "maxGearing": 0.7,
         "targetDSCRContract": 1.35,
         "targetDSCRMerchant": 2,
         "interestRate": 0.06,
-        "tenorYears": 18
+        "tenorYears": 20,
+        "calculatedGearing": 0.20477905273437497
       },
       "Wagga North": {
-        "operatingCosts": 5.19,
+        "operatingCosts": 2.3,
         "operatingCostEscalation": 2.5,
         "terminalValue": 15.75,
-        "fixedCost": 2.3,
-        "fixedCostIndex": 3,
-        "calculatedGearing": 0.38867492675781246,
-        "capex": 205,
-        "maxGearing": 0.65,
+        "capex": 226,
+        "maxGearing": 0.7,
         "targetDSCRContract": 1.35,
         "targetDSCRMerchant": 2,
         "interestRate": 0.06,
-        "tenorYears": 18
+        "tenorYears": 20,
+        "calculatedGearing": 0.47505493164062496
       },
       "North Yarragon": {
-        "operatingCosts": 8.72,
+        "operatingCosts": 4.2,
         "operatingCostEscalation": 2.5,
         "terminalValue": 31.5,
-        "fixedCost": 4,
-        "fixedCostIndex": 2.5,
-        "calculatedGearing": 0.4093841552734375,
         "capex": 475,
-        "maxGearing": 0.65,
+        "maxGearing": 0.7,
         "targetDSCRContract": 1.35,
         "targetDSCRMerchant": 2,
         "interestRate": 0.06,
-        "tenorYears": 18
+        "tenorYears": 20,
+        "calculatedGearing": 0.49146118164062497
       },
       "Noblevale": {
-        "operatingCosts": 7.77,
+        "operatingCosts": 7.2,
         "operatingCostEscalation": 2.5,
         "terminalValue": 27,
-        "fixedCost": 3.77,
-        "fixedCostIndex": 2.5,
-        "calculatedGearing": 0.28457336425781254,
         "capex": 269,
-        "maxGearing": 0.65,
+        "maxGearing": 0.7,
         "targetDSCRContract": 1.35,
         "targetDSCRMerchant": 2,
         "interestRate": 0.06,
-        "tenorYears": 18
+        "tenorYears": 20,
+        "calculatedGearing": 0.29535522460937497
       },
       "Hookey Creek (BESS)": {
-        "operatingCosts": 8.41,
+        "operatingCosts": 10,
         "operatingCostEscalation": 2.5,
         "terminalValue": 30,
-        "fixedCost": 6.85,
-        "fixedCostIndex": 2.5,
-        "calculatedGearing": 0.38772277832031243,
         "capex": 414,
-        "maxGearing": 0.65,
+        "maxGearing": 0.7,
         "targetDSCRContract": 1.35,
         "targetDSCRMerchant": 2,
         "interestRate": 0.06,
-        "tenorYears": 18
+        "tenorYears": 20,
+        "calculatedGearing": 0.37866821289062497
       }
     },
     "volumeVariation": 20,
@@ -369,6 +355,6 @@
   },
   "analysisMode": "simple",
   "activePortfolio": "zebre",
-  "portfolioSource": "aula_2025-01-13.json",
+  "portfolioSource": "zebre_2025-01-13.json",
   "priceSource": "merchant_price_monthly.csv"
 }
