@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "exportDate": "2025-03-20T00:05:56.558Z",
+  "exportDate": "2025-03-20T00:07:22.968Z",
   "portfolioName": "ZEBRE",
   "assets": {
     "1": {
@@ -265,8 +265,13 @@
         "terminalValue": 16.65,
         "fixedCostIndex": 2.5,
         "fixedCost": 4,
-        "calculatedGearing": null,
-        "capex": 223
+        "calculatedGearing": 0.6447235107421876,
+        "capex": 223,
+        "maxGearing": 0.65,
+        "targetDSCRContract": 1.35,
+        "targetDSCRMerchant": 2,
+        "interestRate": 0.06,
+        "tenorYears": 18
       },
       "Solar River Solar": {
         "operatingCosts": 9.4,
@@ -274,8 +279,13 @@
         "terminalValue": 34.8,
         "fixedCost": 10,
         "fixedCostIndex": 2.5,
-        "calculatedGearing": null,
-        "capex": 415
+        "calculatedGearing": 0.3699493408203124,
+        "capex": 415,
+        "maxGearing": 0.65,
+        "targetDSCRContract": 1.35,
+        "targetDSCRMerchant": 2,
+        "interestRate": 0.06,
+        "tenorYears": 22
       },
       "Solar River BESS": {
         "operatingCosts": 10.12,
@@ -283,8 +293,13 @@
         "terminalValue": 38.4,
         "fixedCost": 3,
         "fixedCostIndex": 2.5,
-        "calculatedGearing": null,
-        "capex": 340
+        "calculatedGearing": 0.3364654541015626,
+        "capex": 340,
+        "maxGearing": 0.65,
+        "targetDSCRContract": 1.35,
+        "targetDSCRMerchant": 2,
+        "interestRate": 0.06,
+        "tenorYears": 18
       },
       "Wagga North": {
         "operatingCosts": 5.19,
@@ -292,8 +307,13 @@
         "terminalValue": 15.75,
         "fixedCost": 2.3,
         "fixedCostIndex": 3,
-        "calculatedGearing": null,
-        "capex": 205
+        "calculatedGearing": 0.38867492675781246,
+        "capex": 205,
+        "maxGearing": 0.65,
+        "targetDSCRContract": 1.35,
+        "targetDSCRMerchant": 2,
+        "interestRate": 0.06,
+        "tenorYears": 18
       },
       "North Yarragon": {
         "operatingCosts": 8.72,
@@ -301,8 +321,13 @@
         "terminalValue": 31.5,
         "fixedCost": 4,
         "fixedCostIndex": 2.5,
-        "calculatedGearing": null,
-        "capex": 475
+        "calculatedGearing": 0.4093841552734375,
+        "capex": 475,
+        "maxGearing": 0.65,
+        "targetDSCRContract": 1.35,
+        "targetDSCRMerchant": 2,
+        "interestRate": 0.06,
+        "tenorYears": 18
       },
       "Noblevale": {
         "operatingCosts": 7.77,
@@ -310,8 +335,13 @@
         "terminalValue": 27,
         "fixedCost": 3.77,
         "fixedCostIndex": 2.5,
-        "calculatedGearing": null,
-        "capex": 269
+        "calculatedGearing": 0.28457336425781254,
+        "capex": 269,
+        "maxGearing": 0.65,
+        "targetDSCRContract": 1.35,
+        "targetDSCRMerchant": 2,
+        "interestRate": 0.06,
+        "tenorYears": 18
       },
       "Hookey Creek (BESS)": {
         "operatingCosts": 8.41,
@@ -319,8 +349,13 @@
         "terminalValue": 30,
         "fixedCost": 6.85,
         "fixedCostIndex": 2.5,
-        "calculatedGearing": null,
-        "capex": 414
+        "calculatedGearing": 0.38772277832031243,
+        "capex": 414,
+        "maxGearing": 0.65,
+        "targetDSCRContract": 1.35,
+        "targetDSCRMerchant": 2,
+        "interestRate": 0.06,
+        "tenorYears": 18
       }
     },
     "volumeVariation": 20,
