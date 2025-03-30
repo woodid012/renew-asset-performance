@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "exportDate": "2025-03-20T00:45:23.659Z",
+  "exportDate": "2025-03-30T23:23:28.430Z",
   "portfolioName": "ZEBRE",
   "assets": {
     "1": {
@@ -146,42 +146,6 @@
     },
     "5": {
       "id": "5",
-      "name": "North Yarragon",
-      "state": "VIC",
-      "assetStartDate": "2027-10-01",
-      "capacity": 210,
-      "type": "storage",
-      "volumeLossAdjustment": "100",
-      "assetLife": 25,
-      "contracts": [
-        {
-          "id": "1",
-          "counterparty": "Counterparty 1",
-          "type": "tolling",
-          "buyersPercentage": "",
-          "shape": "flat",
-          "strikePrice": 20,
-          "greenPrice": "",
-          "EnergyPrice": "",
-          "indexation": 2,
-          "indexationReferenceYear": "2025",
-          "settlementFormula": "",
-          "hasFloor": false,
-          "floorValue": "",
-          "startDate": "2027-10-01",
-          "endDate": "2037-09-30"
-        }
-      ],
-      "qtrCapacityFactor_q1": "",
-      "qtrCapacityFactor_q2": "",
-      "qtrCapacityFactor_q3": "",
-      "qtrCapacityFactor_q4": "",
-      "capacityFactor": "",
-      "annualDegradation": 0.4,
-      "volume": 840
-    },
-    "6": {
-      "id": "6",
       "name": "Noblevale",
       "state": "QLD",
       "assetStartDate": "2027-11-01",
@@ -216,8 +180,8 @@
       "annualDegradation": 0.4,
       "volume": 360
     },
-    "7": {
-      "id": "7",
+    "6": {
+      "id": "6",
       "name": "Hookey Creek (BESS)",
       "state": "NSW",
       "assetStartDate": "2027-04-01",
@@ -251,6 +215,42 @@
       "capacityFactor": "",
       "annualDegradation": 0.4,
       "volume": 800
+    },
+    "7": {
+      "id": "7",
+      "name": "North Yarragon",
+      "state": "VIC",
+      "assetStartDate": "2027-10-01",
+      "capacity": 210,
+      "type": "storage",
+      "volumeLossAdjustment": "100",
+      "assetLife": 25,
+      "contracts": [
+        {
+          "id": "1",
+          "counterparty": "Counterparty 1",
+          "type": "tolling",
+          "buyersPercentage": "",
+          "shape": "flat",
+          "strikePrice": 20,
+          "greenPrice": "",
+          "EnergyPrice": "",
+          "indexation": 2,
+          "indexationReferenceYear": "2025",
+          "settlementFormula": "",
+          "hasFloor": false,
+          "floorValue": "",
+          "startDate": "2027-10-01",
+          "endDate": "2037-09-30"
+        }
+      ],
+      "qtrCapacityFactor_q1": "",
+      "qtrCapacityFactor_q2": "",
+      "qtrCapacityFactor_q3": "",
+      "qtrCapacityFactor_q4": "",
+      "capacityFactor": "",
+      "annualDegradation": 0.4,
+      "volume": 840
     }
   },
   "constants": {
@@ -260,16 +260,16 @@
     },
     "assetCosts": {
       "Templers BESS": {
-        "operatingCosts": 4.44,
+        "operatingCosts": 4.06,
         "operatingCostEscalation": 2.5,
         "terminalValue": 16.65,
-        "capex": 222,
-        "maxGearing": 0.7,
-        "targetDSCRContract": 1.35,
-        "targetDSCRMerchant": 2,
+        "capex": 226.04,
+        "maxGearing": 0.65,
+        "targetDSCRContract": 1.4,
+        "targetDSCRMerchant": 1.8,
         "interestRate": 0.06,
         "tenorYears": 20,
-        "calculatedGearing": 0.6999572753906249
+        "calculatedGearing": 0.6499603271484375
       },
       "Solar River Solar": {
         "operatingCosts": 3.25,
@@ -277,71 +277,71 @@
         "terminalValue": 34.8,
         "capex": 278.4,
         "maxGearing": 0.7,
-        "targetDSCRContract": 1.35,
-        "targetDSCRMerchant": 2,
+        "targetDSCRContract": 1.4,
+        "targetDSCRMerchant": 1.8,
         "interestRate": 0.06,
         "tenorYears": 22,
         "calculatedGearing": 0.6999572753906249
       },
       "Solar River BESS": {
-        "operatingCosts": 10.12,
+        "operatingCosts": 10.01,
         "operatingCostEscalation": 2.5,
         "terminalValue": 38.4,
-        "capex": 512,
-        "maxGearing": 0.7,
-        "targetDSCRContract": 1.35,
-        "targetDSCRMerchant": 2,
+        "capex": 409.46,
+        "maxGearing": 0.65,
+        "targetDSCRContract": 1.4,
+        "targetDSCRMerchant": 1.8,
         "interestRate": 0.06,
         "tenorYears": 20,
-        "calculatedGearing": 0.20477905273437497
+        "calculatedGearing": 0.2871917724609375
       },
       "Wagga North": {
-        "operatingCosts": 2.3,
+        "operatingCosts": 3.23,
         "operatingCostEscalation": 2.5,
         "terminalValue": 15.75,
-        "capex": 226,
-        "maxGearing": 0.7,
-        "targetDSCRContract": 1.35,
-        "targetDSCRMerchant": 2,
+        "capex": 228.49,
+        "maxGearing": 0.65,
+        "targetDSCRContract": 1.4,
+        "targetDSCRMerchant": 1.8,
         "interestRate": 0.06,
         "tenorYears": 20,
-        "calculatedGearing": 0.47505493164062496
+        "calculatedGearing": 0.4863494873046875
       },
       "North Yarragon": {
-        "operatingCosts": 4.2,
+        "operatingCosts": 6.05,
         "operatingCostEscalation": 2.5,
         "terminalValue": 31.5,
-        "capex": 475,
-        "maxGearing": 0.7,
-        "targetDSCRContract": 1.35,
-        "targetDSCRMerchant": 2,
+        "capex": 475.83,
+        "maxGearing": 0.65,
+        "targetDSCRContract": 1.4,
+        "targetDSCRMerchant": 1.8,
         "interestRate": 0.06,
         "tenorYears": 20,
-        "calculatedGearing": 0.49146118164062497
+        "calculatedGearing": 0.5057098388671875
       },
       "Noblevale": {
-        "operatingCosts": 7.2,
+        "operatingCosts": 5.19,
         "operatingCostEscalation": 2.5,
         "terminalValue": 27,
-        "capex": 269,
-        "maxGearing": 0.7,
-        "targetDSCRContract": 1.35,
-        "targetDSCRMerchant": 2,
+        "capex": 270.79,
+        "maxGearing": 0.65,
+        "targetDSCRContract": 1.4,
+        "targetDSCRMerchant": 1.8,
         "interestRate": 0.06,
         "tenorYears": 20,
-        "calculatedGearing": 0.29535522460937497
+        "calculatedGearing": 0.40160827636718754
       },
       "Hookey Creek (BESS)": {
-        "operatingCosts": 10,
+        "operatingCosts": 5.95,
         "operatingCostEscalation": 2.5,
         "terminalValue": 30,
-        "capex": 414,
-        "maxGearing": 0.7,
-        "targetDSCRContract": 1.35,
-        "targetDSCRMerchant": 2,
+        "capex": 416.49,
+        "maxGearing": 0.65,
+        "targetDSCRContract": 1.4,
+        "targetDSCRMerchant": 1.8,
         "interestRate": 0.06,
         "tenorYears": 20,
-        "calculatedGearing": 0.37866821289062497
+        "calculatedGearing": 0.5068206787109376
       }
     },
     "volumeVariation": 20,

@@ -6,16 +6,25 @@ import { Input } from '@/components/ui/input';
 import { Plus, X, ChevronLeft, ChevronRight, Download, Upload } from 'lucide-react';
 import { usePortfolio } from '@/contexts/PortfolioContext';
 import AssetForm from './AssetForm';
+import AssetSummaryEditor from './AssetSummaryEditor';
 
 const AssetDashboard = () => {
-  const { assets, setAssets, portfolioName, setPortfolioName } = usePortfolio();
-  const [activeTab, setActiveTab] = useState(Object.keys(assets)[0] || '1');
+  const { 
+    assets, 
+    setAssets, 
+    portfolioName, 
+    setPortfolioName, 
+    exportPortfolioData,
+    importPortfolioData
+  } = usePortfolio();
+  
+  const [activeTab, setActiveTab] = useState('summary');
   const [newAssets, setNewAssets] = useState(new Set());
   const [showScrollButtons, setShowScrollButtons] = useState(false);
   const tabsListRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  // Import functionality
+  // Import functionality - now using the global importPortfolioData function
   const handleImport = (event) => {
     const file = event.target.files[0];
     if (file) {
@@ -23,16 +32,8 @@ const AssetDashboard = () => {
       reader.onload = (e) => {
         try {
           const importedData = JSON.parse(e.target.result);
-          
-          if (importedData.assets) {
-            setAssets(importedData.assets);
-            if (importedData.portfolioName) {
-              setPortfolioName(importedData.portfolioName);
-            }
-            alert('Asset data imported successfully');
-          } else {
-            throw new Error('Invalid data structure');
-          }
+          importPortfolioData(importedData);
+          alert('Asset data imported successfully');
         } catch (error) {
           alert('Error importing asset data: Invalid format');
           console.error('Import error:', error);
@@ -44,15 +45,10 @@ const AssetDashboard = () => {
     event.target.value = '';
   };
 
-  // Export functionality
+  // Export functionality - now using the global exportPortfolioData function
   const exportPortfolio = () => {
-    const exportData = {
-      assets,
-      portfolioName,
-      exportDate: new Date().toISOString(),
-      version: '1.0'
-    };
-
+    const exportData = exportPortfolioData();
+    
     const dataStr = JSON.stringify(exportData, null, 2);
     const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
     
@@ -209,6 +205,14 @@ const AssetDashboard = () => {
                   ref={tabsListRef} 
                   className="flex overflow-x-hidden scroll-smooth justify-start"
                 >
+                  <TabsTrigger
+                    value="summary"
+                    className="flex-shrink-0 relative group w-auto"
+                  >
+                    <span className="flex items-center justify-center w-full">
+                      Summary Editor
+                    </span>
+                  </TabsTrigger>
                   {Object.values(assets).map((asset) => (
                     <TabsTrigger
                       key={asset.id}
@@ -239,6 +243,10 @@ const AssetDashboard = () => {
               </Button>
             </div>
 
+            <TabsContent value="summary">
+              <AssetSummaryEditor />
+            </TabsContent>
+            
             {Object.values(assets).map((asset) => (
               <TabsContent key={asset.id} value={asset.id}>
                 <AssetForm
