@@ -228,7 +228,7 @@
       "contracts": [
         {
           "id": "1",
-          "counterparty": "Counterparty 1",
+          "counterparty": "ZEN Tolling",
           "type": "tolling",
           "buyersPercentage": 100,
           "shape": "flat",
