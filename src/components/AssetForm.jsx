@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, DollarSign } from 'lucide-react';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { usePortfolio } from '@/contexts/PortfolioContext';
 import AssetFormContract from './AssetFormContract';
@@ -18,7 +18,7 @@ import {
 } from './AssetUtils';
 
 const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) => {
-  const { constants } = usePortfolio();
+  const { constants, updateConstants } = usePortfolio();
   const [renewablesData, setRenewablesData] = useState([]);
   const [selectedRenewable, setSelectedRenewable] = useState(null);
   const [outOfSync, setOutOfSync] = useState({
@@ -29,6 +29,9 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
     volumeLossAdjustment: false,
     assetStartDate: false
   });
+
+  const year1Volume = calculateYear1Volume(asset);
+  const assetCosts = constants.assetCosts ? constants.assetCosts[asset.name] || {} : {};
 
   // Load renewables data
   useEffect(() => {
@@ -57,15 +60,61 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
     });
   }, [asset.state, asset.type]);
 
-  // Set default degradation
+  // Effect to set default degradation and initialize asset costs if needed
   useEffect(() => {
+    // Set default degradation
     if (asset.type && !asset.annualDegradation) {
       const defaultDegradation = constants.annualDegradation[asset.type];
       if (defaultDegradation !== undefined) {
         onUpdateAsset('annualDegradation', defaultDegradation);
       }
     }
-  }, [asset.type]);
+    
+    // Initialize asset costs if they don't exist
+    if (!constants.assetCosts[asset.name]) {
+      // Set default cost values based on asset type and capacity
+      const defaultCapexRate = {
+        solar: 1.2,  // $M per MW
+        wind: 2.5,   // $M per MW
+        storage: 1.6, // $M per MW
+        default: 2.0  // $M per MW
+      }[asset.type] || 2.0;
+      
+      const defaultOpexRate = {
+        solar: 0.014,    // $M per MW
+        wind: 0.040,     // $M per MW
+        storage: 0.015,  // $M per MW
+        default: 0.030   // $M per MW
+      }[asset.type] || 0.030;
+      
+      const defaultTerminalValueRate = {
+        solar: 0.15,    // $M per MW
+        wind: 0.20,     // $M per MW
+        storage: 0.10,  // $M per MW
+        default: 0.15   // $M per MW
+      }[asset.type] || 0.15;
+      
+      const capacity = parseFloat(asset.capacity) || 100;
+      
+      const newAssetCosts = {
+        ...constants.assetCosts,
+        [asset.name]: {
+          capex: defaultCapexRate * capacity,
+          operatingCosts: defaultOpexRate * capacity,
+          operatingCostEscalation: 2.5,
+          terminalValue: defaultTerminalValueRate * capacity,
+          // Add project finance parameters
+          maxGearing: 0.70,
+          targetDSCRContract: 1.35,
+          targetDSCRMerchant: 2.00,
+          interestRate: 0.06,
+          tenorYears: 15
+        }
+      };
+      
+      updateConstants('assetCosts', newAssetCosts);
+    }
+  }, [asset.type, asset.name, asset.capacity, constants, onUpdateAsset, updateConstants]);
 
   // Check for out of sync values with template
   useEffect(() => {
@@ -115,6 +164,18 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
     }
   };
 
+  // Handle cost field updates
+  const handleCostUpdate = (field, value) => {
+    const newAssetCosts = {
+      ...constants.assetCosts,
+      [asset.name]: {
+        ...assetCosts,
+        [field]: value === '' ? '' : parseFloat(value)
+      }
+    };
+    updateConstants('assetCosts', newAssetCosts);
+  };
+
   const handleContractUpdate = (id, field, value) => {
     // Ensure we're working with the current contracts array
     const updatedContracts = asset.contracts.map(contract => {
@@ -145,8 +206,6 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
   const removeContract = (contractId) => {
     onUpdateContracts(asset.contracts.filter(c => c.id !== contractId));
   };
-
-  const year1Volume = calculateYear1Volume(asset);
 
   return (
     <div className="space-y-6">
@@ -348,7 +407,119 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
             ) : (
               <div className="text-lg font-semibold">Not calculated</div>
             )}
-</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Asset Costs & Terminal Value Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Asset Costs & Terminal Value</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Capex ($M)</label>
+              <Input
+                type="number"
+                value={assetCosts.capex ?? ''}
+                onChange={(e) => handleCostUpdate('capex', e.target.value)}
+                className="w-full"
+              />
+              <p className="text-xs text-gray-500">Total capital expenditure</p>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Opex ($M/pa)</label>
+              <Input
+                type="number"
+                value={assetCosts.operatingCosts ?? ''}
+                onChange={(e) => handleCostUpdate('operatingCosts', e.target.value)}
+                className="w-full"
+              />
+              <p className="text-xs text-gray-500">Annual operating costs</p>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Opex Escalation (%)</label>
+              <Input
+                type="number"
+                value={assetCosts.operatingCostEscalation ?? ''}
+                onChange={(e) => handleCostUpdate('operatingCostEscalation', e.target.value)}
+                className="w-full"
+              />
+              <p className="text-xs text-gray-500">Annual increase in costs</p>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Terminal Value ($M)</label>
+              <Input
+                type="number"
+                value={assetCosts.terminalValue ?? ''}
+                onChange={(e) => handleCostUpdate('terminalValue', e.target.value)}
+                className="w-full"
+              />
+              <p className="text-xs text-gray-500">End of life value</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+      
+      {/* Debt Parameters Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Debt Financing Parameters</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Max Gearing (%)</label>
+              <Input
+                type="number"
+                value={(assetCosts.maxGearing * 100) ?? ''}
+                onChange={(e) => handleCostUpdate('maxGearing', parseFloat(e.target.value) / 100)}
+                className="w-full"
+              />
+              <p className="text-xs text-gray-500">Maximum debt-to-capital ratio</p>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Target DSCR Contract (x)</label>
+              <Input
+                type="number"
+                value={assetCosts.targetDSCRContract ?? ''}
+                onChange={(e) => handleCostUpdate('targetDSCRContract', e.target.value)}
+                className="w-full"
+              />
+              <p className="text-xs text-gray-500">For contracted revenue</p>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Target DSCR Merchant (x)</label>
+              <Input
+                type="number"
+                value={assetCosts.targetDSCRMerchant ?? ''}
+                onChange={(e) => handleCostUpdate('targetDSCRMerchant', e.target.value)}
+                className="w-full"
+              />
+              <p className="text-xs text-gray-500">For merchant revenue</p>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Interest Rate (%)</label>
+              <Input
+                type="number"
+                value={(assetCosts.interestRate * 100) ?? ''}
+                onChange={(e) => handleCostUpdate('interestRate', parseFloat(e.target.value) / 100)}
+                className="w-full"
+              />
+              <p className="text-xs text-gray-500">Annual interest rate</p>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Tenor (Years)</label>
+              <Input
+                type="number"
+                value={assetCosts.tenorYears ?? ''}
+                onChange={(e) => handleCostUpdate('tenorYears', e.target.value)}
+                className="w-full"
+              />
+              <p className="text-xs text-gray-500">Loan term length</p>
+            </div>
           </div>
         </CardContent>
       </Card>

@@ -19,22 +19,36 @@ const ProjectFinanceDashboard = () => {
   const [isGearingSolved, setIsGearingSolved] = useState(false);
   const [missingData, setMissingData] = useState(false);
 
+  // We no longer need this function as debt parameters are set in the Summary Editor
+  // const handleAssetCostChange = (assetName, field, value) => {
+  //   setIsGearingSolved(false); // Reset solved state when values change
+  //   const newValue = value === '' ? '' : parseFloat(value);
+  //   
+  //   updateConstants('assetCosts', {
+  //     ...constants.assetCosts,
+  //     [assetName]: {
+  //       ...constants.assetCosts[assetName],
+  //       [field]: field === 'maxGearing' || field === 'interestRate' ? newValue / 100 : newValue
+  //     }
+  //   });
+  // };
+
   // Check if asset costs data is complete
   useEffect(() => {
     if (Object.keys(assets).length > 0) {
       let dataIsMissing = false;
       
+      // Check if any asset is missing cost data
       Object.values(assets).forEach(asset => {
-        const assetCosts = constants.assetCosts[asset.name];
-        if (!assetCosts || 
-            assetCosts.capex === undefined || 
-            assetCosts.operatingCosts === undefined ||
-            assetCosts.operatingCostEscalation === undefined ||
-            assetCosts.maxGearing === undefined ||
-            assetCosts.targetDSCRContract === undefined ||
-            assetCosts.targetDSCRMerchant === undefined ||
-            assetCosts.interestRate === undefined ||
-            assetCosts.tenorYears === undefined) {
+        if (!constants.assetCosts[asset.name] || 
+            constants.assetCosts[asset.name].capex === undefined || 
+            constants.assetCosts[asset.name].operatingCosts === undefined ||
+            constants.assetCosts[asset.name].operatingCostEscalation === undefined ||
+            constants.assetCosts[asset.name].maxGearing === undefined ||
+            constants.assetCosts[asset.name].targetDSCRContract === undefined ||
+            constants.assetCosts[asset.name].targetDSCRMerchant === undefined ||
+            constants.assetCosts[asset.name].interestRate === undefined ||
+            constants.assetCosts[asset.name].tenorYears === undefined) {
           dataIsMissing = true;
         }
       });
@@ -61,19 +75,6 @@ const ProjectFinanceDashboard = () => {
     const { portfolio, ...assetMetrics } = metrics;
     return assetMetrics;
   }, [assets, constants.assetCosts, selectedRevenueCase, constants, getMerchantPrice]);
-
-  const handleAssetCostChange = (assetName, field, value) => {
-    setIsGearingSolved(false); // Reset solved state when values change
-    const newValue = value === '' ? '' : parseFloat(value);
-    
-    updateConstants('assetCosts', {
-      ...constants.assetCosts,
-      [assetName]: {
-        ...constants.assetCosts[assetName],
-        [field]: field === 'maxGearing' || field === 'interestRate' ? newValue / 100 : newValue
-      }
-    });
-  };
 
   const handleSolveGearing = () => {
     // Calculate new gearing values
@@ -113,132 +114,6 @@ const ProjectFinanceDashboard = () => {
           </AlertDescription>
         </Alert>
       )}
-
-      {/* Project Parameters Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Project Parameters</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Asset Name</TableHead>
-                <TableHead>Capacity (MW)</TableHead>
-                <TableHead>Start Date</TableHead>
-                <TableHead>Asset Life (Years)</TableHead>
-                <TableHead>Capex ($M)</TableHead>
-                <TableHead>Opex ($M/pa)</TableHead>
-                <TableHead>Opex Esc. (%)</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {Object.values(assets).map((asset) => (
-                <TableRow key={asset.name}>
-                  <TableCell>{asset.name}</TableCell>
-                  <TableCell>{asset.capacity}</TableCell>
-                  <TableCell>{asset.assetStartDate ? new Date(asset.assetStartDate).toLocaleDateString() : "-"}</TableCell>
-                  <TableCell>{asset.assetLife}</TableCell>
-                  <TableCell>
-                    <input
-                      type="number"
-                      value={constants.assetCosts[asset.name]?.capex ?? ''}
-                      onChange={(e) => handleAssetCostChange(asset.name, 'capex', e.target.value)}
-                      className="w-32 border rounded p-2"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <input
-                      type="number"
-                      value={constants.assetCosts[asset.name]?.operatingCosts ?? ''}
-                      onChange={(e) => handleAssetCostChange(asset.name, 'operatingCosts', e.target.value)}
-                      className="w-32 border rounded p-2"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <input
-                      type="number"
-                      value={constants.assetCosts[asset.name]?.operatingCostEscalation ?? ''}
-                      onChange={(e) => handleAssetCostChange(asset.name, 'operatingCostEscalation', e.target.value)}
-                      className="w-32 border rounded p-2"
-                    />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      {/* Debt Parameters */}
-      <Card>
-        <CardHeader>
-          <div className="flex justify-between items-center">
-            <CardTitle>Debt Parameters</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Asset Name</TableHead>
-                <TableHead>Max Gearing (%)</TableHead>
-                <TableHead>Target DSCR Contract (x)</TableHead>
-                <TableHead>Target DSCR Merchant (x)</TableHead>
-                <TableHead>Interest Rate (%)</TableHead>
-                <TableHead>Tenor (Years)</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {Object.values(assets).map((asset) => (
-                <TableRow key={asset.name}>
-                  <TableCell>{asset.name}</TableCell>
-                  <TableCell>
-                    <input
-                      type="number"
-                      value={(constants.assetCosts[asset.name]?.maxGearing * 100) ?? ''}
-                      onChange={(e) => handleAssetCostChange(asset.name, 'maxGearing', e.target.value)}
-                      className="w-32 border rounded p-2"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <input
-                      type="number"
-                      value={constants.assetCosts[asset.name]?.targetDSCRContract ?? ''}
-                      onChange={(e) => handleAssetCostChange(asset.name, 'targetDSCRContract', e.target.value)}
-                      className="w-32 border rounded p-2"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <input
-                      type="number"
-                      value={constants.assetCosts[asset.name]?.targetDSCRMerchant ?? ''}
-                      onChange={(e) => handleAssetCostChange(asset.name, 'targetDSCRMerchant', e.target.value)}
-                      className="w-32 border rounded p-2"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <input
-                      type="number"
-                      value={(constants.assetCosts[asset.name]?.interestRate * 100) ?? ''}
-                      onChange={(e) => handleAssetCostChange(asset.name, 'interestRate', e.target.value)}
-                      className="w-32 border rounded p-2"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <input
-                      type="number"
-                      value={constants.assetCosts[asset.name]?.tenorYears ?? ''}
-                      onChange={(e) => handleAssetCostChange(asset.name, 'tenorYears', e.target.value)}
-                      className="w-32 border rounded p-2"
-                    />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
 
       {/* Project Metrics */}
       <Card>
