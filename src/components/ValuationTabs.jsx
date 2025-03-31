@@ -77,7 +77,7 @@ const ValuationTabs = () => {
       <Tabs defaultValue="operating" className="w-full">
         <TabsList className="border-b mb-4">
           <TabsTrigger value="operating">Operating Portfolio</TabsTrigger>
-          <TabsTrigger value="test">Debt Sizing <span className="ml-2 text-xs py-0.5 px-1.5 rounded-full bg-amber-100 text-amber-800 font-medium">WIP</span></TabsTrigger>
+          <TabsTrigger value="test">Project Finance</TabsTrigger>
         </TabsList>
         
         <TabsContent value="operating">
