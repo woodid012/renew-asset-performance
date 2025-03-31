@@ -99,7 +99,7 @@ const App = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">
-      <Card className="mx-auto max-w-7xl">
+      <Card className="mx-auto max-w-[1440px]">
         <div className="p-4">
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-2xl font-bold">Portfolio Earnings and Risk Analysis</h1>

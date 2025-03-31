@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Save, DollarSign } from 'lucide-react';
+import { Save } from 'lucide-react';
 import { usePortfolio } from '@/contexts/PortfolioContext';
 import { 
   formatNumericValue, 
@@ -15,26 +15,18 @@ import {
 
 const AssetSummaryEditor = () => {
   const { assets, setAssets, constants, updateConstants } = usePortfolio();
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [editState, setEditState] = useState({});
   const [activeTab, setActiveTab] = useState("assets");
   const assetCosts = constants.assetCosts || {};
 
   // Initialize edit state with asset values
-  React.useEffect(() => {
+  useEffect(() => {
     const initialState = {};
     Object.values(assets).forEach(asset => {
       initialState[asset.id] = { ...asset };
     });
     setEditState(initialState);
-    
-    // Debug logging
-    console.log("Assets:", assets);
-    console.log("Asset costs:", constants.assetCosts);
-    Object.values(assets).forEach(asset => {
-      console.log(`Asset ${asset.name} costs:`, constants.assetCosts[asset.name]);
-    });
-  }, [assets, constants.assetCosts]);
+  }, [assets]);
 
   // Update a field for a specific asset
   const handleFieldUpdate = (assetId, field, value, options = {}) => {
@@ -82,34 +74,6 @@ const AssetSummaryEditor = () => {
   // Save all changes
   const saveChanges = () => {
     setAssets(editState);
-  };
-
-  // Add a new empty asset
-  const addNewAsset = () => {
-    const newId = String(Object.keys(assets).length + 1);
-    const assetNumber = Object.keys(assets).length + 1;
-    
-    const newAsset = {
-      id: newId,
-      name: `Default Asset ${assetNumber}`,
-      state: 'NSW',
-      assetStartDate: '2024-01-01',
-      capacity: '100',
-      type: 'solar',
-      volumeLossAdjustment: '100',
-      assetLife: '35',
-      contracts: []
-    };
-    
-    setAssets(prev => ({
-      ...prev,
-      [newId]: newAsset
-    }));
-    
-    setEditState(prev => ({
-      ...prev,
-      [newId]: newAsset
-    }));
   };
 
   // Get all unique contract IDs across all assets
@@ -285,7 +249,6 @@ const AssetSummaryEditor = () => {
   const handleAssetCostChange = (assetName, field, value) => {
     // Make sure the asset costs object exists for this asset
     if (!constants.assetCosts[assetName]) {
-      console.log(`Creating new asset cost entry for ${assetName}`);
       updateConstants('assetCosts', {
         ...constants.assetCosts,
         [assetName]: {
@@ -315,303 +278,308 @@ const AssetSummaryEditor = () => {
         [field]: isNaN(processedValue) ? '' : processedValue
       }
     });
-    
-    console.log(`Updated ${field} for ${assetName} to ${processedValue}`);
   };
 
   return (
     <Card className="w-full">
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Asset Summary Editor</CardTitle>
-        <div className="flex space-x-2">
-          <Button size="sm" onClick={() => setShowAdvanced(!showAdvanced)}>
-            {showAdvanced ? 'Hide Advanced' : 'Show Advanced'}
-          </Button>
-          <Button size="sm" onClick={addNewAsset}>
-            <Plus className="h-4 w-4 mr-2" />Add Asset
-          </Button>
-          <Button size="sm" onClick={saveChanges} variant="default">
-            <Save className="h-4 w-4 mr-2" />Save Changes
-          </Button>
-        </div>
+        <Button size="sm" onClick={saveChanges} variant="default">
+          <Save className="h-4 w-4 mr-2" />Save Changes
+        </Button>
       </CardHeader>
       <CardContent>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-4">
-            <TabsTrigger value="assets" className="data-[state=active]:bg-blue-500 data-[state=active]:text-white hover:bg-blue-100">
-              Assets & Contracts
-            </TabsTrigger>
-            <TabsTrigger value="capex" className="data-[state=active]:bg-green-500 data-[state=active]:text-white hover:bg-green-100">
-              Capex & Opex
-            </TabsTrigger>
+          <TabsList className="justify-start mb-4">
+            <TabsTrigger value="assets">Assets</TabsTrigger>
+            <TabsTrigger value="advanced">Advanced</TabsTrigger>
+            <TabsTrigger value="contracts">Contracts</TabsTrigger>
+            <TabsTrigger value="finance">Finance</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="assets" className="overflow-x-auto">
+          <TabsContent value="assets">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Field</TableHead>
+                  {Object.values(assets).map(asset => (
+                    <TableHead key={`asset-${asset.id}`}>{asset.name}</TableHead>
+                  ))}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {assetFields.map(field => (
+                  <TableRow key={field.field}>
+                    <TableCell className="font-medium">{field.label}</TableCell>
+                    {Object.values(assets).map(asset => (
+                      <TableCell key={`${asset.id}-${field.field}`}>
+                        {renderCellContent(asset.id, field, field.type, field.options)}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TabsContent>
+          
+          <TabsContent value="advanced">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Field</TableHead>
+                  {Object.values(assets).map(asset => (
+                    <TableHead key={`asset-${asset.id}`}>{asset.name}</TableHead>
+                  ))}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {advancedFields.map(field => (
+                  <TableRow key={field.field}>
+                    <TableCell className="font-medium">{field.label}</TableCell>
+                    {Object.values(assets).map(asset => (
+                      <TableCell key={`${asset.id}-${field.field}`}>
+                        {renderCellContent(asset.id, field, field.type, field.options)}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TabsContent>
+          
+          <TabsContent value="contracts">
+            <div className="space-y-4">
+              {hasContracts ? (
+                <>
+                  {allContractIds.map(contractId => (
+                    <div key={contractId} className="mb-6">
+                      <div className="flex justify-between mb-2">
+                        <h4 className="text-md font-medium">Contract {contractId}</h4>
+                      </div>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Field</TableHead>
+                            {Object.values(assets).map(asset => (
+                              <TableHead key={`asset-${asset.id}`}>{asset.name}</TableHead>
+                            ))}
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {contractFields.map(field => (
+                            <TableRow key={field.field}>
+                              <TableCell className="font-medium">{field.label}</TableCell>
+                              {Object.values(assets).map(asset => (
+                                <TableCell key={`${asset.id}-${contractId}-${field.field}`}>
+                                  {renderContractCellContent(asset.id, contractId, field, field.type, field.options)}
+                                </TableCell>
+                              ))}
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  ))}
+                  <div className="flex justify-center mt-4">
+                    <Button onClick={addContractToAll}>
+                      Add Contract to All Assets
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-4">
+                  <p className="text-gray-500 mb-2">No contracts have been added yet</p>
+                  <Button onClick={addContractToAll}>
+                    Add Contract to All Assets
+                  </Button>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="finance">
             <div className="space-y-6">
-          <div>
-            <h3 className="text-lg font-medium mb-2">Asset Properties</h3>
-            <div className="rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-36">Field</TableHead>
+                    <TableHead>Field</TableHead>
                     {Object.values(assets).map(asset => (
-                      <TableHead key={asset.id}>{asset.name}</TableHead>
+                      <TableHead key={`asset-${asset.id}`}>{asset.name}</TableHead>
                     ))}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {assetFields.map(field => (
-                    <TableRow key={field.field}>
-                      <TableCell className="font-medium">{field.label}</TableCell>
-                      {Object.values(assets).map(asset => (
-                        <TableCell key={`${asset.id}-${field.field}`}>
-                          {renderCellContent(asset.id, field, field.type, field.options)}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))}
-                  
-                  {showAdvanced && advancedFields.map(field => (
-                    <TableRow key={field.field}>
-                      <TableCell className="font-medium">{field.label}</TableCell>
-                      {Object.values(assets).map(asset => (
-                        <TableCell key={`${asset.id}-${field.field}`}>
-                          {renderCellContent(asset.id, field, field.type, field.options)}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))}
+                  <TableRow>
+                    <TableCell className="font-medium">Capex ($M)</TableCell>
+                    {Object.values(assets).map(asset => (
+                      <TableCell key={`capex-${asset.id}`}>
+                        <Input
+                          type="number"
+                          value={assetCosts[asset.name]?.capex ?? ''}
+                          onChange={(e) => handleAssetCostChange(asset.name, 'capex', e.target.value)}
+                          className="w-32 h-8"
+                        />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Opex ($M/pa)</TableCell>
+                    {Object.values(assets).map(asset => (
+                      <TableCell key={`opex-${asset.id}`}>
+                        <Input
+                          type="number"
+                          value={assetCosts[asset.name]?.operatingCosts ?? ''}
+                          onChange={(e) => handleAssetCostChange(asset.name, 'operatingCosts', e.target.value)}
+                          className="w-32 h-8"
+                        />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Opex Escalation (%)</TableCell>
+                    {Object.values(assets).map(asset => (
+                      <TableCell key={`opexesc-${asset.id}`}>
+                        <Input
+                          type="number"
+                          value={assetCosts[asset.name]?.operatingCostEscalation ?? ''}
+                          onChange={(e) => handleAssetCostChange(asset.name, 'operatingCostEscalation', e.target.value)}
+                          className="w-32 h-8"
+                        />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Terminal Value ($M)</TableCell>
+                    {Object.values(assets).map(asset => (
+                      <TableCell key={`terminal-${asset.id}`}>
+                        <Input
+                          type="number"
+                          value={assetCosts[asset.name]?.terminalValue ?? ''}
+                          onChange={(e) => handleAssetCostChange(asset.name, 'terminalValue', e.target.value)}
+                          className="w-32 h-8"
+                        />
+                      </TableCell>
+                    ))}
+                  </TableRow>
                 </TableBody>
               </Table>
-            </div>
-          </div>
-
-          {hasContracts && (
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <h3 className="text-lg font-medium">Contracts</h3>
-                <Button size="sm" onClick={addContractToAll}>
-                  <Plus className="h-4 w-4 mr-2" />Add Contract to All Assets
-                </Button>
-              </div>
               
-              {allContractIds.map(contractId => (
-                <div key={contractId} className="mb-4">
-                  <h4 className="text-md font-medium mb-2">Contract {contractId}</h4>
-                  <div className="rounded-md border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="w-36">Field</TableHead>
-                          {Object.values(assets).map(asset => (
-                            <TableHead key={asset.id}>{asset.name}</TableHead>
-                          ))}
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {contractFields.map(field => (
-                          <TableRow key={field.field}>
-                            <TableCell className="font-medium">{field.label}</TableCell>
-                            {Object.values(assets).map(asset => (
-                              <TableCell key={`${asset.id}-${contractId}-${field.field}`}>
-                                {renderContractCellContent(asset.id, contractId, field, field.type, field.options)}
-                              </TableCell>
-                            ))}
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
+              <h3 className="text-lg font-medium mt-6 mb-3">Project Finance Parameters</h3>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Field</TableHead>
+                    {Object.values(assets).map(asset => (
+                      <TableHead key={`asset-${asset.id}`}>{asset.name}</TableHead>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow>
+                    <TableCell className="font-medium">Max Gearing (%)</TableCell>
+                    {Object.values(assets).map(asset => (
+                      <TableCell key={`gearing-${asset.id}`}>
+                        <Input
+                          type="number"
+                          value={(assetCosts[asset.name]?.maxGearing * 100) ?? ''}
+                          onChange={(e) => handleAssetCostChange(asset.name, 'maxGearing', e.target.value)}
+                          className="w-32 h-8"
+                        />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Target DSCR Contract (x)</TableCell>
+                    {Object.values(assets).map(asset => (
+                      <TableCell key={`dscrcontract-${asset.id}`}>
+                        <Input
+                          type="number"
+                          value={assetCosts[asset.name]?.targetDSCRContract ?? ''}
+                          onChange={(e) => handleAssetCostChange(asset.name, 'targetDSCRContract', e.target.value)}
+                          className="w-32 h-8"
+                        />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Target DSCR Merchant (x)</TableCell>
+                    {Object.values(assets).map(asset => (
+                      <TableCell key={`dscrmerchant-${asset.id}`}>
+                        <Input
+                          type="number"
+                          value={assetCosts[asset.name]?.targetDSCRMerchant ?? ''}
+                          onChange={(e) => handleAssetCostChange(asset.name, 'targetDSCRMerchant', e.target.value)}
+                          className="w-32 h-8"
+                        />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Interest Rate (%)</TableCell>
+                    {Object.values(assets).map(asset => (
+                      <TableCell key={`interest-${asset.id}`}>
+                        <Input
+                          type="number"
+                          value={(assetCosts[asset.name]?.interestRate * 100) ?? ''}
+                          onChange={(e) => handleAssetCostChange(asset.name, 'interestRate', e.target.value)}
+                          className="w-32 h-8"
+                        />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Tenor (Years)</TableCell>
+                    {Object.values(assets).map(asset => (
+                      <TableCell key={`tenor-${asset.id}`}>
+                        <Input
+                          type="number"
+                          value={assetCosts[asset.name]?.tenorYears ?? ''}
+                          onChange={(e) => handleAssetCostChange(asset.name, 'tenorYears', e.target.value)}
+                          className="w-32 h-8"
+                        />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                </TableBody>
+              </Table>
+              
+              <h3 className="text-lg font-medium mt-6 mb-3">Discount Rates</h3>
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <label className="text-sm font-medium">Contracted Revenue (%)</label>
+                  <Input
+                    type="number"
+                    value={(constants.discountRates?.contract * 100) ?? ''}
+                    onChange={(e) => {
+                      updateConstants('discountRates', {
+                        ...constants.discountRates,
+                        contract: parseFloat(e.target.value) / 100
+                      });
+                    }}
+                    className="w-32 h-8 mt-1"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Discount rate applied to contracted revenue streams
+                  </p>
                 </div>
-              ))}
-            </div>
-          )}
-          
-          {!hasContracts && (
-            <div className="text-center py-4">
-              <p className="text-gray-500 mb-2">No contracts have been added yet</p>
-              <Button onClick={addContractToAll}>
-                <Plus className="h-4 w-4 mr-2" />Add Contract to All Assets
-              </Button>
-            </div>
-          )}
-        </div>
-          </TabsContent>
-          
-          <TabsContent value="capex" className="overflow-x-auto">
-            <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Financial Parameters</CardTitle>
-                  <CardDescription>Define capital and operating costs for valuation and financial modeling</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-40">Asset</TableHead>
-                        <TableHead>Capex ($M)</TableHead>
-                        <TableHead>Opex ($M/pa)</TableHead>
-                        <TableHead>Opex Escalation (%)</TableHead>
-                        <TableHead>Terminal Value ($M)</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {Object.values(assets).map(asset => (
-                        <TableRow key={asset.id}>
-                          <TableCell className="font-medium">{asset.name}</TableCell>
-                          <TableCell>
-                            <Input
-                              type="number"
-                              value={assetCosts[asset.name]?.capex ?? ''}
-                              onChange={(e) => handleAssetCostChange(asset.name, 'capex', e.target.value)}
-                              className="w-32 h-8"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              type="number"
-                              value={assetCosts[asset.name]?.operatingCosts ?? ''}
-                              onChange={(e) => handleAssetCostChange(asset.name, 'operatingCosts', e.target.value)}
-                              className="w-32 h-8"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              type="number"
-                              value={assetCosts[asset.name]?.operatingCostEscalation ?? ''}
-                              onChange={(e) => handleAssetCostChange(asset.name, 'operatingCostEscalation', e.target.value)}
-                              className="w-32 h-8"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              type="number"
-                              value={assetCosts[asset.name]?.terminalValue ?? ''}
-                              onChange={(e) => handleAssetCostChange(asset.name, 'terminalValue', e.target.value)}
-                              className="w-32 h-8"
-                            />
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle>Project Finance Parameters</CardTitle>
-                  <CardDescription>Debt parameters for project finance modeling</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-40">Asset</TableHead>
-                        <TableHead>Max Gearing (%)</TableHead>
-                        <TableHead>Target DSCR Contract (x)</TableHead>
-                        <TableHead>Target DSCR Merchant (x)</TableHead>
-                        <TableHead>Interest Rate (%)</TableHead>
-                        <TableHead>Tenor (Years)</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {Object.values(assets).map(asset => (
-                        <TableRow key={`finance-${asset.id}`}>
-                          <TableCell className="font-medium">{asset.name}</TableCell>
-                          <TableCell>
-                            <Input
-                              type="number"
-                              value={(assetCosts[asset.name]?.maxGearing * 100) ?? ''}
-                              onChange={(e) => handleAssetCostChange(asset.name, 'maxGearing', e.target.value)}
-                              className="w-32 h-8"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              type="number"
-                              value={assetCosts[asset.name]?.targetDSCRContract ?? ''}
-                              onChange={(e) => handleAssetCostChange(asset.name, 'targetDSCRContract', e.target.value)}
-                              className="w-32 h-8"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              type="number"
-                              value={assetCosts[asset.name]?.targetDSCRMerchant ?? ''}
-                              onChange={(e) => handleAssetCostChange(asset.name, 'targetDSCRMerchant', e.target.value)}
-                              className="w-32 h-8"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              type="number"
-                              value={(assetCosts[asset.name]?.interestRate * 100) ?? ''}
-                              onChange={(e) => handleAssetCostChange(asset.name, 'interestRate', e.target.value)}
-                              className="w-32 h-8"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              type="number"
-                              value={assetCosts[asset.name]?.tenorYears ?? ''}
-                              onChange={(e) => handleAssetCostChange(asset.name, 'tenorYears', e.target.value)}
-                              className="w-32 h-8"
-                            />
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle>Discount Rates</CardTitle>
-                  <CardDescription>Global discount rate settings for revenue streams</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-3 gap-6">
-                    <div>
-                      <label className="text-sm font-medium">Contracted Revenue (%)</label>
-                      <Input
-                        type="number"
-                        value={(constants.discountRates?.contract * 100) ?? ''}
-                        onChange={(e) => {
-                          updateConstants('discountRates', {
-                            ...constants.discountRates,
-                            contract: parseFloat(e.target.value) / 100
-                          });
-                        }}
-                        className="w-32 h-8 mt-1"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">
-                        Discount rate applied to contracted revenue streams
-                      </p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">Merchant Revenue (%)</label>
-                      <Input
-                        type="number"
-                        value={(constants.discountRates?.merchant * 100) ?? ''}
-                        onChange={(e) => {
-                          updateConstants('discountRates', {
-                            ...constants.discountRates,
-                            merchant: parseFloat(e.target.value) / 100
-                          });
-                        }}
-                        className="w-32 h-8 mt-1"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">
-                        Discount rate applied to merchant revenue streams
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                <div>
+                  <label className="text-sm font-medium">Merchant Revenue (%)</label>
+                  <Input
+                    type="number"
+                    value={(constants.discountRates?.merchant * 100) ?? ''}
+                    onChange={(e) => {
+                      updateConstants('discountRates', {
+                        ...constants.discountRates,
+                        merchant: parseFloat(e.target.value) / 100
+                      });
+                    }}
+                    className="w-32 h-8 mt-1"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Discount rate applied to merchant revenue streams
+                  </p>
+                </div>
+              </div>
             </div>
           </TabsContent>
         </Tabs>
