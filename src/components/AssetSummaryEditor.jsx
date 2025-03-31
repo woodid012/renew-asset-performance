@@ -543,43 +543,7 @@ const AssetSummaryEditor = () => {
                 </TableBody>
               </Table>
               
-              <h3 className="text-lg font-medium mt-6 mb-3">Discount Rates</h3>
-              <div className="grid grid-cols-2 gap-6">
-                <div>
-                  <label className="text-sm font-medium">Contracted Revenue (%)</label>
-                  <Input
-                    type="number"
-                    value={(constants.discountRates?.contract * 100) ?? ''}
-                    onChange={(e) => {
-                      updateConstants('discountRates', {
-                        ...constants.discountRates,
-                        contract: parseFloat(e.target.value) / 100
-                      });
-                    }}
-                    className="w-32 h-8 mt-1"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Discount rate applied to contracted revenue streams
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Merchant Revenue (%)</label>
-                  <Input
-                    type="number"
-                    value={(constants.discountRates?.merchant * 100) ?? ''}
-                    onChange={(e) => {
-                      updateConstants('discountRates', {
-                        ...constants.discountRates,
-                        merchant: parseFloat(e.target.value) / 100
-                      });
-                    }}
-                    className="w-32 h-8 mt-1"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Discount rate applied to merchant revenue streams
-                  </p>
-                </div>
-              </div>
+              
             </div>
           </TabsContent>
         </Tabs>
