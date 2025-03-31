@@ -207,7 +207,7 @@ const AssetDashboard = () => {
                 >
                   <TabsTrigger
                     value="summary"
-                    className="flex-shrink-0 relative group w-auto"
+                    className="flex-shrink-0 relative group w-auto data-[state=active]:bg-blue-500 data-[state=active]:text-white hover:bg-blue-100"
                   >
                     <span className="flex items-center justify-center w-full">
                       Summary Editor

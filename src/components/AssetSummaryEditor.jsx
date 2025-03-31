@@ -27,7 +27,14 @@ const AssetSummaryEditor = () => {
       initialState[asset.id] = { ...asset };
     });
     setEditState(initialState);
-  }, [assets]);
+    
+    // Debug logging
+    console.log("Assets:", assets);
+    console.log("Asset costs:", constants.assetCosts);
+    Object.values(assets).forEach(asset => {
+      console.log(`Asset ${asset.name} costs:`, constants.assetCosts[asset.name]);
+    });
+  }, [assets, constants.assetCosts]);
 
   // Update a field for a specific asset
   const handleFieldUpdate = (assetId, field, value, options = {}) => {
@@ -276,6 +283,27 @@ const AssetSummaryEditor = () => {
 
   // Handle asset cost field update
   const handleAssetCostChange = (assetName, field, value) => {
+    // Make sure the asset costs object exists for this asset
+    if (!constants.assetCosts[assetName]) {
+      console.log(`Creating new asset cost entry for ${assetName}`);
+      updateConstants('assetCosts', {
+        ...constants.assetCosts,
+        [assetName]: {
+          // Set some default values
+          capex: 0,
+          operatingCosts: 0,
+          operatingCostEscalation: 2.5,
+          terminalValue: 0,
+          maxGearing: 0.7,
+          targetDSCRContract: 1.35,
+          targetDSCRMerchant: 2.0,
+          interestRate: 0.06,
+          tenorYears: 15
+        }
+      });
+    }
+
+    // Now update the specific field
     const processedValue = field === 'maxGearing' || field === 'interestRate' 
       ? parseFloat(value) / 100 
       : parseFloat(value);
@@ -287,6 +315,8 @@ const AssetSummaryEditor = () => {
         [field]: isNaN(processedValue) ? '' : processedValue
       }
     });
+    
+    console.log(`Updated ${field} for ${assetName} to ${processedValue}`);
   };
 
   return (
@@ -308,8 +338,12 @@ const AssetSummaryEditor = () => {
       <CardContent>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2 mb-4">
-            <TabsTrigger value="assets">Assets & Contracts</TabsTrigger>
-            <TabsTrigger value="capex">Capex & Opex</TabsTrigger>
+            <TabsTrigger value="assets" className="data-[state=active]:bg-blue-500 data-[state=active]:text-white hover:bg-blue-100">
+              Assets & Contracts
+            </TabsTrigger>
+            <TabsTrigger value="capex" className="data-[state=active]:bg-green-500 data-[state=active]:text-white hover:bg-green-100">
+              Capex & Opex
+            </TabsTrigger>
           </TabsList>
           
           <TabsContent value="assets" className="overflow-x-auto">
