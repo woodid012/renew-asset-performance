@@ -693,9 +693,6 @@ const ProjectFinanceDashboard = () => {
               <li><span className="font-medium">Amortization:</span> Equal debt service payments throughout the loan term.</li>
               <li><span className="font-medium">Sculpting:</span> Debt service payments vary to maintain a constant Debt Service Coverage Ratio (DSCR).</li>
             </ul>
-            <p className="mt-2 text-xs text-gray-500">
-              Sculpting optimizes debt capacity based on projected cash flows and is particularly useful for projects with variable revenue streams.
-            </p>
           </div>
         </CardContent>
       </Card>
