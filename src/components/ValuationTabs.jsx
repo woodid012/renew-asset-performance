@@ -74,18 +74,18 @@ const ValuationTabs = () => {
         </div>
       </div>
 
-      <Tabs defaultValue="operating" className="w-full">
+      <Tabs defaultValue="test" className="w-full">
         <TabsList className="border-b mb-4">
-          <TabsTrigger value="operating">Operating Portfolio</TabsTrigger>
           <TabsTrigger value="test">Project Finance</TabsTrigger>
+          <TabsTrigger value="operating">Operating Portfolio</TabsTrigger>
         </TabsList>
-        
-        <TabsContent value="operating">
-          <ValuationAnalysis />
-        </TabsContent>
         
         <TabsContent value="test">
           <ProjectFinanceDashboard />
+        </TabsContent>
+        
+        <TabsContent value="operating">
+          <ValuationAnalysis />
         </TabsContent>
       </Tabs>
     </div>

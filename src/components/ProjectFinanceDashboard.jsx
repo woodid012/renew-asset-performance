@@ -6,7 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { usePortfolio } from '@/contexts/PortfolioContext';
-import { calculateProjectMetrics, calculateIRR } from './ProjectFinance_Calcs';
+import { 
+  calculateProjectMetrics, 
+  calculateIRR
+} from './ProjectFinance_Calcs';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const ProjectFinanceDashboard = () => {
@@ -18,7 +21,34 @@ const ProjectFinanceDashboard = () => {
   
   const [isGearingSolved, setIsGearingSolved] = useState(false);
   const [missingData, setMissingData] = useState(false);
-
+  const [globalDebtStructure, setGlobalDebtStructure] = useState('sculpting');
+  
+  // Function to update all debt structures
+  const updateAllDebtStructures = (newStructure) => {
+    const updatedAssetCosts = { ...constants.assetCosts };
+    
+    // Update for all individual assets
+    Object.values(assets).forEach(asset => {
+      updatedAssetCosts[asset.name] = {
+        ...updatedAssetCosts[asset.name],
+        debtStructure: newStructure
+      };
+    });
+    
+    // Update for portfolio if it exists
+    if (updatedAssetCosts.portfolio) {
+      updatedAssetCosts.portfolio = {
+        ...updatedAssetCosts.portfolio,
+        debtStructure: newStructure
+      };
+    }
+    
+    // Update state and constants
+    setGlobalDebtStructure(newStructure);
+    updateConstants('assetCosts', updatedAssetCosts);
+    setIsGearingSolved(false);
+  };
+  
   // Reset gearing solved state when revenue case changes
   useEffect(() => {
     setIsGearingSolved(false);
@@ -39,7 +69,7 @@ const ProjectFinanceDashboard = () => {
         targetDSCRMerchant: 1.80, // Slightly lower than individual assets
         interestRate: 0.055, // Slightly lower than individual assets
         tenorYears: 18, // Portfolio refinancing tenor
-        debtStructure: 'amortization' // Default to amortization
+        debtStructure: 'sculpting' // Default to sculpting
       };
       
       // Update the constants
@@ -66,7 +96,7 @@ const ProjectFinanceDashboard = () => {
           if (!updatedAssetCosts[asset.name]) {
             updatedAssetCosts[asset.name] = {};
           }
-          updatedAssetCosts[asset.name].debtStructure = 'amortization';
+          updatedAssetCosts[asset.name].debtStructure = 'sculpting'; // Default to sculpting
           needsUpdate = true;
         }
       });
@@ -77,6 +107,15 @@ const ProjectFinanceDashboard = () => {
       }
     }
   }, [assets, constants.assetCosts, updateConstants]);
+
+  // Set global debt structure on first load
+  useEffect(() => {
+    // Initialize on first load
+    if (Object.keys(assets).length > 0) {
+      // Apply the default debt structure to all assets
+      updateAllDebtStructures('sculpting');
+    }
+  }, []); // Empty dependency array to run only once on component mount
 
   // Check if asset costs data is complete
   useEffect(() => {
@@ -108,44 +147,67 @@ const ProjectFinanceDashboard = () => {
   }, [assets, constants.assetCosts, isGearingSolved]);
 
   const projectMetrics = useMemo(() => {
-    const metrics = calculateProjectMetrics(
-      assets,
-      constants.assetCosts, // Pass assetCosts
-      constants,
-      getMerchantPrice,
-      selectedRevenueCase,
-      false  // Never solve gearing in metrics calculation
-    );
-    return metrics;
+    try {
+      const metrics = calculateProjectMetrics(
+        assets,
+        constants.assetCosts, // Pass assetCosts
+        constants,
+        getMerchantPrice,
+        selectedRevenueCase,
+        false  // Never solve gearing in metrics calculation
+      );
+      return metrics;
+    } catch (error) {
+      console.error("Error calculating project metrics:", error);
+      return {};
+    }
   }, [assets, constants.assetCosts, selectedRevenueCase, constants, getMerchantPrice]);
 
   const handleSolveGearing = () => {
-    // Calculate new gearing values
-    const newMetrics = calculateProjectMetrics(
-      assets,
-      constants.assetCosts,
-      constants,
-      getMerchantPrice,
-      selectedRevenueCase,
-      true
-    );
-    
-    // Update assetCosts with the solved gearing
-    const updatedAssetCosts = { ...constants.assetCosts };
-    Object.entries(newMetrics).forEach(([assetName, metrics]) => {
-      if (assetName !== 'portfolio') {
-        updatedAssetCosts[assetName] = {
-          ...updatedAssetCosts[assetName],
-          calculatedGearing: metrics.calculatedGearing
-        };
-      }
-    });
-    
-    updateConstants('assetCosts', updatedAssetCosts);
-    setIsGearingSolved(true);
+    try {
+      // Calculate new gearing values
+      const newMetrics = calculateProjectMetrics(
+        assets,
+        constants.assetCosts,
+        constants,
+        getMerchantPrice,
+        selectedRevenueCase,
+        true
+      );
+      
+      // Update assetCosts with the solved gearing
+      const updatedAssetCosts = { ...constants.assetCosts };
+      Object.entries(newMetrics).forEach(([assetName, metrics]) => {
+        if (assetName !== 'portfolio') {
+          updatedAssetCosts[assetName] = {
+            ...updatedAssetCosts[assetName],
+            calculatedGearing: metrics.calculatedGearing
+          };
+        }
+      });
+      
+      updateConstants('assetCosts', updatedAssetCosts);
+      setIsGearingSolved(true);
+    } catch (error) {
+      console.error("Error solving gearing:", error);
+    }
   };
 
-  const formatPercent = (value) => `${(value * 100).toFixed(1)}%`;
+  // Safe formatting functions with null checks
+  const formatPercent = (value) => {
+    if (value === undefined || value === null) return 'N/A';
+    return `${(value * 100).toFixed(1)}%`;
+  };
+
+  const formatNumber = (value, digits = 1) => {
+    if (value === undefined || value === null) return 'N/A';
+    return value.toLocaleString(undefined, { maximumFractionDigits: digits });
+  };
+
+  const formatDSCR = (value) => {
+    if (value === undefined || value === null) return 'N/A';
+    return value.toFixed(2) + 'x';
+  };
 
   // Get selected asset metrics
   const getSelectedMetrics = () => {
@@ -193,16 +255,16 @@ const ProjectFinanceDashboard = () => {
     console.log("Selected Asset:", selectedAsset);
     console.log("Initial Debt Amount:", initialDebtAmount);
     console.log("Interest Rate:", interestRate);
-    console.log("Cash Flows Sample:", selectedMetrics.cashFlows.slice(0, 3));
+    console.log("Debt Structure:", globalDebtStructure);
     
     let remainingBalance = initialDebtAmount;
     
-    // Calculate the DSCR values over time so we can find the minimum
+    // Calculate the DSCR values over time
     const dscrValues = [];
     
-    const result = selectedMetrics.cashFlows.map(cf => {
+    const result = selectedMetrics.cashFlows.map((cf, index) => {
       // Calculate DSCR if there's a debt service payment
-      const debtServiceAmount = Math.abs(cf.debtService || 0);
+      let debtServiceAmount = Math.abs(cf.debtService || 0);
       const dscr = debtServiceAmount > 0 ? (cf.operatingCashFlow / debtServiceAmount) : null;
       
       if (dscr !== null) {
@@ -214,7 +276,7 @@ const ProjectFinanceDashboard = () => {
       
       // Principal payment is the remaining portion of debt service payment
       const principalPayment = debtServiceAmount > interestPayment ? 
-                                debtServiceAmount - interestPayment : 0;
+                              debtServiceAmount - interestPayment : 0;
       
       // The current debt balance is what we have before making the payment
       const currentDebtBalance = remainingBalance;
@@ -226,12 +288,13 @@ const ProjectFinanceDashboard = () => {
       
       return {
         year: cf.year,
-        dscr: dscr !== null ? parseFloat(dscr.toFixed(2)) : null,
+        dscr: dscr !== null ? parseFloat((dscr || 0).toFixed(2)) : null,
         minDSCR: selectedMetrics.minDSCR || 0,
-        debtBalance: currentDebtBalance > 0 ? parseFloat(currentDebtBalance.toFixed(2)) : 0,
-        principalPayment: principalPayment > 0 ? parseFloat(principalPayment.toFixed(2)) : 0,
-        interestPayment: interestPayment > 0 ? parseFloat(interestPayment.toFixed(2)) : 0,
-        totalDebtPayment: principalPayment + interestPayment
+        debtBalance: currentDebtBalance > 0 ? parseFloat((currentDebtBalance || 0).toFixed(2)) : 0,
+        principalPayment: principalPayment > 0 ? parseFloat((principalPayment || 0).toFixed(2)) : 0,
+        interestPayment: interestPayment > 0 ? parseFloat((interestPayment || 0).toFixed(2)) : 0,
+        totalDebtPayment: principalPayment + interestPayment,
+        refinancePhase: cf.refinancePhase
       };
     });
     
@@ -241,9 +304,9 @@ const ProjectFinanceDashboard = () => {
     // Update each data point with the calculated minimum DSCR
     return result.map(point => ({
       ...point,
-      minDSCR: parseFloat(minDSCR.toFixed(2))
+      minDSCR: parseFloat((minDSCR || 0).toFixed(2))
     }));
-  }, [projectMetrics, selectedAsset, constants.assetCosts, getSelectedMetrics]);
+  }, [projectMetrics, selectedAsset, constants.assetCosts, getSelectedMetrics, globalDebtStructure]);
 
   return (
     <div className="w-full p-4 space-y-4">
@@ -363,25 +426,15 @@ const ProjectFinanceDashboard = () => {
             <div className="space-y-2">
               <label className="text-sm font-medium">Debt Structure</label>
               <Select 
-                value={constants.assetCosts.portfolio?.debtStructure || 'amortization'} 
-                onValueChange={(value) => {
-                  const updatedAssetCosts = {
-                    ...constants.assetCosts,
-                    portfolio: {
-                      ...constants.assetCosts.portfolio,
-                      debtStructure: value
-                    }
-                  };
-                  updateConstants('assetCosts', updatedAssetCosts);
-                  setIsGearingSolved(false);
-                }}
+                value={globalDebtStructure} 
+                onValueChange={updateAllDebtStructures}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select debt structure" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="amortization">Amortization</SelectItem>
-                  <SelectItem value="sculpting">Sculpting</SelectItem>
+                  <SelectItem value="amortization">Amortization (All)</SelectItem>
+                  <SelectItem value="sculpting">Sculpting (All)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -434,35 +487,12 @@ const ProjectFinanceDashboard = () => {
                 .map(([assetName, metrics]) => (
                 <TableRow key={assetName}>
                   <TableCell>{assetName}</TableCell>
-                  <TableCell>${metrics.capex.toLocaleString(undefined, { maximumFractionDigits: 1 })}</TableCell>
+                  <TableCell>${formatNumber(metrics.capex)}</TableCell>
                   <TableCell>{formatPercent(metrics.calculatedGearing)}</TableCell>
-                  <TableCell>
-                    <Select 
-                      value={constants.assetCosts[assetName]?.debtStructure || 'amortization'} 
-                      onValueChange={(value) => {
-                        const updatedAssetCosts = {
-                          ...constants.assetCosts,
-                          [assetName]: {
-                            ...constants.assetCosts[assetName],
-                            debtStructure: value
-                          }
-                        };
-                        updateConstants('assetCosts', updatedAssetCosts);
-                        setIsGearingSolved(false);
-                      }}
-                    >
-                      <SelectTrigger className="w-32 h-8">
-                        <SelectValue placeholder="Select" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="amortization">Amortization</SelectItem>
-                        <SelectItem value="sculpting">Sculpting</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
-                  <TableCell>${metrics.debtAmount.toLocaleString(undefined, { maximumFractionDigits: 1 })}</TableCell>
-                  <TableCell>${metrics.annualDebtService.toLocaleString(undefined, { maximumFractionDigits: 1 })}</TableCell>
-                  <TableCell>{metrics.minDSCR.toFixed(2)}x</TableCell>
+                  <TableCell>{globalDebtStructure === 'sculpting' ? 'Sculpting' : 'Amortization'}</TableCell>
+                  <TableCell>${formatNumber(metrics.debtAmount)}</TableCell>
+                  <TableCell>${formatNumber(metrics.annualDebtService)}</TableCell>
+                  <TableCell>{formatDSCR(metrics.minDSCR)}</TableCell>
                   <TableCell>{calculateIRR(metrics.equityCashFlows) ? formatPercent(calculateIRR(metrics.equityCashFlows)) : 'N/A'}</TableCell>
                 </TableRow>
               ))}
@@ -470,36 +500,21 @@ const ProjectFinanceDashboard = () => {
               {Object.keys(assets).length >= 2 && projectMetrics.portfolio && (
                 <TableRow className="bg-muted/50">
                   <TableCell>Portfolio Total</TableCell>
-                  <TableCell>${projectMetrics.portfolio?.capex.toLocaleString(undefined, { maximumFractionDigits: 1 })}</TableCell>
-                  <TableCell>{projectMetrics.portfolio ? formatPercent(projectMetrics.portfolio.calculatedGearing) : 'N/A'}</TableCell>
-                  <TableCell className="text-sm">
-                    <Select 
-                      value={constants.assetCosts.portfolio?.debtStructure || 'amortization'} 
-                      onValueChange={(value) => {
-                        const updatedAssetCosts = {
-                          ...constants.assetCosts,
-                          portfolio: {
-                            ...constants.assetCosts.portfolio,
-                            debtStructure: value
-                          }
-                        };
-                        updateConstants('assetCosts', updatedAssetCosts);
-                        setIsGearingSolved(false);
-                      }}
-                    >
-                      <SelectTrigger className="w-32 h-8">
-                        <SelectValue placeholder="Select" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="amortization">Amortization</SelectItem>
-                        <SelectItem value="sculpting">Sculpting</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  <TableCell>${formatNumber(projectMetrics.portfolio?.capex)}</TableCell>
+                  <TableCell>{formatPercent(projectMetrics.portfolio?.calculatedGearing)}</TableCell>
+                  <TableCell>{globalDebtStructure === 'sculpting' ? 'Sculpting' : 'Amortization'}</TableCell>
+                  <TableCell>${formatNumber(projectMetrics.portfolio?.debtAmount)}</TableCell>
+                  <TableCell>${formatNumber(projectMetrics.portfolio?.annualDebtService)}</TableCell>
+                  <TableCell>
+                    {projectMetrics.portfolio && projectMetrics.portfolio.minDSCR 
+                      ? projectMetrics.portfolio.minDSCR.toFixed(2) + 'x' 
+                      : 'N/A'}
                   </TableCell>
-                  <TableCell>${projectMetrics.portfolio?.debtAmount.toLocaleString(undefined, { maximumFractionDigits: 1 })}</TableCell>
-                  <TableCell>${projectMetrics.portfolio?.annualDebtService.toLocaleString(undefined, { maximumFractionDigits: 1 })}</TableCell>
-                  <TableCell>{projectMetrics.portfolio ? (projectMetrics.portfolio.minDSCR.toFixed(2) + 'x') : 'N/A'}</TableCell>
-                  <TableCell>{projectMetrics.portfolio && calculateIRR(projectMetrics.portfolio.equityCashFlows) ? formatPercent(calculateIRR(projectMetrics.portfolio.equityCashFlows)) : 'N/A'}</TableCell>
+                  <TableCell>
+                    {projectMetrics.portfolio?.equityCashFlows && calculateIRR(projectMetrics.portfolio.equityCashFlows) 
+                      ? formatPercent(calculateIRR(projectMetrics.portfolio.equityCashFlows)) 
+                      : 'N/A'}
+                  </TableCell>
                 </TableRow>
               )}
             </TableBody>
@@ -546,13 +561,39 @@ const ProjectFinanceDashboard = () => {
                   label={{ value: 'Cash Flow ($M)', angle: -90, position: 'insideLeft' }}
                 />
                 <Tooltip 
-                  formatter={(value) => `$${value.toLocaleString()}M`}
+                  formatter={(value, name, props) => {
+                    const formattedValue = `$${value.toLocaleString()}M`;
+                    if (name === 'Debt Service' && props.payload.refinancePhase) {
+                      return [formattedValue, `${name} (${props.payload.refinancePhase} financing)`];
+                    }
+                    return formattedValue;
+                  }}
                 />
                 <Legend />
                 <Line type="monotone" dataKey="revenue" name="Revenue" stroke="#FFB74D" />
                 <Line type="monotone" dataKey="opex" name="Operating Costs" stroke="#f44336" />
                 <Line type="monotone" dataKey="operatingCashFlow" name="CFADS" stroke="#4CAF50" />
-                <Line type="monotone" dataKey="debtService" name="Debt Service" stroke="#9C27B0" />
+                <Line 
+                  type="monotone" 
+                  dataKey="debtService" 
+                  name="Debt Service" 
+                  stroke="#9C27B0"
+                  strokeWidth={2}
+                  dot={(props) => {
+                    if (!props.payload || !props.cx || !props.cy) return null;
+                    const { refinancePhase } = props.payload;
+                    return (
+                      <circle
+                        cx={props.cx}
+                        cy={props.cy}
+                        r={4}
+                        fill={refinancePhase === 'portfolio' ? '#9C27B0' : '#E1BEE7'}
+                        stroke="#9C27B0"
+                        strokeWidth={1}
+                      />
+                    );
+                  }}
+                />
                 <Line type="monotone" dataKey="equityCashFlow" name="Equity Cash Flow" stroke="#2196F3" />
               </LineChart>
             </ResponsiveContainer>
@@ -593,7 +634,7 @@ const ProjectFinanceDashboard = () => {
                     if (name === 'DSCR' || name === 'Minimum DSCR') {
                       return [`${value}x`, name];
                     } else {
-                      return [`${value.toLocaleString()}M`, name];
+                      return [`$${value.toLocaleString()}M`, name];
                     }
                   }}
                 />
@@ -607,6 +648,7 @@ const ProjectFinanceDashboard = () => {
                   stroke="#2196F3" 
                   strokeWidth={1.5}
                   dot={{ r: 2 }}
+                  connectNulls
                 />
                 <Line 
                   yAxisId="left"
@@ -643,6 +685,17 @@ const ProjectFinanceDashboard = () => {
                 />
               </ComposedChart>
             </ResponsiveContainer>
+          </div>
+          
+          <div className="mt-4 text-sm bg-gray-50 p-4 rounded-md">
+            <h3 className="font-semibold mb-2">Current Debt Structure: {globalDebtStructure === 'sculpting' ? 'Sculpting' : 'Amortization'}</h3>
+            <ul className="list-disc ml-5 space-y-1">
+              <li><span className="font-medium">Amortization:</span> Equal debt service payments throughout the loan term.</li>
+              <li><span className="font-medium">Sculpting:</span> Debt service payments vary to maintain a constant Debt Service Coverage Ratio (DSCR).</li>
+            </ul>
+            <p className="mt-2 text-xs text-gray-500">
+              Sculpting optimizes debt capacity based on projected cash flows and is particularly useful for projects with variable revenue streams.
+            </p>
           </div>
         </CardContent>
       </Card>
