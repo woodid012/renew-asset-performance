@@ -51,7 +51,7 @@ export const initializeProjectValues = (assets) => {
         opex: Number((defaultOpex * asset.capacity).toFixed(1)),
         opexEscalation: DEFAULT_PROJECT_FINANCE.opexEscalation,
         calculatedGearing: DEFAULT_PROJECT_FINANCE.maxGearing,
-        debtStructure: 'amortization' // Default debt structure
+        debtStructure: 'sculpting' // Default to sculpting
       }
     };
   }, {});
@@ -65,7 +65,7 @@ export const initializeProjectValues = (assets) => {
       tenorYears: DEFAULT_TENORS.default,
       capex: 0,  // This will be calculated from sum of assets
       calculatedGearing: (DEFAULT_PROJECT_FINANCE.maxGearing + 0.05),  // Initialize to max
-      debtStructure: 'amortization' // Default debt structure
+      debtStructure: 'sculpting' // Default to sculpting
     };
   }
 
@@ -73,262 +73,169 @@ export const initializeProjectValues = (assets) => {
 };
 
 /**
- * Calculate debt service based on selected debt structure
+ * Calculate standard amortization debt service
  * @param {number} principal - Loan principal amount
  * @param {number} rate - Annual interest rate (decimal)
  * @param {number} years - Loan term in years
- * @param {string} structure - 'amortization' or 'sculpting'
- * @param {Array} cashFlows - Array of operating cash flows (only needed for sculpting)
- * @param {number} targetDSCR - Target debt service coverage ratio (only needed for sculpting)
- * @returns {number|Array} - Either annual debt service amount (amortization) or array of annual payments (sculpting)
+ * @returns {number} - Annual debt service amount
  */
-export const calculateDebtService = (principal, rate, years, structure = 'amortization', cashFlows = null, targetDSCR = null) => {
-  // Standard amortization formula (existing implementation)
-  if (structure === 'amortization' || !cashFlows || !targetDSCR) {
-    const r = rate;
-    const n = years;
-    if (r === 0) return principal / n; // Edge case
-    return (principal * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
-  }
-  
-  // Debt sculpting implementation
-  if (structure === 'sculpting') {
-    return calculateSculptedDebtService(principal, rate, years, cashFlows, targetDSCR);
-  }
-  
-  // Default to amortization if no valid structure provided
+export const calculateAmortizationDebtService = (principal, rate, years) => {
   const r = rate;
   const n = years;
-  if (r === 0) return principal / n;
+  if (r === 0) return principal / n; // Edge case
   return (principal * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
 };
 
 /**
- * Calculate debt service using sculpting approach
- * @param {number} principal - Loan principal amount
- * @param {number} rate - Annual interest rate (decimal)
- * @param {number} years - Loan tenor in years
- * @param {Array} cashFlows - Array of projected operating cash flows for each period
- * @param {number} targetDSCR - Target debt service coverage ratio
- * @returns {Array} - Array of debt service payments for each period
+ * Calculate a complete debt schedule based on the Excel approach
+ * @param {number} debtAmount - Total debt amount
+ * @param {Array} cashFlows - Array of cash flow objects with operating cash flow
+ * @param {number} interestRate - Annual interest rate
+ * @param {number} tenorYears - Debt tenor in years
+ * @param {Array} targetDSCRs - Target DSCR for each year
+ * @returns {Object} - Complete debt schedule and metrics
  */
-const calculateSculptedDebtService = (principal, rate, years, cashFlows, targetDSCR) => {
-  // Only use cash flows for the loan tenor period
-  const relevantCashFlows = cashFlows.slice(0, years);
+export const calculateDebtSchedule = (debtAmount, cashFlows, interestRate, tenorYears, targetDSCRs) => {
+  // Create arrays to store schedule
+  const debtBalance = Array(tenorYears + 1).fill(0);  // +1 for opening balance
+  const interestPayments = Array(tenorYears).fill(0);
+  const principalPayments = Array(tenorYears).fill(0);
+  const debtService = Array(tenorYears).fill(0);
+  const dscrValues = Array(tenorYears).fill(0);
   
-  // Calculate maximum debt service for each period based on target DSCR
-  const maxDebtServiceByPeriod = relevantCashFlows.map(cf => {
-    const operatingCashFlow = typeof cf === 'object' ? cf.operatingCashFlow : cf;
-    return operatingCashFlow / targetDSCR;
-  });
+  // Set initial debt balance
+  debtBalance[0] = debtAmount;
   
-  // Initialize variables for sculpting calculation
-  let remainingPrincipal = principal;
-  const debtService = [];
-  const interestPayments = [];
-  const principalPayments = [];
-  
-  // Forward pass: calculate minimum debt service that maintains DSCR
-  for (let i = 0; i < years; i++) {
-    // Calculate interest for this period
-    const interest = remainingPrincipal * rate;
-    interestPayments.push(interest);
+  // For each period, calculate debt service components
+  for (let i = 0; i < tenorYears; i++) {
+    // Calculate interest payment based on opening balance
+    interestPayments[i] = debtBalance[i] * interestRate;
     
-    // Calculate maximum principal payment based on max debt service
-    const maxPrincipal = Math.max(0, maxDebtServiceByPeriod[i] - interest);
+    // Maximum debt service allowed by DSCR constraint
+    const operatingCashFlow = cashFlows[i].operatingCashFlow;
+    const targetDSCR = targetDSCRs[i];
+    const maxDebtService = operatingCashFlow / targetDSCR;
     
-    // Ensure we don't pay more than remaining principal
-    const principalPayment = Math.min(maxPrincipal, remainingPrincipal);
-    principalPayments.push(principalPayment);
+    // Calculate principal repayment (limited by max debt service and remaining balance)
+    principalPayments[i] = Math.min(
+      Math.max(0, maxDebtService - interestPayments[i]),
+      debtBalance[i] // Cannot repay more than remaining balance
+    );
     
-    // Calculate debt service for this period
-    const periodDebtService = interest + principalPayment;
-    debtService.push(periodDebtService);
+    // Total debt service for this period
+    debtService[i] = interestPayments[i] + principalPayments[i];
     
-    // Update remaining principal
-    remainingPrincipal -= principalPayment;
+    // Calculate DSCR
+    dscrValues[i] = operatingCashFlow / debtService[i];
+    
+    // Update debt balance for next period
+    debtBalance[i+1] = debtBalance[i] - principalPayments[i];
   }
   
-  // If there's still remaining principal after all periods, adjust
-  if (remainingPrincipal > 0.01) {
-    // Need to recalculate to ensure all principal is repaid
-    // Use a scaling factor to proportionally increase principal payments
-    const scalingFactor = (principal - remainingPrincipal + principal * 0.0001) / (principal - remainingPrincipal);
-    
-    remainingPrincipal = principal;
-    const adjustedDebtService = [];
-    
-    for (let i = 0; i < years; i++) {
-      // Scale up the principal payment
-      const adjustedPrincipal = principalPayments[i] * scalingFactor;
-      
-      // Recalculate interest (which will be higher with more remaining principal)
-      const adjustedInterest = remainingPrincipal * rate;
-      
-      // Calculate adjusted debt service
-      const adjustedPeriodDebtService = adjustedInterest + adjustedPrincipal;
-      adjustedDebtService.push(adjustedPeriodDebtService);
-      
-      // Update remaining principal
-      remainingPrincipal -= adjustedPrincipal;
+  // Calculate key metrics
+  const fullyRepaid = debtBalance[tenorYears] < 0.001;
+  const avgDebtService = debtService.reduce((sum, ds) => sum + ds, 0) / tenorYears;
+  const minDSCR = Math.min(...dscrValues);
+  
+  return {
+    debtBalance,
+    interestPayments,
+    principalPayments,
+    debtService,
+    dscrValues,
+    metrics: {
+      fullyRepaid,
+      avgDebtService,
+      minDSCR
     }
-    
-    return adjustedDebtService;
-  }
-  
-  return debtService;
+  };
 };
 
 /**
- * Calculate average annual debt service from sculpted payments
- * @param {Array} sculptedDebtService - Array of debt service payments
- * @returns {number} - Average annual debt service
+ * Find the maximum sustainable debt using binary search
+ * @param {Array} cashFlows - Array of cash flow objects with operating cash flow
+ * @param {number} capex - Total capital expenditure
+ * @param {number} maxGearing - Maximum gearing ratio
+ * @param {number} interestRate - Annual interest rate
+ * @param {number} tenorYears - Debt tenor in years
+ * @param {Array} targetDSCRs - Target DSCR for each year
+ * @returns {Object} - Maximum sustainable debt and schedule
  */
-export const calculateAverageDebtService = (sculptedDebtService) => {
-  if (!sculptedDebtService || !sculptedDebtService.length) return 0;
-  return sculptedDebtService.reduce((sum, payment) => sum + payment, 0) / sculptedDebtService.length;
-};
-
-/**
- * Calculate DSCR for each period with sculpted debt service
- * @param {Array} cashFlows - Array of operating cash flows
- * @param {Array} sculptedDebtService - Array of debt service payments
- * @returns {Array} - Array of DSCR values for each period
- */
-export const calculatePeriodDSCRs = (cashFlows, sculptedDebtService) => {
-  if (!cashFlows || !sculptedDebtService) return [];
+const solveMaximumDebt = (cashFlows, capex, maxGearing, interestRate, tenorYears, targetDSCRs) => {
+  // Initial debt guess - start at maximum gearing
+  const initialGuess = capex * maxGearing;
   
-  return cashFlows.map((cf, i) => {
-    const operatingCashFlow = typeof cf === 'object' ? cf.operatingCashFlow : cf;
-    const debtService = sculptedDebtService[i] || 0;
-    return debtService > 0 ? operatingCashFlow / debtService : 999;
-  });
-};
-
-const calculateDSCR = (cashFlow, debtService) => {
-  return debtService > 0 ? cashFlow / debtService : 999;
-};
-
-const solveGearing = (
-  cashFlows, 
-  projectValue,
-  maxGearing,
-  targetDSCRContract,
-  targetDSCRMerchant = null,
-  isPortfolio = false
-) => {
-  console.log('Solving gearing for:', isPortfolio ? 'Portfolio' : 'Asset');
-  console.log('Initial params:', {
-    maxGearing,
-    targetDSCRContract,
-    targetDSCRMerchant,
-    capex: projectValue.capex,
-    interestRate: projectValue.interestRate,
-    tenorYears: projectValue.tenorYears,
-    debtStructure: projectValue.debtStructure || 'amortization'
-  });
-
-  // Log first few years of cash flows for debugging
-  console.log('First 5 years of cash flows:', cashFlows.slice(0, 5).map(cf => ({
-    year: cf.year,
-    operatingCashFlow: cf.operatingCashFlow,
-    contractedRevenue: cf.contractedRevenue,
-    merchantRevenue: cf.merchantRevenue
-  })));
-
-  const tolerance = 0.0001;
-  let low = 0;
-  let high = maxGearing;
-  let iterations = 0;
+  // Bounds for binary search
+  let lowerBound = 0;
+  let upperBound = initialGuess;
+  let currentDebt = initialGuess;
+  
+  // Binary search parameters
+  const tolerance = 0.0001; // $100k precision is sufficient
   const maxIterations = 50;
+  let iterations = 0;
   
-  // Get the debt structure
-  const debtStructure = projectValue.debtStructure || 'amortization';
-
-  while ((high - low) > tolerance && iterations < maxIterations) {
-    const mid = (low + high) / 2;
-    const debtAmount = projectValue.capex * mid;
-
-    // Extract operating cash flows for sculpting
-    const operatingCashFlows = cashFlows.slice(0, projectValue.tenorYears).map(cf => cf.operatingCashFlow);
+  // Store the best valid result
+  let bestDebt = 0;
+  let bestSchedule = null;
+  
+  console.log(`Solving maximum debt for ${capex.toFixed(2)}M capex with ${maxGearing.toFixed(2)} max gearing...`);
+  
+  // Binary search loop
+  while (iterations < maxIterations && (upperBound - lowerBound) > tolerance) {
+    // Calculate debt schedule with current debt amount
+    const schedule = calculateDebtSchedule(
+      currentDebt,
+      cashFlows.slice(0, tenorYears),
+      interestRate,
+      tenorYears,
+      targetDSCRs
+    );
     
-    // Calculate blended target DSCR based on revenue mix
-    const blendedTargetDSCR = cashFlows.slice(0, projectValue.tenorYears).map(cf => {
-      const totalRevenue = cf.contractedRevenue + cf.merchantRevenue;
-      if (totalRevenue === 0) return targetDSCRMerchant; // Default to merchant if no revenue
-      
-      const contractedShare = cf.contractedRevenue / totalRevenue;
-      const merchantShare = cf.merchantRevenue / totalRevenue;
-      
-      return (contractedShare * targetDSCRContract + merchantShare * targetDSCRMerchant);
-    });
-
-    let annualDebtService;
-    let dscrValues = [];
-    let failedYears = 0;
-    
-    if (debtStructure === 'amortization') {
-      // For amortization, calculate a constant annual debt service
-      annualDebtService = calculateDebtService(
-        debtAmount, 
-        projectValue.interestRate, 
-        projectValue.tenorYears
-      );
-      
-      // Calculate DSCR for each year
-      dscrValues = cashFlows.slice(0, projectValue.tenorYears).map((cf, idx) => {
-        const dscr = calculateDSCR(cf.operatingCashFlow, annualDebtService);
-        const requiredDSCR = blendedTargetDSCR[idx];
-        
-        if (dscr < requiredDSCR) {
-          failedYears++;
-        }
-        
-        return { dscr, requiredDSCR };
-      });
-    } else if (debtStructure === 'sculpting') {
-      // For sculpting, calculate customized debt service for each year
-      const sculptedDebtService = calculateSculptedDebtService(
-        debtAmount,
-        projectValue.interestRate,
-        projectValue.tenorYears,
-        operatingCashFlows,
-        Math.min(...blendedTargetDSCR) // Use the minimum DSCR as the target
-      );
-      
-      // Check if any year's DSCR falls below the required target DSCR
-      cashFlows.slice(0, projectValue.tenorYears).forEach((cf, idx) => {
-        const dscr = calculateDSCR(cf.operatingCashFlow, sculptedDebtService[idx]);
-        const requiredDSCR = blendedTargetDSCR[idx];
-        
-        if (dscr < requiredDSCR) {
-          failedYears++;
-        }
-        
-        dscrValues.push({ dscr, requiredDSCR });
-      });
-    }
-    
-    // Log every iteration for debugging
-    console.log('Iteration:', iterations, {
-      gearing: mid,
-      debtAmount,
-      failedYears,
-      dscrValues: dscrValues.slice(0, 5) // Just show first 5 years
-    });
-
-    if (failedYears > 0) {
-      high = mid;
+    // Check if debt is fully repaid
+    if (schedule.metrics.fullyRepaid) {
+      // Valid result - can try higher debt
+      lowerBound = currentDebt;
+      // Save this valid result
+      bestDebt = currentDebt;
+      bestSchedule = schedule;
     } else {
-      low = mid;
+      // Invalid result - debt too high
+      upperBound = currentDebt;
     }
     
+    // Update current debt for next iteration
+    currentDebt = (lowerBound + upperBound) / 2;
     iterations++;
+    
+    // Debug log every 10 iterations
+    if (iterations % 10 === 0) {
+      console.log(`Iteration ${iterations}: Testing debt $${currentDebt.toFixed(2)}M, Bounds: $${lowerBound.toFixed(2)}M - $${upperBound.toFixed(2)}M`);
+    }
   }
-
-  const finalGearing = Math.min((low + high) / 2, maxGearing);
-  console.log('Final gearing solved:', finalGearing);
-  return finalGearing;
+  
+  console.log(`Solved maximum debt: $${bestDebt.toFixed(2)}M (${(bestDebt/capex*100).toFixed(1)}% gearing) in ${iterations} iterations`);
+  
+  // If no valid solution found, calculate schedule with zero debt
+  if (!bestSchedule) {
+    bestDebt = 0;
+    bestSchedule = calculateDebtSchedule(
+      bestDebt,
+      cashFlows.slice(0, tenorYears),
+      interestRate,
+      tenorYears,
+      targetDSCRs
+    );
+  }
+  
+  return {
+    debt: bestDebt,
+    gearing: bestDebt / capex,
+    debtService: bestSchedule.debtService,
+    avgDebtService: bestSchedule.metrics.avgDebtService,
+    minDSCR: bestSchedule.metrics.minDSCR,
+    schedule: bestSchedule
+  };
 };
 
 export const calculateProjectMetrics = (
@@ -383,88 +290,80 @@ export const calculateProjectMetrics = (
     }
     
     // Use the debt structure from asset costs
-    const debtStructure = assetCosts.debtStructure || 'amortization';
+    const debtStructure = assetCosts.debtStructure || 'sculpting';
+    const tenorYears = assetCosts.tenorYears || 15;
     
-    // Calculate or use existing gearing
-    let gearing = projectValue.calculatedGearing;
+    // Calculate blended target DSCR for each year in debt tenor
+    const relevantCashFlows = cashFlows.slice(0, tenorYears);
+    const targetDSCRs = relevantCashFlows.map(cf => {
+      const totalRevenue = cf.contractedRevenue + cf.merchantRevenue;
+      if (totalRevenue === 0) return assetCosts.targetDSCRMerchant;
+      
+      const contractedShare = cf.contractedRevenue / totalRevenue;
+      const merchantShare = cf.merchantRevenue / totalRevenue;
+      
+      return (contractedShare * assetCosts.targetDSCRContract + 
+              merchantShare * assetCosts.targetDSCRMerchant);
+    });
+    
+    let gearing, debtAmount, debtServiceByYear, annualDebtService, minDSCR;
+    
     if (solveGearingFlag) {
-      gearing = solveGearing(
+      // Calculate maximum sustainable debt using the Excel approach
+      const solution = solveMaximumDebt(
         cashFlows,
-        {
-          ...projectValue,
-          capex: capex,  // Use capex from assetCosts
-          maxGearing: assetCosts.maxGearing,
-          targetDSCRContract: assetCosts.targetDSCRContract,
-          targetDSCRMerchant: assetCosts.targetDSCRMerchant,
-          interestRate: assetCosts.interestRate,
-          tenorYears: assetCosts.tenorYears,
-          debtStructure: debtStructure
-        },
+        capex,
         assetCosts.maxGearing,
-        assetCosts.targetDSCRContract,
-        assetCosts.targetDSCRMerchant
-      );
-    }
-
-    const debtAmount = capex * gearing;
-    
-    // Handle debt service calculation based on structure
-    let annualDebtService;
-    let debtServiceByYear = [];
-    
-    if (debtStructure === 'amortization') {
-      // Standard amortization with equal payments
-      annualDebtService = calculateDebtService(
-        debtAmount, 
-        assetCosts.interestRate, 
-        assetCosts.tenorYears
-      );
-      
-      // Fill array with same value for consistent handling
-      debtServiceByYear = Array(assetCosts.tenorYears).fill(annualDebtService);
-    } else if (debtStructure === 'sculpting') {
-      // Extract operating cash flows
-      const operatingCashFlows = cashFlows.slice(0, assetCosts.tenorYears).map(cf => cf.operatingCashFlow);
-      
-      // Calculate blended target DSCR
-      const blendedTargetDSCR = cashFlows.slice(0, assetCosts.tenorYears).map(cf => {
-        const totalRevenue = cf.contractedRevenue + cf.merchantRevenue;
-        if (totalRevenue === 0) return assetCosts.targetDSCRMerchant;
-        
-        const contractedShare = cf.contractedRevenue / totalRevenue;
-        const merchantShare = cf.merchantRevenue / totalRevenue;
-        
-        return (contractedShare * assetCosts.targetDSCRContract + merchantShare * assetCosts.targetDSCRMerchant);
-      });
-      
-      // Use minimum DSCR as target for sculpting
-      const minTargetDSCR = Math.min(...blendedTargetDSCR);
-      
-      // Calculate sculpted debt service
-      debtServiceByYear = calculateSculptedDebtService(
-        debtAmount,
         assetCosts.interestRate,
-        assetCosts.tenorYears,
-        operatingCashFlows,
-        minTargetDSCR
+        tenorYears,
+        targetDSCRs
       );
       
-      // Calculate average for metrics display
-      annualDebtService = calculateAverageDebtService(debtServiceByYear);
+      gearing = solution.gearing;
+      debtAmount = solution.debt;
+      debtServiceByYear = solution.debtService;
+      annualDebtService = solution.avgDebtService;
+      minDSCR = solution.minDSCR;
     } else {
-      // Default to amortization
-      annualDebtService = calculateDebtService(
-        debtAmount, 
-        assetCosts.interestRate, 
-        assetCosts.tenorYears
-      );
-      debtServiceByYear = Array(assetCosts.tenorYears).fill(annualDebtService);
+      // Use existing gearing
+      gearing = projectValue.calculatedGearing || assetCosts.maxGearing;
+      debtAmount = capex * gearing;
+      
+      // Calculate debt service based on structure
+      if (debtStructure === 'amortization') {
+        // Standard amortization with equal payments
+        annualDebtService = calculateAmortizationDebtService(
+          debtAmount, 
+          assetCosts.interestRate, 
+          tenorYears
+        );
+        
+        // Fill array with same value for consistent handling
+        debtServiceByYear = Array(tenorYears).fill(annualDebtService);
+        
+        // Calculate DSCR
+        const dscrValues = relevantCashFlows.map(cf => cf.operatingCashFlow / annualDebtService);
+        minDSCR = Math.min(...dscrValues.filter(d => d !== Infinity));
+      } else {
+        // Use Excel-style debt scheduling
+        const schedule = calculateDebtSchedule(
+          debtAmount,
+          relevantCashFlows,
+          assetCosts.interestRate,
+          tenorYears,
+          targetDSCRs
+        );
+        
+        debtServiceByYear = schedule.debtService;
+        annualDebtService = schedule.metrics.avgDebtService;
+        minDSCR = schedule.metrics.minDSCR;
+      }
     }
 
     // Add debt service to cash flows
     cashFlows.forEach((cf, index) => {
-      const yearDebtService = index < assetCosts.tenorYears ? 
-        (debtStructure === 'sculpting' ? debtServiceByYear[index] : annualDebtService) : 0;
+      const yearDebtService = index < tenorYears ? 
+        debtServiceByYear[index] : 0;
       
       cf.debtService = -yearDebtService;
       cf.equityCashFlow = cf.operatingCashFlow - yearDebtService;
@@ -472,17 +371,6 @@ export const calculateProjectMetrics = (
 
     const equityCashFlows = [-capex * (1 - gearing), ...cashFlows.map(cf => cf.equityCashFlow)];
     
-    // Calculate DSCRs
-    const dscrValues = cashFlows
-      .slice(0, assetCosts.tenorYears)
-      .map((cf, index) => {
-        const debtService = debtStructure === 'sculpting' ? 
-          debtServiceByYear[index] : annualDebtService;
-        return calculateDSCR(cf.operatingCashFlow, debtService);
-      });
-    
-    const minDSCR = Math.min(...dscrValues.filter(dscr => dscr !== 999));
-
     individualMetrics[asset.name] = {
       capex,
       calculatedGearing: gearing,
@@ -492,8 +380,7 @@ export const calculateProjectMetrics = (
       debtStructure,
       minDSCR,
       cashFlows,
-      equityCashFlows,
-      dscrValues
+      equityCashFlows
     };
   });
 
@@ -505,7 +392,7 @@ export const calculateProjectMetrics = (
     const portfolioValue = projectValues.portfolio || {};
     const totalCapex = Object.values(individualMetrics).reduce((sum, m) => sum + m.capex, 0);
     
-    // Add this new block
+    // Determine portfolio refinancing start year (when all assets are operational)
     const portfolioStartYear = Math.max(...Object.values(assets).map(asset => 
       new Date(asset.assetStartDate).getFullYear()
     ));
@@ -541,35 +428,9 @@ export const calculateProjectMetrics = (
       portfolioCashFlows.push(yearlySum);
     }
 
-    console.log("Portfolio debugging:", {
-      portfolioCashFlows,
-      portfolioValue,
-      totalCapex,
-      maxGearing: portfolioValue.maxGearing,
-      targetDSCRs: {
-        contract: portfolioValue.targetDSCRContract,
-        merchant: portfolioValue.targetDSCRMerchant
-      }
-    });
-
     // Get the debt structure from portfolio settings
-    const portfolioDebtStructure = constants.assetCosts.portfolio?.debtStructure || 'amortization';
-
-    // Calculate portfolio gearing using the same solver but with combined cash flows
-    const portfolioGearing = solveGearingFlag ? 
-      solveGearing(
-        portfolioCashFlows,
-        { 
-          ...portfolioValue, 
-          capex: totalCapex,
-          debtStructure: portfolioDebtStructure 
-        },
-        portfolioValue.maxGearing,
-        portfolioValue.targetDSCRContract,
-        portfolioValue.targetDSCRMerchant,  // Include merchant DSCR target
-        true   // Is portfolio
-      ) : 
-      (projectValues.portfolio?.calculatedGearing || portfolioValue.maxGearing || DEFAULT_PROJECT_FINANCE.maxGearing);
+    const portfolioDebtStructure = constants.assetCosts.portfolio?.debtStructure || 'sculpting';
+    const portfolioTenorYears = constants.assetCosts.portfolio?.tenorYears || 15;
 
     // Calculate total remaining debt at refinancing date by looking at each asset
     const totalRemainingDebt = Object.entries(individualMetrics).reduce((sum, [assetName, metrics]) => {
@@ -588,97 +449,84 @@ export const calculateProjectMetrics = (
         const tenor = constants.assetCosts[assetName]?.tenorYears || DEFAULT_PROJECT_FINANCE.tenorYears;
         
         // Calculate remaining loan balance at refinance date using standard amortization
-        const payment = calculateDebtService(originalDebt, rate, tenor);
+        const payment = calculateAmortizationDebtService(originalDebt, rate, tenor);
         const remainingPrincipal = originalDebt * 
           Math.pow(1 + rate, yearsToRefinance) - 
           payment * (Math.pow(1 + rate, yearsToRefinance) - 1) / rate;
-        
-        console.log(`Remaining debt for ${assetName} at refinance:`, {
-          originalDebt,
-          yearsToRefinance,
-          remainingPrincipal
-        });
         
         return sum + Math.max(0, remainingPrincipal);
       }
       return sum;
     }, 0);
 
-    // Use the total remaining debt as the portfolio debt amount
-    const portfolioDebtAmount = totalRemainingDebt;
-    const effectivePortfolioGearing = portfolioDebtAmount / totalCapex; // For reference only
-    console.log('Portfolio refinancing details:', {
-      portfolioStartYear,
-      totalRemainingDebt,
-      effectivePortfolioGearing,
-      portfolioDebtStructure
+    // Get portfolio cash flows starting from refinancing
+    const refinanceFlows = portfolioCashFlows.filter(cf => cf.year >= portfolioStartYear);
+    
+    // Calculate blended target DSCR for portfolio
+    const portfolioTargetDSCRs = refinanceFlows.slice(0, portfolioTenorYears).map(cf => {
+      const totalRevenue = cf.contractedRevenue + cf.merchantRevenue;
+      if (totalRevenue === 0) return portfolioValue.targetDSCRMerchant;
+      
+      const contractedShare = cf.contractedRevenue / totalRevenue;
+      const merchantShare = cf.merchantRevenue / totalRevenue;
+      
+      return (contractedShare * portfolioValue.targetDSCRContract + 
+              merchantShare * portfolioValue.targetDSCRMerchant);
     });
-
-    // Calculate portfolio debt service based on structure
-    let portfolioDebtService;
-    let portfolioDebtServiceByYear = [];
-
-    if (portfolioDebtStructure === 'amortization') {
-      // Standard amortization
-      portfolioDebtService = calculateDebtService(
-        portfolioDebtAmount,
+    
+    let portfolioGearing, portfolioDebtAmount, portfolioDebtServiceByYear, portfolioDebtService, portfolioMinDSCR;
+    
+    if (solveGearingFlag) {
+      // Calculate maximum sustainable debt for portfolio
+      const solution = solveMaximumDebt(
+        refinanceFlows,
+        totalCapex,
+        portfolioValue.maxGearing,
         portfolioValue.interestRate,
-        portfolioValue.tenorYears
+        portfolioTenorYears,
+        portfolioTargetDSCRs
       );
-      portfolioDebtServiceByYear = Array(portfolioValue.tenorYears).fill(portfolioDebtService);
-    } else if (portfolioDebtStructure === 'sculpting') {
-      // Extract operating cash flows for sculpting calculation
-      const refinanceStartIndex = portfolioCashFlows.findIndex(cf => cf.year === portfolioStartYear);
-      if (refinanceStartIndex >= 0) {
-        const refinanceCashFlows = portfolioCashFlows
-          .slice(refinanceStartIndex, refinanceStartIndex + portfolioValue.tenorYears)
-          .map(cf => cf.operatingCashFlow);
-        
-        // Calculate blended DSCR targets
-        const blendedTargetDSCR = portfolioCashFlows
-          .slice(refinanceStartIndex, refinanceStartIndex + portfolioValue.tenorYears)
-          .map(cf => {
-            const totalRevenue = cf.contractedRevenue + cf.merchantRevenue;
-            if (totalRevenue === 0) return portfolioValue.targetDSCRMerchant;
-            
-            const contractedShare = cf.contractedRevenue / totalRevenue;
-            const merchantShare = cf.merchantRevenue / totalRevenue;
-            
-            return (contractedShare * portfolioValue.targetDSCRContract + 
-                   merchantShare * portfolioValue.targetDSCRMerchant);
-          });
-        
-        // Use minimum DSCR for sculpting
-        const minTargetDSCR = Math.min(...blendedTargetDSCR);
-        
-        // Calculate sculpted debt service
-        portfolioDebtServiceByYear = calculateSculptedDebtService(
-          portfolioDebtAmount,
-          portfolioValue.interestRate,
-          portfolioValue.tenorYears,
-          refinanceCashFlows,
-          minTargetDSCR
-        );
-        
-        // Calculate average for metrics
-        portfolioDebtService = calculateAverageDebtService(portfolioDebtServiceByYear);
-      } else {
-        // Fallback to amortization if we can't find the refinance year
-        portfolioDebtService = calculateDebtService(
-          portfolioDebtAmount,
-          portfolioValue.interestRate,
-          portfolioValue.tenorYears
-        );
-        portfolioDebtServiceByYear = Array(portfolioValue.tenorYears).fill(portfolioDebtService);
-      }
+      
+      portfolioGearing = solution.gearing;
+      portfolioDebtAmount = solution.debt;
+      portfolioDebtServiceByYear = solution.debtService;
+      portfolioDebtService = solution.avgDebtService;
+      portfolioMinDSCR = solution.minDSCR;
     } else {
-      // Default to amortization
-      portfolioDebtService = calculateDebtService(
-        portfolioDebtAmount,
-        portfolioValue.interestRate,
-        portfolioValue.tenorYears
+      // Use existing gearing
+      portfolioGearing = portfolioValue.calculatedGearing || portfolioValue.maxGearing;
+      portfolioDebtAmount = Math.min(
+        totalRemainingDebt, 
+        totalCapex * portfolioGearing
       );
-      portfolioDebtServiceByYear = Array(portfolioValue.tenorYears).fill(portfolioDebtService);
+      
+      if (portfolioDebtStructure === 'amortization') {
+        // Standard amortization
+        portfolioDebtService = calculateAmortizationDebtService(
+          portfolioDebtAmount,
+          portfolioValue.interestRate,
+          portfolioTenorYears
+        );
+        portfolioDebtServiceByYear = Array(portfolioTenorYears).fill(portfolioDebtService);
+        
+        // Calculate DSCR
+        const dscrValues = refinanceFlows.slice(0, portfolioTenorYears)
+          .map(cf => cf.operatingCashFlow / portfolioDebtService);
+        portfolioMinDSCR = Math.min(...dscrValues.filter(d => isFinite(d)));
+      } else {
+        // Excel-style debt scheduling
+        const schedule = calculateDebtSchedule(
+          portfolioDebtAmount,
+          refinanceFlows.slice(0, portfolioTenorYears),
+          portfolioValue.interestRate,
+          portfolioTenorYears,
+          portfolioTargetDSCRs
+        );
+        
+        portfolioDebtServiceByYear = schedule.debtService;
+        portfolioDebtService = schedule.metrics.avgDebtService;
+        portfolioMinDSCR = schedule.metrics.minDSCR;
+      }
     }
 
     // Add debt service to portfolio cash flows
@@ -695,34 +543,16 @@ export const calculateProjectMetrics = (
       } else {
         // After portfolio refinancing starts
         const refinanceYear = cf.year - portfolioStartYear;
-        const yearDebtService = refinanceYear >= 0 && refinanceYear < portfolioValue.tenorYears ?
-          (portfolioDebtStructure === 'sculpting' ? 
-           -portfolioDebtServiceByYear[refinanceYear] : 
-           -portfolioDebtService) : 0;
-        
-        cf.debtService = yearDebtService;
-        cf.refinancePhase = 'portfolio';
+        if (refinanceYear >= 0 && refinanceYear < portfolioTenorYears) {
+          cf.debtService = -portfolioDebtServiceByYear[refinanceYear];
+          cf.refinancePhase = 'portfolio';
+        } else {
+          cf.debtService = 0;
+          cf.refinancePhase = 'post-debt';
+        }
       }
       cf.equityCashFlow = cf.operatingCashFlow + cf.debtService; // Note: debtService is already negative
     });
-
-    // Calculate portfolio DSCRs
-    const portfolioDSCRs = [];
-    portfolioCashFlows.forEach(cf => {
-      if (cf.year >= portfolioStartYear && 
-          cf.year < portfolioStartYear + portfolioValue.tenorYears) {
-        const refinanceYear = cf.year - portfolioStartYear;
-        const debtService = portfolioDebtStructure === 'sculpting' ? 
-          portfolioDebtServiceByYear[refinanceYear] : portfolioDebtService;
-        
-        if (debtService > 0) {
-          portfolioDSCRs.push(cf.operatingCashFlow / debtService);
-        }
-      }
-    });
-    
-    const portfolioMinDSCR = portfolioDSCRs.length > 0 ? 
-      Math.min(...portfolioDSCRs) : portfolioValue.targetDSCRContract;
 
     const portfolioEquityCashFlows = [-totalCapex * (1 - portfolioGearing), ...portfolioCashFlows.map(cf => cf.equityCashFlow)];
 
@@ -735,8 +565,7 @@ export const calculateProjectMetrics = (
       debtStructure: portfolioDebtStructure,
       minDSCR: portfolioMinDSCR,
       cashFlows: portfolioCashFlows,
-      equityCashFlows: portfolioEquityCashFlows,
-      dscrValues: portfolioDSCRs
+      equityCashFlows: portfolioEquityCashFlows
     };
   }
 
@@ -744,6 +573,8 @@ export const calculateProjectMetrics = (
 };
 
 export const calculateIRR = (cashflows, guess = 0.1) => {
+  if (!cashflows || cashflows.length < 2) return null;
+  
   const maxIterations = 1000;
   const tolerance = 0.000001;
   
@@ -765,9 +596,12 @@ export const calculateIRR = (cashflows, guess = 0.1) => {
       return rate;
     }
     
+    // Prevent division by zero
+    if (Math.abs(derivativeNPV) < tolerance) break;
+    
     rate = rate - npv / derivativeNPV;
     
-    if (rate < -1) return null;
+    if (rate < -1 || rate > 100) return null; // Handle unrealistic IRR
   }
   
   return null;
