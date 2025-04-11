@@ -75,6 +75,9 @@ const ValuationTabs = () => {
         </div>
       </div>
 
+      <div className="bg-blue-50 border border-blue-200 p-4 rounded-md mb-4">
+      </div>
+
       <Tabs defaultValue="test" className="w-full">
         <TabsList className="border-b mb-4">
           <TabsTrigger value="test">Project Finance</TabsTrigger>

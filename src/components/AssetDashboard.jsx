@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Plus, X, ChevronLeft, ChevronRight, Download, Upload } from 'lucide-react';
 import { usePortfolio } from '@/contexts/PortfolioContext';
 import AssetForm from './AssetForm';
-import AssetSummaryEditor from './AssetSummaryEditor';
+import AssetSummaryInputs from './AssetSummaryInputs';
 
 const AssetDashboard = () => {
   const { 
@@ -244,7 +244,7 @@ const AssetDashboard = () => {
             </div>
 
             <TabsContent value="summary">
-              <AssetSummaryEditor />
+              <AssetSummaryInputs />
             </TabsContent>
             
             {Object.values(assets).map((asset) => (

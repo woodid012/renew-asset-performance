@@ -24,15 +24,10 @@ const PlatformPL = () => {
   const [usePortfolioDebt, setUsePortfolioDebt] = useState(true);
   const [platformOpex, setPlatformOpex] = useState(4.2); // Default $4.2M
   const [platformOpexEscalation, setPlatformOpexEscalation] = useState(2.5); // Default 2.5%
-  const [corporateTaxRate, setCorporateTaxRate] = useState(0); // Default 0%
   const [years, setYears] = useState([]);
   
-  // Default depreciation periods
-  const [deprecationPeriods, setDeprecationPeriods] = useState({
-    solar: 30,
-    wind: 30,
-    storage: 20
-  });
+  // Depreciation and tax rates now come from the shared settings in constants
+  // No need to maintain a local state for these values
 
   // Initialize years array based on constants
   useEffect(() => {
@@ -40,16 +35,6 @@ const PlatformPL = () => {
     const endYear = constants.analysisEndYear || startYear + 30;
     setYears(Array.from({ length: endYear - startYear + 1 }, (_, i) => startYear + i));
   }, [constants.analysisStartYear, constants.analysisEndYear]);
-
-  // Save depreciation settings to constants
-  useEffect(() => {
-    updateConstants('deprecationPeriods', deprecationPeriods);
-  }, [deprecationPeriods, updateConstants]);
-
-  // Save tax rate to constants
-  useEffect(() => {
-    updateConstants('corporateTaxRate', corporateTaxRate);
-  }, [corporateTaxRate, updateConstants]);
 
   // Save platform opex settings to constants
   useEffect(() => {
@@ -59,12 +44,6 @@ const PlatformPL = () => {
 
   // Load saved values from constants
   useEffect(() => {
-    if (constants.deprecationPeriods) {
-      setDeprecationPeriods(constants.deprecationPeriods);
-    }
-    if (constants.corporateTaxRate !== undefined) {
-      setCorporateTaxRate(constants.corporateTaxRate);
-    }
     if (constants.platformOpex !== undefined) {
       setPlatformOpex(constants.platformOpex);
     }
@@ -105,8 +84,8 @@ const PlatformPL = () => {
       const opexBase = assetCosts.operatingCosts || 0;
       const opexEscalation = assetCosts.operatingCostEscalation || 2.5;
       
-      // Determine depreciation period based on asset type
-      const depreciationPeriod = deprecationPeriods[asset.type] || 30;
+      // Access shared depreciation settings
+      const depreciationPeriod = constants.deprecationPeriods?.[asset.type] || 30;
       const annualDepreciation = capex / depreciationPeriod;
 
       // Debt parameters - either from individual asset or portfolio based on toggle
@@ -182,8 +161,8 @@ const PlatformPL = () => {
         // Calculate EBT
         const ebt = ebitda + depreciation + interest;
         
-        // Calculate tax
-        const tax = ebt < 0 ? 0 : -(ebt * corporateTaxRate / 100);
+        // Calculate tax using the shared corporate tax rate
+        const tax = ebt < 0 ? 0 : -(ebt * constants.corporateTaxRate / 100);
         
         // Calculate NPAT
         const npat = ebt + tax;
@@ -226,8 +205,8 @@ const PlatformPL = () => {
       // Recalculate EBT
       yearData.ebt = yearData.ebitda + yearData.depreciation + yearData.interest;
       
-      // Calculate tax
-      yearData.tax = yearData.ebt < 0 ? 0 : -(yearData.ebt * corporateTaxRate / 100);
+      // Calculate tax using the shared corporate tax rate
+      yearData.tax = yearData.ebt < 0 ? 0 : -(yearData.ebt * constants.corporateTaxRate / 100);
       
       // Calculate NPAT
       yearData.npat = yearData.ebt + yearData.tax;
@@ -239,11 +218,11 @@ const PlatformPL = () => {
     years, 
     constants, 
     constants.assetCosts, 
-    deprecationPeriods, 
+    constants.deprecationPeriods,
+    constants.corporateTaxRate,
     usePortfolioDebt, 
     platformOpex, 
-    platformOpexEscalation, 
-    corporateTaxRate,
+    platformOpexEscalation,
     selectedRevenueCase,
     getMerchantPrice
   ]);
@@ -258,7 +237,7 @@ const PlatformPL = () => {
 
   // Format for display
   const formatCurrency = (value) => {
-    return `$${value.toFixed(1)}M`;
+    return `${value.toFixed(1)}M`;
   };
 
   // Settings panel
@@ -294,17 +273,6 @@ const PlatformPL = () => {
           </div>
           
           <div className="space-y-4">
-            <div className="flex flex-col space-y-2">
-              <Label>Corporate Tax Rate</Label>
-              <Input 
-                type="number"
-                value={corporateTaxRate}
-                onChange={(e) => setCorporateTaxRate(parseFloat(e.target.value) || 0)}
-                placeholder="Tax rate %"
-              />
-              <p className="text-sm text-gray-500">Corporate tax rate (%)</p>
-            </div>
-            
             <div className="flex items-center space-x-2 pt-4">
               <Switch 
                 checked={usePortfolioDebt}
@@ -313,44 +281,8 @@ const PlatformPL = () => {
               />
               <Label htmlFor="portfolio-debt">Use Portfolio Debt Structure</Label>
             </div>
-          </div>
-        </div>
-        
-        <div className="mt-6">
-          <Label className="mb-2 block">Depreciation Periods (Years)</Label>
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <Label>Solar</Label>
-              <Input 
-                type="number"
-                value={deprecationPeriods.solar}
-                onChange={(e) => setDeprecationPeriods({
-                  ...deprecationPeriods, 
-                  solar: parseInt(e.target.value) || 30
-                })}
-              />
-            </div>
-            <div>
-              <Label>Wind</Label>
-              <Input 
-                type="number"
-                value={deprecationPeriods.wind}
-                onChange={(e) => setDeprecationPeriods({
-                  ...deprecationPeriods, 
-                  wind: parseInt(e.target.value) || 30
-                })}
-              />
-            </div>
-            <div>
-              <Label>Storage</Label>
-              <Input 
-                type="number"
-                value={deprecationPeriods.storage}
-                onChange={(e) => setDeprecationPeriods({
-                  ...deprecationPeriods, 
-                  storage: parseInt(e.target.value) || 20
-                })}
-              />
+            
+            <div className="mt-4">
             </div>
           </div>
         </div>

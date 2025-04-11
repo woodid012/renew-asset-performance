@@ -13,11 +13,34 @@ import {
   createNewContract
 } from './AssetUtils';
 
-const AssetSummaryEditor = () => {
+const AssetSummaryInputs = () => {
   const { assets, setAssets, constants, updateConstants } = usePortfolio();
   const [editState, setEditState] = useState({});
   const [activeTab, setActiveTab] = useState("assets");
   const assetCosts = constants.assetCosts || {};
+
+  // Ensure deprecation periods and tax rate exist with defaults
+  const corporateTaxRate = constants.corporateTaxRate !== undefined ? constants.corporateTaxRate : 0;
+  const deprecationPeriods = constants.deprecationPeriods || {
+    solar: 30,
+    wind: 30,
+    storage: 20
+  };
+
+  // Initialize tax/depreciation values if they don't exist
+  useEffect(() => {
+    if (constants.corporateTaxRate === undefined) {
+      updateConstants('corporateTaxRate', 0);
+    }
+    
+    if (!constants.deprecationPeriods) {
+      updateConstants('deprecationPeriods', {
+        solar: 30,
+        wind: 30,
+        storage: 20
+      });
+    }
+  }, [constants, updateConstants]);
 
   // Initialize edit state with asset values
   useEffect(() => {
@@ -90,6 +113,21 @@ const AssetSummaryEditor = () => {
       // Ensure numeric sorting
       return parseInt(a) - parseInt(b);
     });
+  };
+
+  // Handle tax rate change
+  const handleTaxRateChange = (value) => {
+    updateConstants('corporateTaxRate', parseFloat(value) || 0);
+  };
+
+  // Handle depreciation period change
+  const handleDepreciationChange = (assetType, value) => {
+    const updatedPeriods = {
+      ...deprecationPeriods,
+      [assetType]: parseInt(value) || 0
+    };
+    
+    updateConstants('deprecationPeriods', updatedPeriods);
   };
 
   // Check if assets have any contracts
@@ -282,19 +320,24 @@ const AssetSummaryEditor = () => {
 
   return (
     <Card className="w-full">
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Asset Summary Editor</CardTitle>
-        <Button size="sm" onClick={saveChanges} variant="default">
-          <Save className="h-4 w-4 mr-2" />Save Changes
-        </Button>
+      <CardHeader className="bg-gray-100 p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <CardTitle>Asset Summary Inputs</CardTitle>
+          </div>
+          <Button size="sm" onClick={saveChanges} variant="default">
+            <Save className="h-4 w-4 mr-2" />Save Changes
+          </Button>
+        </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-4 pt-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="justify-start mb-4">
+          <TabsList>
             <TabsTrigger value="assets">Assets</TabsTrigger>
-            <TabsTrigger value="advanced">Advanced</TabsTrigger>
+            <TabsTrigger value="advanced">Capacity</TabsTrigger>
             <TabsTrigger value="contracts">Contracts</TabsTrigger>
-            <TabsTrigger value="finance">Finance</TabsTrigger>
+            <TabsTrigger value="finance">Debt</TabsTrigger>
+            <TabsTrigger value="taxation">T & D</TabsTrigger>
           </TabsList>
           
           <TabsContent value="assets">
@@ -542,8 +585,73 @@ const AssetSummaryEditor = () => {
                   </TableRow>
                 </TableBody>
               </Table>
-              
-              
+            </div>
+          </TabsContent>
+          
+          {/* New Tab for Taxation & Depreciation */}
+          <TabsContent value="taxation">
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Corporate Tax Rate (%)</label>
+                    <Input 
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.1"
+                      value={corporateTaxRate}
+                      onChange={(e) => handleTaxRateChange(e.target.value)}
+                      className="w-full max-w-xs"
+                    />
+                    <p className="text-sm text-gray-500">
+                      Corporate tax rate applied to taxable income
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="space-y-4">
+                  <label className="font-medium block mb-2">Depreciation Periods (Years)</label>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Solar</label>
+                      <Input 
+                        type="number"
+                        min="1"
+                        max="40"
+                        value={deprecationPeriods.solar}
+                        onChange={(e) => handleDepreciationChange('solar', e.target.value)}
+                        className="max-w-xs"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Wind</label>
+                      <Input 
+                        type="number"
+                        min="1"
+                        max="40"
+                        value={deprecationPeriods.wind}
+                        onChange={(e) => handleDepreciationChange('wind', e.target.value)}
+                        className="max-w-xs"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Storage</label>
+                      <Input 
+                        type="number"
+                        min="1"
+                        max="40"
+                        value={deprecationPeriods.storage}
+                        onChange={(e) => handleDepreciationChange('storage', e.target.value)}
+                        className="max-w-xs"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-500">
+                    Asset depreciation periods for tax and accounting purposes
+                  </p>
+                </div>
+              </div>
             </div>
           </TabsContent>
         </Tabs>
@@ -552,4 +660,4 @@ const AssetSummaryEditor = () => {
   );
 };
 
-export default AssetSummaryEditor;
+export default AssetSummaryInputs;
