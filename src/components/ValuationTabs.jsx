@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Download, Upload } from 'lucide-react';
 import ValuationAnalysis from './ValuationAnalysis';
 import ProjectFinanceDashboard from './ProjectFinanceDashboard';
+import PlatformPL from './PlatformPL';
 import { usePortfolio } from '@/contexts/PortfolioContext';
 
 const ValuationTabs = () => {
@@ -77,11 +78,16 @@ const ValuationTabs = () => {
       <Tabs defaultValue="test" className="w-full">
         <TabsList className="border-b mb-4">
           <TabsTrigger value="test">Project Finance</TabsTrigger>
+          <TabsTrigger value="platform-pl">Platform P&L</TabsTrigger>
           <TabsTrigger value="operating">Operating Portfolio</TabsTrigger>
         </TabsList>
         
         <TabsContent value="test">
           <ProjectFinanceDashboard />
+        </TabsContent>
+        
+        <TabsContent value="platform-pl">
+          <PlatformPL />
         </TabsContent>
         
         <TabsContent value="operating">
