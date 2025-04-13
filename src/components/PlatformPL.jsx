@@ -23,18 +23,76 @@ import {
   formatCurrency 
 } from './PlatformPL_Calculations';
 
-const PlatformPL = () => {
+const PlatformPL = ({
+  // Allow props to be passed from parent component for integration
+  selectedRevenueCase: externalSelectedRevenueCase,
+  setSelectedRevenueCase: externalSetSelectedRevenueCase,
+  usePortfolioDebt: externalUsePortfolioDebt,
+  setUsePortfolioDebt: externalSetUsePortfolioDebt,
+  platformOpex: externalPlatformOpex,
+  setPlatformOpex: externalSetPlatformOpex,
+  platformOpexEscalation: externalPlatformOpexEscalation,
+  setPlatformOpexEscalation: externalSetPlatformOpexEscalation,
+  timeView: externalTimeView,
+  setTimeView: externalSetTimeView,
+  dividendPolicy: externalDividendPolicy,
+  setDividendPolicy: externalSetDividendPolicy,
+  minimumCashBalance: externalMinimumCashBalance,
+  setMinimumCashBalance: externalSetMinimumCashBalance,
+  initialTab = 'pl' // Default to profit & loss tab
+}) => {
   const { assets, constants, getMerchantPrice, updateConstants } = usePortfolio();
-  const [selectedRevenueCase, setSelectedRevenueCase] = useState('base');
-  const [selectedAsset, setSelectedAsset] = useState('Total');
-  const [usePortfolioDebt, setUsePortfolioDebt] = useState(true);
-  const [platformOpex, setPlatformOpex] = useState(4.2); // Default $4.2M
-  const [platformOpexEscalation, setPlatformOpexEscalation] = useState(2.5); // Default 2.5%
-  const [years, setYears] = useState([]);
-  const [timeView, setTimeView] = useState('annual'); // 'annual' or 'quarterly'
-  const [dividendPolicy, setDividendPolicy] = useState(85); // Default 85% payout ratio
-  const [minimumCashBalance, setMinimumCashBalance] = useState(5.0); // Default minimum $5M cash balance
   
+  // Use either passed values or local state
+  const [selectedRevenueCase, setSelectedRevenueCase] = useState(externalSelectedRevenueCase || 'base');
+  const [selectedAsset, setSelectedAsset] = useState('Total');
+  const [usePortfolioDebt, setUsePortfolioDebt] = useState(externalUsePortfolioDebt !== undefined ? externalUsePortfolioDebt : true);
+  const [platformOpex, setPlatformOpex] = useState(externalPlatformOpex || 4.2); // Default $4.2M
+  const [platformOpexEscalation, setPlatformOpexEscalation] = useState(externalPlatformOpexEscalation || 2.5); // Default 2.5%
+  const [years, setYears] = useState([]);
+  const [timeView, setTimeView] = useState(externalTimeView || 'annual'); // 'annual' or 'quarterly'
+  const [dividendPolicy, setDividendPolicy] = useState(externalDividendPolicy || 85); // Default 85% payout ratio
+  const [minimumCashBalance, setMinimumCashBalance] = useState(externalMinimumCashBalance || 5.0); // Default minimum $5M cash balance
+  const [activeTab, setActiveTab] = useState(initialTab); // 'pl', 'cf', or 'chart'
+  
+  // Sync external values if they change
+  useEffect(() => {
+    if (externalSelectedRevenueCase !== undefined) setSelectedRevenueCase(externalSelectedRevenueCase);
+    if (externalUsePortfolioDebt !== undefined) setUsePortfolioDebt(externalUsePortfolioDebt);
+    if (externalPlatformOpex !== undefined) setPlatformOpex(externalPlatformOpex);
+    if (externalPlatformOpexEscalation !== undefined) setPlatformOpexEscalation(externalPlatformOpexEscalation);
+    if (externalTimeView !== undefined) setTimeView(externalTimeView);
+    if (externalDividendPolicy !== undefined) setDividendPolicy(externalDividendPolicy);
+    if (externalMinimumCashBalance !== undefined) setMinimumCashBalance(externalMinimumCashBalance);
+  }, [
+    externalSelectedRevenueCase,
+    externalUsePortfolioDebt,
+    externalPlatformOpex,
+    externalPlatformOpexEscalation,
+    externalTimeView,
+    externalDividendPolicy,
+    externalMinimumCashBalance
+  ]);
+
+  // Propagate local changes to external state
+  useEffect(() => {
+    if (externalSetSelectedRevenueCase) externalSetSelectedRevenueCase(selectedRevenueCase);
+    if (externalSetUsePortfolioDebt) externalSetUsePortfolioDebt(usePortfolioDebt);
+    if (externalSetPlatformOpex) externalSetPlatformOpex(platformOpex);
+    if (externalSetPlatformOpexEscalation) externalSetPlatformOpexEscalation(platformOpexEscalation);
+    if (externalSetTimeView) externalSetTimeView(timeView);
+    if (externalSetDividendPolicy) externalSetDividendPolicy(dividendPolicy);
+    if (externalSetMinimumCashBalance) externalSetMinimumCashBalance(minimumCashBalance);
+  }, [
+    selectedRevenueCase,
+    usePortfolioDebt,
+    platformOpex,
+    platformOpexEscalation,
+    timeView,
+    dividendPolicy,
+    minimumCashBalance
+  ]);
+
   // Initialize years array based on constants
   useEffect(() => {
     const startYear = constants.analysisStartYear || new Date().getFullYear();
@@ -52,19 +110,25 @@ const PlatformPL = () => {
 
   // Load saved values from constants
   useEffect(() => {
-    if (constants.platformOpex !== undefined) {
+    if (constants.platformOpex !== undefined && externalPlatformOpex === undefined) {
       setPlatformOpex(constants.platformOpex);
     }
-    if (constants.platformOpexEscalation !== undefined) {
+    if (constants.platformOpexEscalation !== undefined && externalPlatformOpexEscalation === undefined) {
       setPlatformOpexEscalation(constants.platformOpexEscalation);
     }
-    if (constants.dividendPolicy !== undefined) {
+    if (constants.dividendPolicy !== undefined && externalDividendPolicy === undefined) {
       setDividendPolicy(constants.dividendPolicy);
     }
-    if (constants.minimumCashBalance !== undefined) {
+    if (constants.minimumCashBalance !== undefined && externalMinimumCashBalance === undefined) {
       setMinimumCashBalance(constants.minimumCashBalance);
     }
-  }, [constants]);
+  }, [
+    constants, 
+    externalPlatformOpex, 
+    externalPlatformOpexEscalation,
+    externalDividendPolicy,
+    externalMinimumCashBalance
+  ]);
 
   // Calculate P&L data using the calculation function
   const plData = useMemo(() => {
@@ -198,8 +262,231 @@ const PlatformPL = () => {
     </Card>
   );
 
+  // Render Profit & Loss Section
+  const renderProfitLoss = () => (
+    <Card>
+      <CardHeader>
+        <CardTitle>Platform Profit & Loss</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {/* P&L Chart */}
+        <div className="h-96 mb-6">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={getCurrentData('pl')}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis 
+                dataKey="period"
+                padding={{ left: 20, right: 20 }}
+              />
+              <YAxis />
+              <Tooltip 
+                formatter={(value) => formatCurrency(value)}
+                labelFormatter={(label) => `${timeView === 'quarterly' ? 'Quarter' : 'Year'}: ${label}`}
+              />
+              <Legend />
+              <Line type="monotone" dataKey="revenue" name="Revenue" stroke="#4CAF50" strokeWidth={2} />
+              {selectedAsset === 'Total' && (
+                <Line type="monotone" dataKey="assetOpex" name="Asset Opex" stroke="#FF9800" strokeWidth={2} />
+              )}
+              {selectedAsset === 'Total' && (
+                <Line type="monotone" dataKey="platformOpex" name="Platform Opex" stroke="#F44336" strokeWidth={2} />
+              )}
+              {selectedAsset !== 'Total' && (
+                <Line type="monotone" dataKey="opex" name="Opex" stroke="#F44336" strokeWidth={2} />
+              )}
+              <Line type="monotone" dataKey="ebitda" name="EBITDA" stroke="#2196F3" strokeWidth={2} />
+              <Line type="monotone" dataKey="npat" name="NPAT" stroke="#9C27B0" strokeWidth={2} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+        
+        {/* P&L Table */}
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{timeView === 'quarterly' ? 'Period' : 'Year'}</TableHead>
+                <TableHead>Revenue</TableHead>
+                {selectedAsset === 'Total' ? (
+                  <>
+                    <TableHead>Asset Opex</TableHead>
+                    <TableHead>Platform Opex</TableHead>
+                  </>
+                ) : (
+                  <TableHead>Opex</TableHead>
+                )}
+                <TableHead>EBITDA</TableHead>
+                <TableHead>Depreciation</TableHead>
+                <TableHead>Interest</TableHead>
+                <TableHead>Principal</TableHead>
+                <TableHead>EBT</TableHead>
+                <TableHead>Tax</TableHead>
+                <TableHead>NPAT</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {getCurrentData('pl').map((row, index) => (
+                <TableRow key={row.period} className={index % 2 === 0 ? "bg-muted/20" : ""}>
+                  <TableCell>{row.period}</TableCell>
+                  <TableCell>{formatCurrency(row.revenue)}</TableCell>
+                  {selectedAsset === 'Total' ? (
+                    <>
+                      <TableCell>{formatCurrency(row.assetOpex)}</TableCell>
+                      <TableCell>{formatCurrency(row.platformOpex)}</TableCell>
+                    </>
+                  ) : (
+                    <TableCell>{formatCurrency(row.opex)}</TableCell>
+                  )}
+                  <TableCell className="font-medium">{formatCurrency(row.ebitda)}</TableCell>
+                  <TableCell>{formatCurrency(row.depreciation)}</TableCell>
+                  <TableCell>{formatCurrency(row.interest)}</TableCell>
+                  <TableCell>{formatCurrency(row.principalRepayment)}</TableCell>
+                  <TableCell>{formatCurrency(row.ebt)}</TableCell>
+                  <TableCell>{formatCurrency(row.tax)}</TableCell>
+                  <TableCell className="font-medium">{formatCurrency(row.npat)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  // Render Cash Flow Section
+  const renderCashFlow = () => (
+    <Card>
+      <CardHeader>
+        <CardTitle>Cash Flow Statement</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {/* Cash Flow Chart */}
+        <div className="h-96 mb-6">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={getCurrentData('cf')}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis 
+                dataKey="period"
+                padding={{ left: 20, right: 20 }}
+              />
+              <YAxis />
+              <Tooltip 
+                formatter={(value) => formatCurrency(value)}
+                labelFormatter={(label) => `${timeView === 'quarterly' ? 'Quarter' : 'Year'}: ${label}`}
+              />
+              <Legend />
+              <Line type="monotone" dataKey="operatingCashFlow" name="Operating Cash Flow" stroke="#4CAF50" strokeWidth={2} />
+              <Line type="monotone" dataKey="tax" name="Tax" stroke="#d32f2f" strokeWidth={2} />
+              <Line type="monotone" dataKey="debtService" name="Debt Service" stroke="#FF9800" strokeWidth={2} />
+              <Line type="monotone" dataKey="fcfe" name="FCFE" stroke="#9C27B0" strokeWidth={2} />
+              <Line type="monotone" dataKey="dividend" name="Dividends" stroke="#F44336" strokeWidth={2} />
+              <Line type="monotone" dataKey="netCashFlow" name="Net Cash Flow" stroke="#2196F3" strokeWidth={2} />
+              <Line type="monotone" dataKey="cashBalance" name="Cash Balance" stroke="#673AB7" strokeWidth={2} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+        
+        {/* Cash Flow Table */}
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{timeView === 'quarterly' ? 'Period' : 'Year'}</TableHead>
+                <TableHead>Operating Cash Flow</TableHead>
+                <TableHead>Tax</TableHead>
+                <TableHead>Interest</TableHead>
+                <TableHead>Principal Repayment</TableHead>
+                <TableHead>Total Debt Service</TableHead>
+                <TableHead className="font-medium bg-purple-50">FCFE</TableHead>
+                <TableHead>Dividends</TableHead>
+                <TableHead>Net Cash Flow</TableHead>
+                <TableHead>Cash Balance</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {getCurrentData('cf').map((row, index) => (
+                <TableRow key={row.period} className={index % 2 === 0 ? "bg-muted/20" : ""}>
+                  <TableCell>{row.period}</TableCell>
+                  <TableCell>{formatCurrency(row.operatingCashFlow)}</TableCell>
+                  <TableCell>{formatCurrency(row.tax)}</TableCell>
+                  <TableCell>{formatCurrency(row.interest)}</TableCell>
+                  <TableCell>{formatCurrency(row.principalRepayment)}</TableCell>
+                  <TableCell>{formatCurrency(row.debtService)}</TableCell>
+                  <TableCell className="font-medium bg-purple-50">{formatCurrency(row.fcfe)}</TableCell>
+                  <TableCell>{formatCurrency(row.dividend)}</TableCell>
+                  <TableCell className="font-medium">{formatCurrency(row.netCashFlow)}</TableCell>
+                  <TableCell>{formatCurrency(row.cashBalance)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  // Render Cash Flow Breakdown Chart
+  const renderCashFlowChart = () => (
+    <Card>
+      <CardHeader>
+        <CardTitle>Cash Flow Breakdown</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="h-96">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={getCurrentData('cf')}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis 
+                dataKey="period"
+                padding={{ left: 20, right: 20 }}
+              />
+              <YAxis />
+              <Tooltip 
+                formatter={(value) => formatCurrency(value)}
+                labelFormatter={(label) => `${timeView === 'quarterly' ? 'Quarter' : 'Year'}: ${label}`}
+              />
+              <Legend />
+              <Bar dataKey="operatingCashFlow" name="Operating Cash Flow" fill="#4CAF50" stackId="a" />
+              <Bar dataKey="tax" name="Tax" fill="#d32f2f" stackId="a" />
+              <Bar dataKey="debtService" name="Debt Service" fill="#FF9800" stackId="a" />
+              <Bar dataKey="dividend" name="Dividends" fill="#F44336" stackId="a" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  // Determine which content to render based on activeTab or external mode
+  const renderTabContent = () => {
+    if (activeTab === 'pl') {
+      return renderProfitLoss();
+    } else if (activeTab === 'cf') {
+      return (
+        <>
+          {renderCashFlow()}
+          <div className="mt-6">
+            {renderCashFlowChart()}
+          </div>
+        </>
+      );
+    } else if (activeTab === 'chart') {
+      return renderCashFlowChart();
+    }
+  };
+
+  // If only cash flow is requested from parent (for Cash Flow tab)
+  if (initialTab === 'cf' && initialTab !== activeTab) {
+    return (
+      <>
+        {renderCashFlow()}
+        {renderCashFlowChart()}
+      </>
+    );
+  }
+
   return (
-    <div className="w-full p-4 space-y-4">
+    <div className="w-full space-y-4">
       <SettingsPanel />
       
       <div className="flex justify-between items-center mb-4">
@@ -221,224 +508,65 @@ const PlatformPL = () => {
             </SelectContent>
           </Select>
           
-          <Select 
-            value={selectedRevenueCase} 
-            onValueChange={setSelectedRevenueCase}
-          >
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="Select scenario" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="base">Base Case</SelectItem>
-              <SelectItem value="worst">Downside Case</SelectItem>
-              <SelectItem value="volume">Volume Stress</SelectItem>
-              <SelectItem value="price">Price Stress</SelectItem>
-            </SelectContent>
-          </Select>
-          
+          {externalSetSelectedRevenueCase === undefined && (
+            <Select 
+              value={selectedRevenueCase} 
+              onValueChange={setSelectedRevenueCase}
+            >
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Select scenario" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="base">Base Case</SelectItem>
+                <SelectItem value="worst">Downside Case</SelectItem>
+                <SelectItem value="volume">Volume Stress</SelectItem>
+                <SelectItem value="price">Price Stress</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
         </div>
         
-        <Select 
-          value={timeView} 
-          onValueChange={setTimeView}
-        >
-          <SelectTrigger className="w-32">
-            <SelectValue placeholder="Time view" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="annual">Annual</SelectItem>
-            <SelectItem value="quarterly">Quarterly</SelectItem>
-          </SelectContent>
-        </Select>
+        {externalSetTimeView === undefined && (
+          <Select 
+            value={timeView} 
+            onValueChange={setTimeView}
+          >
+            <SelectTrigger className="w-32">
+              <SelectValue placeholder="Time view" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="annual">Annual</SelectItem>
+              <SelectItem value="quarterly">Quarterly</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
+        
+        {/* Add tab selection if not controlled by parent */}
+        {!externalSelectedRevenueCase && (
+          <div className="flex space-x-2">
+            <Button 
+              variant={activeTab === 'pl' ? 'default' : 'outline'} 
+              onClick={() => setActiveTab('pl')}
+            >
+              P&L
+            </Button>
+            <Button 
+              variant={activeTab === 'cf' ? 'default' : 'outline'} 
+              onClick={() => setActiveTab('cf')}
+            >
+              Cash Flow
+            </Button>
+            <Button 
+              variant={activeTab === 'chart' ? 'default' : 'outline'} 
+              onClick={() => setActiveTab('chart')}
+            >
+              Charts
+            </Button>
+          </div>
+        )}
       </div>
       
-      <Card>
-        <CardHeader>
-          <CardTitle>Platform Profit & Loss</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {/* P&L Chart */}
-          <div className="h-96 mb-6">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={getCurrentData('pl')}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="period"
-                  padding={{ left: 20, right: 20 }}
-                />
-                <YAxis />
-                <Tooltip 
-                  formatter={(value) => formatCurrency(value)}
-                  labelFormatter={(label) => `${timeView === 'quarterly' ? 'Quarter' : 'Year'}: ${label}`}
-                />
-                <Legend />
-                <Line type="monotone" dataKey="revenue" name="Revenue" stroke="#4CAF50" strokeWidth={2} />
-                {selectedAsset === 'Total' && (
-                  <Line type="monotone" dataKey="assetOpex" name="Asset Opex" stroke="#FF9800" strokeWidth={2} />
-                )}
-                {selectedAsset === 'Total' && (
-                  <Line type="monotone" dataKey="platformOpex" name="Platform Opex" stroke="#F44336" strokeWidth={2} />
-                )}
-                {selectedAsset !== 'Total' && (
-                  <Line type="monotone" dataKey="opex" name="Opex" stroke="#F44336" strokeWidth={2} />
-                )}
-                <Line type="monotone" dataKey="ebitda" name="EBITDA" stroke="#2196F3" strokeWidth={2} />
-                <Line type="monotone" dataKey="npat" name="NPAT" stroke="#9C27B0" strokeWidth={2} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-          
-          {/* P&L Table */}
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{timeView === 'quarterly' ? 'Period' : 'Year'}</TableHead>
-                  <TableHead>Revenue</TableHead>
-                  {selectedAsset === 'Total' ? (
-                    <>
-                      <TableHead>Asset Opex</TableHead>
-                      <TableHead>Platform Opex</TableHead>
-                    </>
-                  ) : (
-                    <TableHead>Opex</TableHead>
-                  )}
-                  <TableHead>EBITDA</TableHead>
-                  <TableHead>Depreciation</TableHead>
-                  <TableHead>Interest</TableHead>
-                  <TableHead>Principal</TableHead>
-                  <TableHead>EBT</TableHead>
-                  <TableHead>Tax</TableHead>
-                  <TableHead>NPAT</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {getCurrentData('pl').map((row, index) => (
-                  <TableRow key={row.period} className={index % 2 === 0 ? "bg-muted/20" : ""}>
-                    <TableCell>{row.period}</TableCell>
-                    <TableCell>{formatCurrency(row.revenue)}</TableCell>
-                    {selectedAsset === 'Total' ? (
-                      <>
-                        <TableCell>{formatCurrency(row.assetOpex)}</TableCell>
-                        <TableCell>{formatCurrency(row.platformOpex)}</TableCell>
-                      </>
-                    ) : (
-                      <TableCell>{formatCurrency(row.opex)}</TableCell>
-                    )}
-                    <TableCell className="font-medium">{formatCurrency(row.ebitda)}</TableCell>
-                    <TableCell>{formatCurrency(row.depreciation)}</TableCell>
-                    <TableCell>{formatCurrency(row.interest)}</TableCell>
-                    <TableCell>{formatCurrency(row.principalRepayment)}</TableCell>
-                    <TableCell>{formatCurrency(row.ebt)}</TableCell>
-                    <TableCell>{formatCurrency(row.tax)}</TableCell>
-                    <TableCell className="font-medium">{formatCurrency(row.npat)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
-      
-      {/* Cash Flow Statement */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Cash Flow Statement</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {/* Cash Flow Chart */}
-          <div className="h-96 mb-6">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={getCurrentData('cf')}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="period"
-                  padding={{ left: 20, right: 20 }}
-                />
-                <YAxis />
-                <Tooltip 
-                  formatter={(value) => formatCurrency(value)}
-                  labelFormatter={(label) => `${timeView === 'quarterly' ? 'Quarter' : 'Year'}: ${label}`}
-                />
-                <Legend />
-                <Line type="monotone" dataKey="operatingCashFlow" name="Operating Cash Flow" stroke="#4CAF50" strokeWidth={2} />
-                <Line type="monotone" dataKey="tax" name="Tax" stroke="#d32f2f" strokeWidth={2} />
-                <Line type="monotone" dataKey="debtService" name="Debt Service" stroke="#FF9800" strokeWidth={2} />
-                <Line type="monotone" dataKey="fcfe" name="FCFE" stroke="#9C27B0" strokeWidth={2} />
-                <Line type="monotone" dataKey="dividend" name="Dividends" stroke="#F44336" strokeWidth={2} />
-                <Line type="monotone" dataKey="netCashFlow" name="Net Cash Flow" stroke="#2196F3" strokeWidth={2} />
-                <Line type="monotone" dataKey="cashBalance" name="Cash Balance" stroke="#673AB7" strokeWidth={2} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-          
-          {/* Cash Flow Table */}
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{timeView === 'quarterly' ? 'Period' : 'Year'}</TableHead>
-                  <TableHead>Operating Cash Flow</TableHead>
-                  <TableHead>Tax</TableHead>
-                  <TableHead>Interest</TableHead>
-                  <TableHead>Principal Repayment</TableHead>
-                  <TableHead>Total Debt Service</TableHead>
-                  <TableHead className="font-medium bg-purple-50">FCFE</TableHead>
-                  <TableHead>Dividends</TableHead>
-                  <TableHead>Net Cash Flow</TableHead>
-                  <TableHead>Cash Balance</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {getCurrentData('cf').map((row, index) => (
-                  <TableRow key={row.period} className={index % 2 === 0 ? "bg-muted/20" : ""}>
-                    <TableCell>{row.period}</TableCell>
-                    <TableCell>{formatCurrency(row.operatingCashFlow)}</TableCell>
-                    <TableCell>{formatCurrency(row.tax)}</TableCell>
-                    <TableCell>{formatCurrency(row.interest)}</TableCell>
-                    <TableCell>{formatCurrency(row.principalRepayment)}</TableCell>
-                    <TableCell>{formatCurrency(row.debtService)}</TableCell>
-                    <TableCell className="font-medium bg-purple-50">{formatCurrency(row.fcfe)}</TableCell>
-                    <TableCell>{formatCurrency(row.dividend)}</TableCell>
-                    <TableCell className="font-medium">{formatCurrency(row.netCashFlow)}</TableCell>
-                    <TableCell>{formatCurrency(row.cashBalance)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
-      
-      {/* Cash Flow Breakdown Chart */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Cash Flow Breakdown</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-96">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={getCurrentData('cf')}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="period"
-                  padding={{ left: 20, right: 20 }}
-                />
-                <YAxis />
-                <Tooltip 
-                  formatter={(value) => formatCurrency(value)}
-                  labelFormatter={(label) => `${timeView === 'quarterly' ? 'Quarter' : 'Year'}: ${label}`}
-                />
-                <Legend />
-                <Bar dataKey="operatingCashFlow" name="Operating Cash Flow" fill="#4CAF50" stackId="a" />
-                <Bar dataKey="tax" name="Tax" fill="#d32f2f" stackId="a" />
-                <Bar dataKey="debtService" name="Debt Service" fill="#FF9800" stackId="a" />
-                <Bar dataKey="dividend" name="Dividends" fill="#F44336" stackId="a" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
+      {renderTabContent()}
     </div>
   );
 };

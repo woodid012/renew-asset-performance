@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Download, Upload } from 'lucide-react';
 import ValuationAnalysis from './ValuationAnalysis';
 import ProjectFinanceDashboard from './ProjectFinanceDashboard';
-import PlatformPL from './PlatformPL';
+import PlatformFinancials from './PlatformFinancials.jsx';
 import { usePortfolio } from '@/contexts/PortfolioContext';
 
 const ValuationTabs = () => {
@@ -76,21 +76,24 @@ const ValuationTabs = () => {
       </div>
 
       <div className="bg-blue-50 border border-blue-200 p-4 rounded-md mb-4">
+        <p className="text-sm text-blue-800">
+          Use the tabs below to analyze your portfolio from different perspectives: project finance, financial statements, and operating portfolio valuation.
+        </p>
       </div>
 
-      <Tabs defaultValue="test" className="w-full">
+      <Tabs defaultValue="project-finance" className="w-full">
         <TabsList className="border-b mb-4">
-          <TabsTrigger value="test">Project Finance</TabsTrigger>
-          <TabsTrigger value="platform-pl">Platform P&L</TabsTrigger>
+          <TabsTrigger value="project-finance">Project Finance</TabsTrigger>
+          <TabsTrigger value="financials">Financial Statements</TabsTrigger>
           <TabsTrigger value="operating">Operating Portfolio</TabsTrigger>
         </TabsList>
         
-        <TabsContent value="test">
+        <TabsContent value="project-finance">
           <ProjectFinanceDashboard />
         </TabsContent>
         
-        <TabsContent value="platform-pl">
-          <PlatformPL />
+        <TabsContent value="financials">
+          <PlatformFinancials />
         </TabsContent>
         
         <TabsContent value="operating">
