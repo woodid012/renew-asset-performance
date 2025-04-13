@@ -235,6 +235,7 @@ const PlatformPL = () => {
               <SelectItem value="price">Price Stress</SelectItem>
             </SelectContent>
           </Select>
+          
         </div>
         
         <Select 
@@ -305,6 +306,7 @@ const PlatformPL = () => {
                   <TableHead>EBITDA</TableHead>
                   <TableHead>Depreciation</TableHead>
                   <TableHead>Interest</TableHead>
+                  <TableHead>Principal</TableHead>
                   <TableHead>EBT</TableHead>
                   <TableHead>Tax</TableHead>
                   <TableHead>NPAT</TableHead>
@@ -326,6 +328,7 @@ const PlatformPL = () => {
                     <TableCell className="font-medium">{formatCurrency(row.ebitda)}</TableCell>
                     <TableCell>{formatCurrency(row.depreciation)}</TableCell>
                     <TableCell>{formatCurrency(row.interest)}</TableCell>
+                    <TableCell>{formatCurrency(row.principalRepayment)}</TableCell>
                     <TableCell>{formatCurrency(row.ebt)}</TableCell>
                     <TableCell>{formatCurrency(row.tax)}</TableCell>
                     <TableCell className="font-medium">{formatCurrency(row.npat)}</TableCell>
@@ -359,7 +362,9 @@ const PlatformPL = () => {
                 />
                 <Legend />
                 <Line type="monotone" dataKey="operatingCashFlow" name="Operating Cash Flow" stroke="#4CAF50" strokeWidth={2} />
+                <Line type="monotone" dataKey="tax" name="Tax" stroke="#d32f2f" strokeWidth={2} />
                 <Line type="monotone" dataKey="debtService" name="Debt Service" stroke="#FF9800" strokeWidth={2} />
+                <Line type="monotone" dataKey="fcfe" name="FCFE" stroke="#9C27B0" strokeWidth={2} />
                 <Line type="monotone" dataKey="dividend" name="Dividends" stroke="#F44336" strokeWidth={2} />
                 <Line type="monotone" dataKey="netCashFlow" name="Net Cash Flow" stroke="#2196F3" strokeWidth={2} />
                 <Line type="monotone" dataKey="cashBalance" name="Cash Balance" stroke="#673AB7" strokeWidth={2} />
@@ -374,9 +379,11 @@ const PlatformPL = () => {
                 <TableRow>
                   <TableHead>{timeView === 'quarterly' ? 'Period' : 'Year'}</TableHead>
                   <TableHead>Operating Cash Flow</TableHead>
+                  <TableHead>Tax</TableHead>
                   <TableHead>Interest</TableHead>
                   <TableHead>Principal Repayment</TableHead>
                   <TableHead>Total Debt Service</TableHead>
+                  <TableHead className="font-medium bg-purple-50">FCFE</TableHead>
                   <TableHead>Dividends</TableHead>
                   <TableHead>Net Cash Flow</TableHead>
                   <TableHead>Cash Balance</TableHead>
@@ -387,9 +394,11 @@ const PlatformPL = () => {
                   <TableRow key={row.period} className={index % 2 === 0 ? "bg-muted/20" : ""}>
                     <TableCell>{row.period}</TableCell>
                     <TableCell>{formatCurrency(row.operatingCashFlow)}</TableCell>
+                    <TableCell>{formatCurrency(row.tax)}</TableCell>
                     <TableCell>{formatCurrency(row.interest)}</TableCell>
                     <TableCell>{formatCurrency(row.principalRepayment)}</TableCell>
                     <TableCell>{formatCurrency(row.debtService)}</TableCell>
+                    <TableCell className="font-medium bg-purple-50">{formatCurrency(row.fcfe)}</TableCell>
                     <TableCell>{formatCurrency(row.dividend)}</TableCell>
                     <TableCell className="font-medium">{formatCurrency(row.netCashFlow)}</TableCell>
                     <TableCell>{formatCurrency(row.cashBalance)}</TableCell>
@@ -422,6 +431,7 @@ const PlatformPL = () => {
                 />
                 <Legend />
                 <Bar dataKey="operatingCashFlow" name="Operating Cash Flow" fill="#4CAF50" stackId="a" />
+                <Bar dataKey="tax" name="Tax" fill="#d32f2f" stackId="a" />
                 <Bar dataKey="debtService" name="Debt Service" fill="#FF9800" stackId="a" />
                 <Bar dataKey="dividend" name="Dividends" fill="#F44336" stackId="a" />
               </BarChart>

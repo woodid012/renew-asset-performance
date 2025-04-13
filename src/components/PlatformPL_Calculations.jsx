@@ -39,7 +39,8 @@ export const calculatePlatformPL = (
     interest: 0,
     ebt: 0,
     tax: 0,
-    npat: 0
+    npat: 0,
+    principalRepayment: 0 // Adding principal repayment field
   }));
   
   // Quarterly data structure
@@ -56,6 +57,7 @@ export const calculatePlatformPL = (
         ebitda: 0,
         depreciation: 0,
         interest: 0,
+        principalRepayment: 0, // Adding principal repayment field
         ebt: 0,
         tax: 0,
         npat: 0
@@ -88,6 +90,9 @@ export const calculatePlatformPL = (
     const debtAmount = capex * calculatedGearing;
     const tenorYears = useDebtParams.tenorYears || 15;
     
+    // Calculate annual debt service from Project Finance tab
+    const debtStructure = useDebtParams.debtStructure || 'sculpting';
+    
     // Initialize asset P&L array
     assetPL[asset.name] = years.map(year => {
       // Skip years before asset starts or after asset end of life
@@ -100,6 +105,7 @@ export const calculatePlatformPL = (
           ebitda: 0,
           depreciation: 0,
           interest: 0,
+          principalRepayment: 0,
           ebt: 0,
           tax: 0,
           npat: 0
@@ -160,13 +166,25 @@ export const calculatePlatformPL = (
       // Calculate depreciation (only if within depreciation period)
       const depreciation = year < (assetStartYear + depreciationPeriod) ? -annualDepreciation : 0;
       
-      // Calculate interest expense (only if within loan tenor)
+      // Calculate debt service (only if within loan tenor)
       let interest = 0;
+      let principalRepayment = 0;
+      
       if (year < (assetStartYear + tenorYears)) {
-        // Simple interest calculation - in real model would use amortization schedule
-        const remainingYears = assetStartYear + tenorYears - year;
-        const remainingPrincipal = debtAmount * (remainingYears / tenorYears);
-        interest = -(remainingPrincipal * interestRate);
+        // Use Project Finance tab calculations for debt service
+        if (debtStructure === 'amortization') {
+          // For amortization, use standard formulas
+          const yearsRemaining = assetStartYear + tenorYears - year;
+          const totalPayment = calculateAmortizationPayment(debtAmount * (yearsRemaining / tenorYears), interestRate, yearsRemaining);
+          interest = -(debtAmount * (yearsRemaining / tenorYears) * interestRate);
+          principalRepayment = -(totalPayment - Math.abs(interest));
+        } else {
+          // For sculpting, use a simpler approximation based on years passed
+          const yearsSinceStart = year - assetStartYear;
+          const remainingPrincipal = debtAmount * (1 - yearsSinceStart / tenorYears);
+          interest = -(remainingPrincipal * interestRate);
+          principalRepayment = -(debtAmount / tenorYears);
+        }
       }
       
       // Calculate EBT
@@ -185,6 +203,7 @@ export const calculatePlatformPL = (
       platformPL[platformYearIndex].ebitda += ebitda;
       platformPL[platformYearIndex].depreciation += depreciation;
       platformPL[platformYearIndex].interest += interest;
+      platformPL[platformYearIndex].principalRepayment += principalRepayment;
       platformPL[platformYearIndex].ebt += ebt;
       
       // Add to quarterly data
@@ -196,6 +215,7 @@ export const calculatePlatformPL = (
           quarters[quarterIndex].assetOpex += opex / 4;
           quarters[quarterIndex].depreciation += depreciation / 4;
           quarters[quarterIndex].interest += interest / 4;
+          quarters[quarterIndex].principalRepayment += principalRepayment / 4;
         }
       }
 
@@ -207,6 +227,7 @@ export const calculatePlatformPL = (
         ebitda,
         depreciation,
         interest,
+        principalRepayment,
         ebt,
         tax,
         npat
@@ -235,55 +256,40 @@ export const calculatePlatformPL = (
     
     // Calculate NPAT
     yearData.npat = yearData.ebt + yearData.tax;
-  
-    // Debug log to verify
-    console.log(`Year ${yearData.year}: EBT=${yearData.ebt.toFixed(2)}M, Tax=${yearData.tax.toFixed(2)}M, NPAT=${yearData.npat.toFixed(2)}M`);
   });
   
   // Update quarterly data
- quarters.forEach((quarterData, i) => {
-  // Calculate platform opex with escalation (year index)
-  const yearIndex = quarterData.year - years[0];
-  const quarterPlatformOpexFactor = Math.pow(1 + platformOpexEscalation / 100, yearIndex);
-  const quarterPlatformOpex = -(platformOpex * quarterPlatformOpexFactor) / 4; // Divide by 4 for quarterly
-  
-  // Update platform opex
-  quarterData.platformOpex = quarterPlatformOpex;
-  
-  // Recalculate EBITDA with platform opex
-  quarterData.ebitda = quarterData.revenue + quarterData.assetOpex + quarterPlatformOpex;
-  
-  // Recalculate EBT
-  quarterData.ebt = quarterData.ebitda + quarterData.depreciation + quarterData.interest;
-  
-  // Calculate tax using the shared corporate tax rate
-  quarterData.tax = quarterData.ebt < 0 ? 0 : -(quarterData.ebt * constants.corporateTaxRate / 100);
-  
-  // Calculate NPAT
-  quarterData.npat = quarterData.ebt + quarterData.tax;
-});quarters.forEach((quarterData, i) => {
-  // Calculate platform opex with escalation (year index)
-  const yearIndex = quarterData.year - years[0];
-  const quarterPlatformOpexFactor = Math.pow(1 + platformOpexEscalation / 100, yearIndex);
-  const quarterPlatformOpex = -(platformOpex * quarterPlatformOpexFactor) / 4; // Divide by 4 for quarterly
-  
-  // Update platform opex
-  quarterData.platformOpex = quarterPlatformOpex;
-  
-  // Recalculate EBITDA with platform opex
-  quarterData.ebitda = quarterData.revenue + quarterData.assetOpex + quarterPlatformOpex;
-  
-  // Recalculate EBT
-  quarterData.ebt = quarterData.ebitda + quarterData.depreciation + quarterData.interest;
-  
-  // Calculate tax using the shared corporate tax rate
-  quarterData.tax = quarterData.ebt < 0 ? 0 : -(quarterData.ebt * constants.corporateTaxRate / 100);
-  
-  // Calculate NPAT
-  quarterData.npat = quarterData.ebt + quarterData.tax;
-});
+  quarters.forEach((quarterData, i) => {
+    // Calculate platform opex with escalation (year index)
+    const yearIndex = quarterData.year - years[0];
+    const quarterPlatformOpexFactor = Math.pow(1 + platformOpexEscalation / 100, yearIndex);
+    const quarterPlatformOpex = -(platformOpex * quarterPlatformOpexFactor) / 4; // Divide by 4 for quarterly
+    
+    // Update platform opex
+    quarterData.platformOpex = quarterPlatformOpex;
+    
+    // Recalculate EBITDA with platform opex
+    quarterData.ebitda = quarterData.revenue + quarterData.assetOpex + quarterPlatformOpex;
+    
+    // Recalculate EBT
+    quarterData.ebt = quarterData.ebitda + quarterData.depreciation + quarterData.interest;
+    
+    // Calculate tax using the shared corporate tax rate
+    quarterData.tax = quarterData.ebt < 0 ? 0 : -(quarterData.ebt * constants.corporateTaxRate / 100);
+    
+    // Calculate NPAT
+    quarterData.npat = quarterData.ebt + quarterData.tax;
+  });
 
   return { assetPL, platformPL, quarters };
+};
+
+/**
+ * Helper function to calculate standard amortization payment
+ */
+const calculateAmortizationPayment = (principal, rate, years) => {
+  if (rate === 0) return principal / years; // Handle edge case
+  return principal * rate * Math.pow(1 + rate, years) / (Math.pow(1 + rate, years) - 1);
 };
 
 /**
@@ -309,21 +315,22 @@ export const calculateCashFlow = (
   let retainedEarnings = 0;
   
   const annualCashFlow = platformPL.map((yearData, index) => {
-    // Operating cash flow is simply Revenue minus Operating Expenses
-    // For the platform, this is Total Revenue minus Asset Opex minus Platform Opex
-    const operatingCashFlow = yearData.revenue + yearData.assetOpex + yearData.platformOpex;
+    // Operating cash flow is EBITDA
+    const operatingCashFlow = yearData.ebitda;
     
-    // Calculate debt service from interest and principal
-    const principalRepayment = index > 0 ? 
-      (yearData.interest !== 0 ? yearData.interest * 0.7 : 0) : 0; // Approximate principal as 70% of interest if there is interest
+    // Tax payments
+    const taxPayment = yearData.tax;
     
-    const debtService = principalRepayment + yearData.interest; // Interest is already negative
+    // Debt service components from P&L
+    const interest = yearData.interest;
+    const principalRepayment = yearData.principalRepayment;
+    const debtService = interest + principalRepayment;
     
-    // Calculate cash flow before dividends
-    const cashFlowBeforeDividends = operatingCashFlow + debtService;
+    // Calculate Free Cash Flow to Equity (FCFE)
+    const fcfe = operatingCashFlow + taxPayment + debtService;
     
     // Update cash balance before dividend
-    const potentialCashBalance = cashBalance + cashFlowBeforeDividends;
+    const potentialCashBalance = cashBalance + fcfe;
     
     // Calculate potential dividend
     let dividend = 0;
@@ -347,21 +354,21 @@ export const calculateCashFlow = (
     }
     
     // Update cash balance
+    const netCashFlow = fcfe - dividend;
     cashBalance = potentialCashBalance - dividend;
     
     // Update retained earnings (separate from cash balance)
     retainedEarnings = retainedEarnings + yearData.npat - dividend;
     
-    // Net cash flow
-    const netCashFlow = cashFlowBeforeDividends - dividend;
-    
     return {
       year: yearData.year,
       period: yearData.period,
       operatingCashFlow: operatingCashFlow,
-      debtService,
+      tax: taxPayment,
       interest: yearData.interest,
-      principalRepayment,
+      principalRepayment: yearData.principalRepayment,
+      debtService,
+      fcfe,
       dividend: -dividend, // Negative as it's cash outflow
       netCashFlow,
       cashBalance,
@@ -374,21 +381,22 @@ export const calculateCashFlow = (
   retainedEarnings = 0;
   
   const quarterlyCashFlow = quarters.map((quarterData, index) => {
-    // Operating cash flow is simply Revenue minus Operating Expenses
-    // For the platform, this is Total Revenue minus Asset Opex minus Platform Opex
-    const operatingCashFlow = quarterData.revenue + quarterData.assetOpex + quarterData.platformOpex;
+    // Operating cash flow is EBITDA
+    const operatingCashFlow = quarterData.ebitda;
     
-    // Calculate debt service from interest and principal
-    const principalRepayment = index > 3 ? 
-      (quarterData.interest !== 0 ? quarterData.interest * 0.7 : 0) : 0; // Approximate principal as 70% of interest if there is interest
+    // Tax payments
+    const taxPayment = quarterData.tax;
     
-    const debtService = principalRepayment + quarterData.interest; // Interest is already negative
+    // Debt service from P&L
+    const interest = quarterData.interest;
+    const principalRepayment = quarterData.principalRepayment;
+    const debtService = interest + principalRepayment;
     
-    // Calculate cash flow before dividends
-    const cashFlowBeforeDividends = operatingCashFlow + debtService;
+    // Calculate Free Cash Flow to Equity (FCFE)
+    const fcfe = operatingCashFlow + taxPayment + debtService;
     
     // Update cash balance before dividend
-    const potentialCashBalance = cashBalance + cashFlowBeforeDividends;
+    const potentialCashBalance = cashBalance + fcfe;
     
     // Calculate potential dividend (now for every quarter, not just Q4)
     let dividend = 0;
@@ -414,22 +422,22 @@ export const calculateCashFlow = (
     }
     
     // Update cash balance
+    const netCashFlow = fcfe - dividend;
     cashBalance = potentialCashBalance - dividend;
     
     // Update retained earnings (separate from cash balance)
     retainedEarnings = retainedEarnings + quarterData.npat - dividend;
-    
-    // Net cash flow
-    const netCashFlow = cashFlowBeforeDividends - dividend;
     
     return {
       year: quarterData.year,
       quarter: quarterData.quarter,
       period: quarterData.period,
       operatingCashFlow: operatingCashFlow,
-      debtService,
+      tax: taxPayment,
       interest: quarterData.interest,
-      principalRepayment,
+      principalRepayment: quarterData.principalRepayment,
+      debtService,
+      fcfe,
       dividend: -dividend, // Negative as it's cash outflow
       netCashFlow,
       cashBalance,
