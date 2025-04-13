@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "exportDate": "2025-03-31T04:38:34.297Z",
+  "exportDate": "2025-04-13T08:15:22.478Z",
   "portfolioName": "ZEBRE",
   "assets": {
     "1": {
@@ -262,86 +262,101 @@
       "Templers BESS": {
         "operatingCosts": 4.06,
         "operatingCostEscalation": 2.5,
-        "terminalValue": 18,
+        "terminalValue": 0,
         "capex": 226.04,
         "maxGearing": 0.65,
         "targetDSCRContract": 1.4,
         "targetDSCRMerchant": 1.8,
         "interestRate": 0.06,
         "tenorYears": 20,
-        "calculatedGearing": 0.6499603271484375
+        "calculatedGearing": 0.65,
+        "debtStructure": "sculpting"
       },
       "Solar River Solar": {
         "operatingCosts": 3.25,
         "operatingCostEscalation": 2.5,
-        "terminalValue": 34.8,
+        "terminalValue": 0,
         "capex": 278.4,
         "maxGearing": 0.7,
         "targetDSCRContract": 1.4,
         "targetDSCRMerchant": 1.8,
         "interestRate": 0.06,
         "tenorYears": 22,
-        "calculatedGearing": 0.6999572753906249
+        "calculatedGearing": 0.7,
+        "debtStructure": "sculpting"
       },
       "Solar River BESS": {
         "operatingCosts": 10.01,
         "operatingCostEscalation": 2.5,
-        "terminalValue": 38.4,
+        "terminalValue": 0,
         "capex": 409.46,
-        "maxGearing": 0.65,
+        "maxGearing": 0.7,
         "targetDSCRContract": 1.4,
         "targetDSCRMerchant": 1.8,
         "interestRate": 0.06,
         "tenorYears": 20,
-        "calculatedGearing": 0.2871917724609375
+        "calculatedGearing": 0.7,
+        "debtStructure": "sculpting"
       },
       "Wagga North": {
         "operatingCosts": 3.23,
         "operatingCostEscalation": 2.5,
-        "terminalValue": 15.75,
+        "terminalValue": 0,
         "capex": 228.49,
         "maxGearing": 0.65,
         "targetDSCRContract": 1.4,
         "targetDSCRMerchant": 1.8,
         "interestRate": 0.06,
         "tenorYears": 20,
-        "calculatedGearing": 0.4863494873046875
+        "calculatedGearing": 0.5740577936172485,
+        "debtStructure": "sculpting"
       },
       "North Yarragon": {
         "operatingCosts": 6.05,
         "operatingCostEscalation": 2.5,
-        "terminalValue": 31.5,
+        "terminalValue": 0,
         "capex": 475.83,
         "maxGearing": 0.65,
         "targetDSCRContract": 1.4,
         "targetDSCRMerchant": 1.8,
         "interestRate": 0.06,
         "tenorYears": 20,
-        "calculatedGearing": 0.5057098388671875
+        "calculatedGearing": 0.5855468034744261,
+        "debtStructure": "sculpting"
       },
       "Noblevale": {
         "operatingCosts": 5.19,
         "operatingCostEscalation": 2.5,
-        "terminalValue": 27,
+        "terminalValue": 0,
         "capex": 270.79,
         "maxGearing": 0.65,
         "targetDSCRContract": 1.4,
         "targetDSCRMerchant": 1.8,
         "interestRate": 0.06,
         "tenorYears": 20,
-        "calculatedGearing": 0.40160827636718754
+        "calculatedGearing": 0.65,
+        "debtStructure": "sculpting"
       },
       "Hookey Creek (BESS)": {
         "operatingCosts": 5.95,
         "operatingCostEscalation": 2.5,
-        "terminalValue": 30,
+        "terminalValue": 0,
         "capex": 416.49,
         "maxGearing": 0.65,
         "targetDSCRContract": 1.4,
         "targetDSCRMerchant": 1.8,
         "interestRate": 0.06,
         "tenorYears": 20,
-        "calculatedGearing": 0.5068206787109376
+        "calculatedGearing": 0.611161983013153,
+        "debtStructure": "sculpting"
+      },
+      "portfolio": {
+        "maxGearing": 0.75,
+        "targetDSCRContract": 1.3,
+        "targetDSCRMerchant": 1.8,
+        "interestRate": 0.055,
+        "tenorYears": 18,
+        "debtStructure": "sculpting"
       }
     },
     "volumeVariation": 20,

@@ -28,6 +28,28 @@ const portfolios = [
     ]
   },
   {
+    id: 'aula',
+    filename: 'aula_2025-01-13.json',
+    displayName: 'Aula',
+    description: 'Greenfield wind portfolio with long-term PPAs',
+    details: [
+      '3 Wind Assets, total 1,032MW',
+      'Queensland, South Australia and NSW',
+      'Long-term PPA contracts'
+    ]
+  },
+  {
+    id: 'neoen',
+    filename: 'neoen___merchant_2025-01-13.json',
+    displayName: 'Neoen - Merchant',
+    description: 'Operational renewables portfolio',
+    details: [
+      '11 Assets across wind and solar',
+      'Total capacity 1,862MW',
+      'Full merchant exposure'
+    ]
+  },
+  {
     id: 'zebre',
     filename: 'zebre_2025-01-13.json',
     displayName: 'ZEBRE',
@@ -38,7 +60,17 @@ const portfolios = [
       'Mix of merchant and contracted'
     ]
   },
-
+  {
+    id: 'acciona',
+    filename: 'acciona_merchant_2025-01-13.json',
+    displayName: 'Acciona - Merchant',
+    description: 'Operational and development portfolio',
+    details: [
+      '7 Assets across wind and solar',
+      'Total capacity 1,594MW',
+      'Full merchant exposure'
+    ]
+  }
 ];
 
 const features = [
