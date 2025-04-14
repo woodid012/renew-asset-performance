@@ -1,15 +1,18 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Download, Upload } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import ValuationAnalysis from './ValuationAnalysis';
 import ProjectFinanceDashboard from './ProjectFinanceDashboard';
 import PlatformFinancials from './PlatformFinancials.jsx';
+import FinancialStatements from './FinancialStatements.jsx';  // Import the new component
 import { usePortfolio } from '@/contexts/PortfolioContext';
 
 const ValuationTabs = () => {
   const fileInputRef = useRef(null);
   const { assets, portfolioName, constants, exportPortfolioData, importPortfolioData } = usePortfolio();
+  const [selectedRevenueCase, setSelectedRevenueCase] = useState('base');
 
   // Import handler
   const handleImport = (event) => {
@@ -48,30 +51,44 @@ const ValuationTabs = () => {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Portfolio Analysis</h2>
-        <div className="flex gap-2">
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleImport}
-            accept=".json"
-            className="hidden"
-          />
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <Upload className="w-4 h-4 mr-2" />
-            Load Inputs
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExport}
-          >
-            <Download className="w-4 h-4 mr-2" />
-            Save Inputs
-          </Button>
+        <div className="flex items-center space-x-4">
+          <Select value={selectedRevenueCase} onValueChange={setSelectedRevenueCase}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Select scenario" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="base">Base Case</SelectItem>
+              <SelectItem value="worst">Downside Volume & Price</SelectItem>
+              <SelectItem value="volume">Volume Stress</SelectItem>
+              <SelectItem value="price">Price Stress</SelectItem>
+            </SelectContent>
+          </Select>
+          
+          <div className="flex gap-2">
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleImport}
+              accept=".json"
+              className="hidden"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Upload className="w-4 h-4 mr-2" />
+              Load Inputs
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExport}
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Save Inputs
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -85,7 +102,7 @@ const ValuationTabs = () => {
         <TabsList className="border-b mb-4">
           <TabsTrigger value="project-finance">Project Finance</TabsTrigger>
           <TabsTrigger value="financials">Financial Statements</TabsTrigger>
-          <TabsTrigger value="operating">Operating Portfolio</TabsTrigger>
+          <TabsTrigger value="financial-tables">Financial Tables</TabsTrigger>
         </TabsList>
         
         <TabsContent value="project-finance">
@@ -96,9 +113,11 @@ const ValuationTabs = () => {
           <PlatformFinancials />
         </TabsContent>
         
-        <TabsContent value="operating">
-          <ValuationAnalysis />
+        <TabsContent value="financial-tables">
+          <FinancialStatements selectedRevenueCase={selectedRevenueCase} />
         </TabsContent>
+        
+
       </Tabs>
     </div>
   );
