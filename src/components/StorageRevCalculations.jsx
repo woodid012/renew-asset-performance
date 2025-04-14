@@ -1,4 +1,6 @@
-export const calculateStorageRevenue = (asset, timeInterval, year, assetStartYear, getMerchantPrice) => {
+import { applyEscalation } from './RevCalculations';
+
+export const calculateStorageRevenue = (asset, timeInterval, year, assetStartYear, getMerchantPrice, constants) => {
   const dailyVolume = parseFloat(asset.volume) || 0;
   const annualVolume = dailyVolume * 365;
   const capacity = parseFloat(asset.capacity) || 0;
@@ -75,14 +77,16 @@ export const calculateStorageRevenue = (asset, timeInterval, year, assetStartYea
       }
     }
 
-
-    // Get standard duration prices
+    // Get standard duration prices and apply escalation
     const lowerPrice = getMerchantPrice('storage', lowerDuration, asset.state, year);
     const upperPrice = getMerchantPrice('storage', upperDuration, asset.state, year);
     
-       
-    // Interpolate price
-    const priceSpread = (lowerPrice * (1 - interpolationRatio)) + (upperPrice * interpolationRatio);
+    // Apply escalation to both prices before interpolation
+    const escalatedLowerPrice = applyEscalation(lowerPrice, year, constants);
+    const escalatedUpperPrice = applyEscalation(upperPrice, year, constants);
+    
+    // Interpolate between the escalated prices
+    const priceSpread = (escalatedLowerPrice * (1 - interpolationRatio)) + (escalatedUpperPrice * interpolationRatio);
     
     const revenue = dailyVolume * 1 * DAYS_IN_YEAR * priceSpread * degradationFactor * (volumeLossAdjustment/100) * (merchantPercentage/100);
     merchantRevenue = revenue / 1000000;
