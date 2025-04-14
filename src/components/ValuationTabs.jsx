@@ -98,7 +98,7 @@ const ValuationTabs = () => {
         </p>
       </div>
 
-      <Tabs defaultValue="project-finance" className="w-full">
+      <Tabs defaultValue="platform-inputs" className="w-full">
         <TabsList className="border-b mb-4">
            <TabsTrigger value="platform-inputs">Platform Inputs</TabsTrigger>
           <TabsTrigger value="project-finance">Project Finance</TabsTrigger>

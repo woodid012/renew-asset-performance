@@ -73,7 +73,7 @@ const App = () => {
     },
     {
       id: "valuation",
-      label: "Valuation",
+      label: "Platform Valuation",
       icon: Calculator,
       component: ValuationTabs,
       colors: "hover:bg-blue-100 data-[state=active]:bg-blue-500 data-[state=active]:text-white",
