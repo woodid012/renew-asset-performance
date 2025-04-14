@@ -5,8 +5,8 @@ import { Download, Upload } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import ValuationAnalysis from './ValuationAnalysis';
 import ProjectFinanceDashboard from './ProjectFinanceDashboard';
-import PlatformFinancials from './PlatformFinancials.jsx';
-import FinancialStatements from './FinancialStatements.jsx';  // Import the new component
+import FinancialStatements from './FinancialStatements.jsx';
+import PlatformInputs from './PlatformInputs.jsx';  // Import the new component
 import { usePortfolio } from '@/contexts/PortfolioContext';
 
 const ValuationTabs = () => {
@@ -100,21 +100,22 @@ const ValuationTabs = () => {
 
       <Tabs defaultValue="project-finance" className="w-full">
         <TabsList className="border-b mb-4">
+        <TabsTrigger value="platform-inputs">Platform Inputs</TabsTrigger>
           <TabsTrigger value="project-finance">Project Finance</TabsTrigger>
           <TabsTrigger value="financials">Financial Statements</TabsTrigger>
-          <TabsTrigger value="financial-tables">Financial Tables</TabsTrigger>
+
         </TabsList>
         
         <TabsContent value="project-finance">
           <ProjectFinanceDashboard />
         </TabsContent>
-        
-        <TabsContent value="financials">
-          <PlatformFinancials />
+
+        <TabsContent value="platform-inputs">
+          <PlatformInputs />
         </TabsContent>
-        
-        <TabsContent value="financial-tables">
-          <FinancialStatements selectedRevenueCase={selectedRevenueCase} />
+
+        <TabsContent value="financials">
+          <FinancialStatements />
         </TabsContent>
         
 

@@ -3,7 +3,6 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart, Bar } from 'recharts';
 import { Button } from "@/components/ui/button";
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { usePortfolio } from '@/contexts/PortfolioContext';
 import { 
@@ -21,33 +20,6 @@ const ProjectFinanceDashboard = () => {
   
   const [isGearingSolved, setIsGearingSolved] = useState(false);
   const [missingData, setMissingData] = useState(false);
-  const [globalDebtStructure, setGlobalDebtStructure] = useState('sculpting');
-  
-  // Function to update all debt structures
-  const updateAllDebtStructures = (newStructure) => {
-    const updatedAssetCosts = { ...constants.assetCosts };
-    
-    // Update for all individual assets
-    Object.values(assets).forEach(asset => {
-      updatedAssetCosts[asset.name] = {
-        ...updatedAssetCosts[asset.name],
-        debtStructure: newStructure
-      };
-    });
-    
-    // Update for portfolio if it exists
-    if (updatedAssetCosts.portfolio) {
-      updatedAssetCosts.portfolio = {
-        ...updatedAssetCosts.portfolio,
-        debtStructure: newStructure
-      };
-    }
-    
-    // Update state and constants
-    setGlobalDebtStructure(newStructure);
-    updateConstants('assetCosts', updatedAssetCosts);
-    setIsGearingSolved(false);
-  };
   
   // Reset gearing solved state when revenue case changes
   useEffect(() => {
@@ -107,15 +79,6 @@ const ProjectFinanceDashboard = () => {
       }
     }
   }, [assets, constants.assetCosts, updateConstants]);
-
-  // Set global debt structure on first load
-  useEffect(() => {
-    // Initialize on first load
-    if (Object.keys(assets).length > 0) {
-      // Apply the default debt structure to all assets
-      updateAllDebtStructures('sculpting');
-    }
-  }, []); // Empty dependency array to run only once on component mount
 
   // Check if asset costs data is complete
   useEffect(() => {
@@ -231,7 +194,7 @@ const ProjectFinanceDashboard = () => {
       debtService: Math.abs(cf.debtService || 0)
     }));
   };
-
+  
   // Prepare DSCR and debt data for chart
   const dscrChartData = useMemo(() => {
     const selectedMetrics = getSelectedMetrics();
@@ -255,7 +218,7 @@ const ProjectFinanceDashboard = () => {
     console.log("Selected Asset:", selectedAsset);
     console.log("Initial Debt Amount:", initialDebtAmount);
     console.log("Interest Rate:", interestRate);
-    console.log("Debt Structure:", globalDebtStructure);
+    console.log("Debt Structure: sculpting");
     
     let remainingBalance = initialDebtAmount;
     
@@ -306,7 +269,58 @@ const ProjectFinanceDashboard = () => {
       ...point,
       minDSCR: parseFloat((minDSCR || 0).toFixed(2))
     }));
-  }, [projectMetrics, selectedAsset, constants.assetCosts, getSelectedMetrics, globalDebtStructure]);
+  }, [projectMetrics, selectedAsset, constants.assetCosts, getSelectedMetrics]);
+  
+  // Calculate aggregated portfolio totals
+  const getPortfolioTotals = () => {
+    // Filter out portfolio from metrics to get only individual assets
+    const individualAssets = Object.entries(projectMetrics)
+      .filter(([assetName]) => assetName !== 'portfolio');
+    
+    if (individualAssets.length === 0) return null;
+    
+    // Sum up the values
+    const totals = {
+      capex: 0,
+      debtAmount: 0,
+      annualDebtService: 0,
+    };
+    
+    // Collect equity cash flows and DSCRs
+    const allEquityCashFlows = [];
+    const allDSCRs = [];
+    
+    individualAssets.forEach(([_, metrics]) => {
+      totals.capex += metrics.capex || 0;
+      totals.debtAmount += metrics.debtAmount || 0;
+      totals.annualDebtService += metrics.annualDebtService || 0;
+      
+      if (metrics.minDSCR) {
+        allDSCRs.push(metrics.minDSCR);
+      }
+      
+      if (metrics.equityCashFlows && metrics.equityCashFlows.length > 0) {
+        // If this is the first asset, initialize the array
+        if (allEquityCashFlows.length === 0) {
+          allEquityCashFlows.push(...metrics.equityCashFlows.map(cf => cf));
+        } else {
+          // Sum up equity cash flows (assuming same length for simplicity)
+          metrics.equityCashFlows.forEach((cf, index) => {
+            if (index < allEquityCashFlows.length) {
+              allEquityCashFlows[index] += cf;
+            }
+          });
+        }
+      }
+    });
+    
+    // Calculate derived values
+    totals.calculatedGearing = totals.capex > 0 ? totals.debtAmount / totals.capex : 0;
+    totals.minDSCR = allDSCRs.length > 0 ? Math.min(...allDSCRs) : null;
+    totals.equityCashFlows = allEquityCashFlows;
+    
+    return totals;
+  };
 
   return (
     <div className="w-full p-4 space-y-4">
@@ -318,126 +332,11 @@ const ProjectFinanceDashboard = () => {
         </Alert>
       )}
 
-      {/* Portfolio Debt Parameters Card */}
+      {/* Simple debt structure information */}
       <Card>
-        <CardHeader>
-          <CardTitle>Portfolio Debt Parameters</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-6 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Max Gearing (%)</label>
-              <Input
-                type="number"
-                value={((constants.assetCosts.portfolio?.maxGearing || 0.75) * 100).toFixed(1)}
-                onChange={(e) => {
-                  const updatedAssetCosts = {
-                    ...constants.assetCosts,
-                    portfolio: {
-                      ...constants.assetCosts.portfolio,
-                      maxGearing: parseFloat(e.target.value) / 100
-                    }
-                  };
-                  updateConstants('assetCosts', updatedAssetCosts);
-                  setIsGearingSolved(false);
-                }}
-                className="w-full"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">DSCR Contract (x)</label>
-              <Input
-                type="number"
-                step="0.05"
-                value={(constants.assetCosts.portfolio?.targetDSCRContract || 1.30).toFixed(2)}
-                onChange={(e) => {
-                  const updatedAssetCosts = {
-                    ...constants.assetCosts,
-                    portfolio: {
-                      ...constants.assetCosts.portfolio,
-                      targetDSCRContract: parseFloat(e.target.value)
-                    }
-                  };
-                  updateConstants('assetCosts', updatedAssetCosts);
-                  setIsGearingSolved(false);
-                }}
-                className="w-full"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">DSCR Merchant (x)</label>
-              <Input
-                type="number"
-                step="0.05"
-                value={(constants.assetCosts.portfolio?.targetDSCRMerchant || 1.80).toFixed(2)}
-                onChange={(e) => {
-                  const updatedAssetCosts = {
-                    ...constants.assetCosts,
-                    portfolio: {
-                      ...constants.assetCosts.portfolio,
-                      targetDSCRMerchant: parseFloat(e.target.value)
-                    }
-                  };
-                  updateConstants('assetCosts', updatedAssetCosts);
-                  setIsGearingSolved(false);
-                }}
-                className="w-full"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Interest Rate (%)</label>
-              <Input
-                type="number"
-                step="0.1"
-                value={((constants.assetCosts.portfolio?.interestRate || 0.055) * 100).toFixed(1)}
-                onChange={(e) => {
-                  const updatedAssetCosts = {
-                    ...constants.assetCosts,
-                    portfolio: {
-                      ...constants.assetCosts.portfolio,
-                      interestRate: parseFloat(e.target.value) / 100
-                    }
-                  };
-                  updateConstants('assetCosts', updatedAssetCosts);
-                  setIsGearingSolved(false);
-                }}
-                className="w-full"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Tenor (Years)</label>
-              <Input
-                type="number"
-                value={(constants.assetCosts.portfolio?.tenorYears || 18)}
-                onChange={(e) => {
-                  const updatedAssetCosts = {
-                    ...constants.assetCosts,
-                    portfolio: {
-                      ...constants.assetCosts.portfolio,
-                      tenorYears: parseInt(e.target.value)
-                    }
-                  };
-                  updateConstants('assetCosts', updatedAssetCosts);
-                  setIsGearingSolved(false);
-                }}
-                className="w-full"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Debt Structure</label>
-              <Select 
-                value={globalDebtStructure} 
-                onValueChange={updateAllDebtStructures}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select debt structure" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="amortization">Amortization (All)</SelectItem>
-                  <SelectItem value="sculpting">Sculpting (All)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+        <CardContent className="pt-6">
+          <div className="bg-blue-50 p-4 rounded-md border border-blue-100">
+            <p className="text-blue-800 font-medium">Project debt is structured using DSCR sculpting, where debt service payments vary to maintain a constant Debt Service Coverage Ratio (DSCR).</p>
           </div>
         </CardContent>
       </Card>
@@ -489,7 +388,7 @@ const ProjectFinanceDashboard = () => {
                   <TableCell>{assetName}</TableCell>
                   <TableCell>${formatNumber(metrics.capex)}</TableCell>
                   <TableCell>{formatPercent(metrics.calculatedGearing)}</TableCell>
-                  <TableCell>{globalDebtStructure === 'sculpting' ? 'Sculpting' : 'Amortization'}</TableCell>
+                  <TableCell>Sculpting</TableCell>
                   <TableCell>${formatNumber(metrics.debtAmount)}</TableCell>
                   <TableCell>${formatNumber(metrics.annualDebtService)}</TableCell>
                   <TableCell>{formatDSCR(metrics.minDSCR)}</TableCell>
@@ -497,22 +396,18 @@ const ProjectFinanceDashboard = () => {
                 </TableRow>
               ))}
               
-              {Object.keys(assets).length >= 2 && projectMetrics.portfolio && (
+              {Object.keys(assets).length >= 2 && (
                 <TableRow className="bg-muted/50">
                   <TableCell>Portfolio Total</TableCell>
-                  <TableCell>${formatNumber(projectMetrics.portfolio?.capex)}</TableCell>
-                  <TableCell>{formatPercent(projectMetrics.portfolio?.calculatedGearing)}</TableCell>
-                  <TableCell>{globalDebtStructure === 'sculpting' ? 'Sculpting' : 'Amortization'}</TableCell>
-                  <TableCell>${formatNumber(projectMetrics.portfolio?.debtAmount)}</TableCell>
-                  <TableCell>${formatNumber(projectMetrics.portfolio?.annualDebtService)}</TableCell>
+                  <TableCell>${formatNumber(getPortfolioTotals()?.capex)}</TableCell>
+                  <TableCell>{formatPercent(getPortfolioTotals()?.calculatedGearing)}</TableCell>
+                  <TableCell>Sculpting</TableCell>
+                  <TableCell>${formatNumber(getPortfolioTotals()?.debtAmount)}</TableCell>
+                  <TableCell>${formatNumber(getPortfolioTotals()?.annualDebtService)}</TableCell>
+                  <TableCell>{formatDSCR(getPortfolioTotals()?.minDSCR)}</TableCell>
                   <TableCell>
-                    {projectMetrics.portfolio && projectMetrics.portfolio.minDSCR 
-                      ? projectMetrics.portfolio.minDSCR.toFixed(2) + 'x' 
-                      : 'N/A'}
-                  </TableCell>
-                  <TableCell>
-                    {projectMetrics.portfolio?.equityCashFlows && calculateIRR(projectMetrics.portfolio.equityCashFlows) 
-                      ? formatPercent(calculateIRR(projectMetrics.portfolio.equityCashFlows)) 
+                    {getPortfolioTotals()?.equityCashFlows && calculateIRR(getPortfolioTotals().equityCashFlows) 
+                      ? formatPercent(calculateIRR(getPortfolioTotals().equityCashFlows)) 
                       : 'N/A'}
                   </TableCell>
                 </TableRow>
@@ -688,11 +583,8 @@ const ProjectFinanceDashboard = () => {
           </div>
           
           <div className="mt-4 text-sm bg-gray-50 p-4 rounded-md">
-            <h3 className="font-semibold mb-2">Current Debt Structure: {globalDebtStructure === 'sculpting' ? 'Sculpting' : 'Amortization'}</h3>
-            <ul className="list-disc ml-5 space-y-1">
-              <li><span className="font-medium">Amortization:</span> Equal debt service payments throughout the loan term.</li>
-              <li><span className="font-medium">Sculpting:</span> Debt service payments vary to maintain a constant Debt Service Coverage Ratio (DSCR).</li>
-            </ul>
+            <h3 className="font-semibold mb-2">Debt Structure: Sculpting</h3>
+            <p className="mb-2">Debt service payments vary to maintain a constant Debt Service Coverage Ratio (DSCR) over the loan term.</p>
           </div>
         </CardContent>
       </Card>
