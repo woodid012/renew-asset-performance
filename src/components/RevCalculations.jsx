@@ -83,7 +83,7 @@ export const calculateAssetRevenue = (asset, timeInterval, constants, getMerchan
   };
 
   if (asset.type === 'storage') {
-    return calculateStorageRevenue(asset, timeInterval, year, assetStartYear, getMerchantPrice);
+    return calculateStorageRevenue(asset, timeInterval, year, assetStartYear, getMerchantPrice, constants);
   }
 
   return calculateRenewablesRevenue(asset, timeInterval, year, quarter, assetStartYear, constants, getExtendedMerchantPrice);

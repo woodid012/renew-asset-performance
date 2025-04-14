@@ -93,9 +93,14 @@ const PriceChart = () => {
 
         if (selectedType === 'Storage') {
           const storagePrice = getMerchantPrice('storage', parseFloat(selectedDuration), region, timeStr);
+          // Apply escalation to storage price too
           if (storagePrice) {
-            globalMax = Math.max(globalMax, storagePrice);
-            globalMin = Math.min(globalMin, storagePrice);
+            const escalatedStoragePrice = constants.referenceYear && constants.escalation
+              ? storagePrice * Math.pow(1 + constants.escalation / 100, period.year - constants.referenceYear)
+              : storagePrice;
+              
+            globalMax = Math.max(globalMax, escalatedStoragePrice);
+            globalMin = Math.min(globalMin, escalatedStoragePrice);
           }
         }
       });
@@ -158,10 +163,17 @@ const PriceChart = () => {
       
       regionsToProcess.forEach(region => {
         if (selectedType === 'Storage') {
+          // Get the base storage price
           const storagePrice = getMerchantPrice('storage', parseFloat(selectedDuration), region, period.year);
-          if (storagePrice) {
-            dataPoint[`${region}_storage`] = storagePrice;
+          
+          // Apply escalation to storage price
+          let escalatedStoragePrice = storagePrice;
+          if (constants.referenceYear && constants.escalation) {
+            const yearDiff = period.year - constants.referenceYear;
+            escalatedStoragePrice = storagePrice * Math.pow(1 + constants.escalation / 100, yearDiff);
           }
+          
+          dataPoint[`${region}_storage`] = escalatedStoragePrice;
         } else {
           const priceTypes = [
             { key: 'baseloadEnergy', profile: 'baseload', type: 'Energy' },
