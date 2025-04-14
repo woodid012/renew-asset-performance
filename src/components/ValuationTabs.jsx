@@ -100,18 +100,19 @@ const ValuationTabs = () => {
 
       <Tabs defaultValue="project-finance" className="w-full">
         <TabsList className="border-b mb-4">
-        <TabsTrigger value="platform-inputs">Platform Inputs</TabsTrigger>
+           <TabsTrigger value="platform-inputs">Platform Inputs</TabsTrigger>
           <TabsTrigger value="project-finance">Project Finance</TabsTrigger>
           <TabsTrigger value="financials">Financial Statements</TabsTrigger>
 
         </TabsList>
         
-        <TabsContent value="project-finance">
-          <ProjectFinanceDashboard />
-        </TabsContent>
+
 
         <TabsContent value="platform-inputs">
           <PlatformInputs />
+        </TabsContent>
+        <TabsContent value="project-finance">
+          <ProjectFinanceDashboard />
         </TabsContent>
 
         <TabsContent value="financials">
