@@ -134,3 +134,5 @@ const PPASummarySheet = () => {
     </Card>
   );
 };
+
+export default PPASummarySheet;
