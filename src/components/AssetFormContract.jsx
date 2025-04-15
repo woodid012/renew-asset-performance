@@ -1,3 +1,4 @@
+// Update to AssetFormContract.jsx
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -41,6 +42,16 @@ const AssetFormContract = ({
     return diffYears;
   };
 
+  // Handle contract type change and set buyersPercentage to 100 for storage tolling
+  const handleContractTypeChange = (value) => {
+    updateContract('type', value);
+    
+    // For storage assets with tolling contracts, always set buyersPercentage to 100
+    if (isStorage && value === 'tolling') {
+      updateContract('buyersPercentage', 100);
+    }
+  };
+
   return (
     <Card className="relative">
       <Button
@@ -65,9 +76,7 @@ const AssetFormContract = ({
             <label className="text-sm font-medium">Contract Type</label>
             <Select 
               value={contract.type || ''}
-              onValueChange={(value) => {
-                updateContract('type', value);
-              }}
+              onValueChange={handleContractTypeChange}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select Type" />
