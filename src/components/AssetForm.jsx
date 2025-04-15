@@ -29,6 +29,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
     volumeLossAdjustment: false,
     assetStartDate: false
   });
+  const [previousName, setPreviousName] = useState(asset.name);
 
   const year1Volume = calculateYear1Volume(asset);
   const assetCosts = constants.assetCosts ? constants.assetCosts[asset.name] || {} : {};
@@ -116,6 +117,29 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
     }
   }, [asset.type, asset.name, asset.capacity, constants, onUpdateAsset, updateConstants]);
 
+  // Handle asset name updates by updating the asset costs object key as well
+  useEffect(() => {
+    if (previousName !== asset.name && previousName !== "") {
+      // Asset was renamed
+      const newAssetCosts = { ...constants.assetCosts };
+      
+      // Only transfer values if the old name had cost data
+      if (newAssetCosts[previousName]) {
+        // Copy the cost values from the old name to the new name
+        newAssetCosts[asset.name] = { ...newAssetCosts[previousName] };
+        
+        // Delete the old name entry
+        delete newAssetCosts[previousName];
+        
+        // Update the constants with the new structure
+        updateConstants('assetCosts', newAssetCosts);
+      }
+      
+      // Update the previous name for future comparisons
+      setPreviousName(asset.name);
+    }
+  }, [asset.name, previousName, constants.assetCosts, updateConstants]);
+
   // Check for out of sync values with template
   useEffect(() => {
     if (selectedRenewable) {
@@ -144,6 +168,12 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
 
   const handleFieldUpdate = (field, value, options = {}) => {
     const processedValue = handleNumericInput(value, options);
+    
+    // Save the previous name for reference before any update
+    if (field === 'name') {
+      setPreviousName(asset.name);
+    }
+    
     onUpdateAsset(field, processedValue);
   };
 
@@ -151,6 +181,10 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
     const selected = renewablesData.find(r => r.id === selectedRenewableId);
     if (selected) {
       setSelectedRenewable(selected);
+      
+      // Save the previous name before updating
+      setPreviousName(asset.name);
+      
       onUpdateAsset('name', selected.name);
       onUpdateAsset('state', selected.state);
       onUpdateAsset('capacity', selected.capacity);

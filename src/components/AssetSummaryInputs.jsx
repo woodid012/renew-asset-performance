@@ -327,14 +327,14 @@ const AssetSummaryInputs = () => {
         <CardContent className="p-4 pt-0">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <div className="flex items-center justify-between mb-4">
-              <TabsList className="mr-4 bg-gray-100">
+              <TabsList className="w-full flex justify-start bg-gray-100">
                 <TabsTrigger value="assets">General</TabsTrigger>
                 <TabsTrigger value="advanced">Capacity</TabsTrigger>
                 <TabsTrigger value="contracts">Contracts</TabsTrigger>
                 <TabsTrigger value="finance">Capex/Opex & Debt</TabsTrigger>
                 <TabsTrigger value="taxation">Tax & Dep</TabsTrigger>
               </TabsList>
-              <Button size="sm" onClick={saveChanges} variant="default">
+              <Button size="sm" onClick={saveChanges} variant="default" className="ml-4">
                 <Save className="h-4 w-4 mr-2" />Save Changes
               </Button>
             </div>
@@ -587,68 +587,81 @@ const AssetSummaryInputs = () => {
               </div>
             </TabsContent>
             
-            {/* New Tab for Taxation & Depreciation */}
+            {/* Tax & Depreciation Tab - Styled like Portfolio Inputs */}
             <TabsContent value="taxation">
               <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Corporate Tax Rate (%)</label>
-                      <Input 
-                        type="number"
-                        min="0"
-                        max="100"
-                        step="0.1"
-                        value={corporateTaxRate}
-                        onChange={(e) => handleTaxRateChange(e.target.value)}
-                        className="w-full max-w-xs"
-                      />
-                      <p className="text-sm text-gray-500">
-                        Corporate tax rate applied to taxable income
-                      </p>
-                    </div>
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Corporate Tax Rate</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Corporate Tax Rate (%)</label>
+                          <Input 
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.1"
+                            value={corporateTaxRate}
+                            onChange={(e) => handleTaxRateChange(e.target.value)}
+                            className="w-full max-w-xs"
+                          />
+                          <p className="text-sm text-gray-500">
+                            Corporate tax rate applied to taxable income
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
                   </div>
                   
                   <div className="space-y-4">
-                    <label className="font-medium block mb-2">Depreciation Periods (Years)</label>
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Solar</label>
-                        <Input 
-                          type="number"
-                          min="1"
-                          max="40"
-                          value={deprecationPeriods.solar}
-                          onChange={(e) => handleDepreciationChange('solar', e.target.value)}
-                          className="max-w-xs"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Wind</label>
-                        <Input 
-                          type="number"
-                          min="1"
-                          max="40"
-                          value={deprecationPeriods.wind}
-                          onChange={(e) => handleDepreciationChange('wind', e.target.value)}
-                          className="max-w-xs"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Storage</label>
-                        <Input 
-                          type="number"
-                          min="1"
-                          max="40"
-                          value={deprecationPeriods.storage}
-                          onChange={(e) => handleDepreciationChange('storage', e.target.value)}
-                          className="max-w-xs"
-                        />
-                      </div>
-                    </div>
-                    <p className="text-sm text-gray-500">
-                      Asset depreciation periods for tax and accounting purposes
-                    </p>
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Depreciation Periods</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-3 gap-4">
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Solar (Years)</label>
+                            <Input 
+                              type="number"
+                              min="1"
+                              max="40"
+                              value={deprecationPeriods.solar}
+                              onChange={(e) => handleDepreciationChange('solar', e.target.value)}
+                              className="max-w-xs"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Wind (Years)</label>
+                            <Input 
+                              type="number"
+                              min="1"
+                              max="40"
+                              value={deprecationPeriods.wind}
+                              onChange={(e) => handleDepreciationChange('wind', e.target.value)}
+                              className="max-w-xs"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Storage (Years)</label>
+                            <Input 
+                              type="number"
+                              min="1"
+                              max="40"
+                              value={deprecationPeriods.storage}
+                              onChange={(e) => handleDepreciationChange('storage', e.target.value)}
+                              className="max-w-xs"
+                            />
+                          </div>
+                        </div>
+                        <p className="text-sm text-gray-500 mt-2">
+                          Asset depreciation periods for tax and accounting purposes
+                        </p>
+                      </CardContent>
+                    </Card>
                   </div>
                 </div>
               </div>
