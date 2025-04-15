@@ -139,7 +139,9 @@ const AssetSummaryInputs = () => {
     { label: 'State', field: 'state', type: 'select', options: ['NSW', 'VIC', 'SA', 'QLD'] },
     { label: 'Type', field: 'type', type: 'select', options: ['solar', 'wind', 'storage'] },
     { label: 'Capacity (MW)', field: 'capacity', type: 'number' },
-    { label: 'Start Date', field: 'assetStartDate', type: 'date' },
+    { label: 'Cons Start', field: 'constructionStartDate', type: 'date' },
+    { label: 'Cons Duration (months)', field: 'constructionDuration', type: 'number' },
+    { label: 'Ops Start', field: 'assetStartDate', type: 'date' },
     { label: 'Asset Life (years)', field: 'assetLife', type: 'number' },
     { label: 'Volume Loss Adjustment (%)', field: 'volumeLossAdjustment', type: 'number' },
   ];

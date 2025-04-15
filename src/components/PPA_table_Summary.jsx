@@ -80,7 +80,7 @@ const PPASummarySheet = () => {
         <Table>
           <TableHeader>
             <TableRow className="border-b-0">
-              <TableHead colSpan={6} className="text-center bg-gray-50 h-8">
+              <TableHead colSpan={7} className="text-center bg-gray-50 h-8">
                 Details
               </TableHead>
               <TableHead colSpan={4} className="text-center bg-gray-50 h-8">
@@ -88,11 +88,13 @@ const PPASummarySheet = () => {
               </TableHead>
             </TableRow>
             <TableRow>
-              <TableHead className="w-72">Asset Name</TableHead>
+              <TableHead className="w-64">Asset Name</TableHead>
               <TableHead className="w-32">Type</TableHead>
               <TableHead className="w-24">MW</TableHead>
               <TableHead className="w-32">State</TableHead>
-              <TableHead className="w-32">Start Date</TableHead>
+              <TableHead className="w-32">Cons Start</TableHead>
+              <TableHead className="w-32">Cons Duration</TableHead>
+              <TableHead className="w-32">Ops Start</TableHead>
               <TableHead className="w-32">Asset Life</TableHead>
               <TableHead className="w-40">Annual Capacity Factor</TableHead>
               <TableHead className="w-32">Volume (MWh)</TableHead>
@@ -107,6 +109,8 @@ const PPASummarySheet = () => {
                 <TableCell>{asset.type.charAt(0).toUpperCase() + asset.type.slice(1)|| "-"}</TableCell>
                 <TableCell>{asset.capacity || "-"}</TableCell>
                 <TableCell>{asset.state || "-"}</TableCell>
+                <TableCell>{formatDate(asset.constructionStartDate)}</TableCell>
+                <TableCell>{asset.constructionDuration ? `${asset.constructionDuration} months` : "-"}</TableCell>
                 <TableCell>{formatDate(asset.assetStartDate)}</TableCell>
                 <TableCell>
                   {(() => {
@@ -130,5 +134,3 @@ const PPASummarySheet = () => {
     </Card>
   );
 };
-
-export default PPASummarySheet;

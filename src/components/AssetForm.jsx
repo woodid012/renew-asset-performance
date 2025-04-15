@@ -27,6 +27,8 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
     capacity: false,
     type: false,
     volumeLossAdjustment: false,
+    constructionStartDate: false,
+    constructionDuration: false,
     assetStartDate: false
   });
   const [previousName, setPreviousName] = useState(asset.name);
@@ -69,6 +71,16 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
       if (defaultDegradation !== undefined) {
         onUpdateAsset('annualDegradation', defaultDegradation);
       }
+    }
+    
+    // Set default construction duration if not set
+    if (!asset.constructionDuration) {
+      const defaultDuration = {
+        solar: 12,
+        wind: 18,
+        storage: 12
+      }[asset.type] || 12;
+      onUpdateAsset('constructionDuration', defaultDuration);
     }
     
     // Initialize asset costs if they don't exist
@@ -161,6 +173,8 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
         capacity: false,
         type: false,
         volumeLossAdjustment: false,
+        constructionStartDate: false,
+        constructionDuration: false,
         assetStartDate: false
       });
     }
@@ -240,6 +254,24 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
   const removeContract = (contractId) => {
     onUpdateContracts(asset.contracts.filter(c => c.id !== contractId));
   };
+  
+  // Calculate default construction start date based on operations start date and construction duration
+  const calculateDefaultConstructionStart = () => {
+    if (!asset.assetStartDate || !asset.constructionDuration) return '';
+    
+    const opsDate = new Date(asset.assetStartDate);
+    const constructionMonths = parseInt(asset.constructionDuration) || 0;
+    opsDate.setMonth(opsDate.getMonth() - constructionMonths);
+    
+    return opsDate.toISOString().split('T')[0];
+  };
+  
+  // Set construction start date if it doesn't exist but we have ops start date and construction duration
+  useEffect(() => {
+    if (!asset.constructionStartDate && asset.assetStartDate && asset.constructionDuration) {
+      onUpdateAsset('constructionStartDate', calculateDefaultConstructionStart());
+    }
+  }, [asset.assetStartDate, asset.constructionDuration]);
 
   return (
     <div className="space-y-6">
@@ -349,15 +381,39 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
               )}
             </div>
 
-            {/* Dates and Lifecycle */}
+            {/* Dates and Construction */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Start Date</label>
+              <label className="text-sm font-medium">Cons Start</label>
+              <Input
+                type="date"
+                value={asset.constructionStartDate || ''}
+                onChange={(e) => onUpdateAsset('constructionStartDate', e.target.value)}
+                className={outOfSync.constructionStartDate ? "text-red-500" : ""}
+              />
+              <p className="text-xs text-gray-500">When construction begins</p>
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Cons Duration (months)</label>
+              <Input
+                type="number"
+                min="1"
+                value={formatNumericValue(asset.constructionDuration)}
+                onChange={(e) => handleFieldUpdate('constructionDuration', e.target.value, { round: true })}
+                className={outOfSync.constructionDuration ? "text-red-500" : ""}
+              />
+              <p className="text-xs text-gray-500">Construction period length</p>
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Ops Start</label>
               <Input
                 type="date"
                 value={asset.assetStartDate || ''}
                 onChange={(e) => onUpdateAsset('assetStartDate', e.target.value)}
                 className={outOfSync.assetStartDate ? "text-red-500" : ""}
               />
+              <p className="text-xs text-gray-500">When operations begin</p>
             </div>
 
             <div className="space-y-2">
