@@ -5,17 +5,10 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Lock, User } from 'lucide-react';
 import { cn } from "@/lib/utils";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Building2,
-  BarChart3,
-  AlertTriangle,
-  Sliders,
-  FileCheck,
-  Settings,
-  HelpCircle,
-  Calculator,
-} from 'lucide-react';
+import { TabsContent } from '@/components/ui/tabs';
+
+// Import the shared Navigation component and tabs config
+import Navigation from '@/components/shared/Navigation';
 
 const LoginScreen = ({ onLogin }) => {
   const [username, setUsername] = useState('ZEBRE');
@@ -32,103 +25,26 @@ const LoginScreen = ({ onLogin }) => {
     }
   };
 
-  // Tab configuration with colors (same as App.jsx but non-functional)
-  const tabs = [
-    {
-      id: "landingpage",
-      label: "Usage",
-      icon: HelpCircle,
-      colors: "hover:bg-blue-100 data-[state=active]:bg-blue-500 data-[state=active]:text-white",
-    },
-    {
-      id: "inputs",
-      label: "Price Inputs",
-      icon: Sliders,
-      colors: "hover:bg-green-100 data-[state=active]:bg-green-500 data-[state=active]:text-white",
-    },
-    {
-      id: "dashboard",
-      label: "Asset Definition",
-      icon: Building2,
-      colors: "hover:bg-purple-100 data-[state=active]:bg-purple-500 data-[state=active]:text-white",
-    },
-    {
-      id: "revenue",
-      label: "Revenue Charts",
-      icon: BarChart3,
-      colors: "hover:bg-orange-100 data-[state=active]:bg-orange-500 data-[state=active]:text-white",
-    },
-    {
-      id: "risk",
-      label: "Risk Analysis",
-      icon: AlertTriangle,
-      colors: "hover:bg-red-100 data-[state=active]:bg-red-500 data-[state=active]:text-white",
-    },
-    {
-      id: "valuation",
-      label: "Platform Valuation",
-      icon: Calculator,
-      colors: "hover:bg-blue-100 data-[state=active]:bg-blue-500 data-[state=active]:text-white",
-    },
-    {
-      id: "ppa",
-      label: "Export Audit",
-      icon: FileCheck,
-      colors: "hover:bg-teal-100 data-[state=active]:bg-teal-500 data-[state=active]:text-white",
-    },
-    {
-      id: "settings",
-      label: "Settings",
-      icon: Settings,
-      colors: "hover:bg-gray-100 data-[state=active]:bg-gray-500 data-[state=active]:text-white",
-    },
-  ];
-
   const date = new Date();
   const formattedDate = `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getFullYear()).slice(-2)}`;
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      {/* Disabled App UI in the background */}
-      <div className="pointer-events-none opacity-30">
-        <Card className="mx-auto max-w-screen-2xl">
-          <div className="p-4">
-            <div className="flex items-center justify-between mb-4">
-              <h1 className="text-2xl font-bold">Portfolio Earnings and Risk Analysis</h1>
-              <div className="text-sm text-muted-foreground">
-                Last Updated: {formattedDate}
-              </div>
+    <Navigation
+      activeTab="landingpage"
+      onTabChange={() => {}}
+      disabled={true}
+      formattedDate={formattedDate}
+    >
+      <TabsContent value="landingpage">
+        <Card className="p-3">
+          <div className="h-64 flex items-center justify-center">
+            <div className="text-center text-gray-400">
+              <h3 className="text-xl font-medium mb-2">Portfolio Analysis Dashboard</h3>
+              <p>Application content will appear here after login</p>
             </div>
-
-            <Tabs value="landingpage" className="space-y-4">
-              <TabsList className="grid w-full grid-cols-8 p-1 bg-gray-100">
-                {tabs.map((tab) => (
-                  <TabsTrigger
-                    key={tab.id}
-                    value={tab.id}
-                    className={`flex items-center justify-center gap-1 px-1 py-1 text-xs rounded-md transition-colors duration-200 
-                      ${tab.colors}`}
-                  >
-                    <tab.icon className="h-3 w-3" />
-                    <span className="hidden sm:inline truncate">{tab.label}</span>
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-              
-              <TabsContent value="landingpage">
-                <Card className="p-3">
-                  <div className="h-64 flex items-center justify-center">
-                    <div className="text-center text-gray-400">
-                      <h3 className="text-xl font-medium mb-2">Portfolio Analysis Dashboard</h3>
-                      <p>Application content will appear here after login</p>
-                    </div>
-                  </div>
-                </Card>
-              </TabsContent>
-            </Tabs>
           </div>
         </Card>
-      </div>
+      </TabsContent>
 
       {/* Login Modal */}
       <div className="fixed inset-0 flex items-center justify-center z-50">
@@ -180,13 +96,12 @@ const LoginScreen = ({ onLogin }) => {
                   )}
                 </div>
                 <Button type="submit" className="w-full">Login</Button>
-
               </div>
             </form>
           </CardContent>
         </Card>
       </div>
-    </div>
+    </Navigation>
   );
 };
 
