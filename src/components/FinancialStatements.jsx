@@ -9,8 +9,9 @@ import { usePortfolio } from '@/contexts/PortfolioContext';
 import { 
   calculatePlatformPL, 
   calculateCashFlow,
-  formatCurrency, 
-  generateYears
+  formatCurrency,
+  generateYears,
+  generateBalanceSheet
 } from './PlatformPL_Calculations';
 import { 
   ResponsiveContainer, 
@@ -50,6 +51,10 @@ const FinancialStatements = ({ selectedRevenueCase = 'base' }) => {
   const [dividendPolicy] = useState(constants.dividendPolicy || 85);
   const [minimumCashBalance] = useState(constants.minimumCashBalance || 5.0);
 
+  // Capital contribution percentages
+  const [newInvestorsPercentage] = useState(80); // 80% for new investors
+  const [zenPercentage] = useState(20); // 20% for ZEN
+
   // Initialize years array based on constants
   useEffect(() => {
     const startYear = constants.analysisStartYear || new Date().getFullYear();
@@ -68,156 +73,6 @@ const FinancialStatements = ({ selectedRevenueCase = 'base' }) => {
       setYears(yearRange(startPoint, endYear));
     }
   }, [constants.analysisStartYear, constants.analysisEndYear, yearsRange]);
-
-  // Generate balance sheet data using P&L, cash flow, and project finance data
-  const generateBalanceSheet = (plData, cashFlowData) => {
-    // Skip if no data
-    if (!plData || !cashFlowData || plData.length === 0 || cashFlowData.length === 0) {
-      return [];
-    }
-    
-    // Get initial values
-    const balanceSheetData = [];
-    
-    // Calculate total capex from all assets
-    const totalCapex = Object.values(assets).reduce((sum, asset) => {
-      const assetCosts = constants.assetCosts[asset.name] || {};
-      return sum + (assetCosts.capex || 0);
-    }, 0);
-    
-    // Default values for equity structure
-    const initialEquity = {
-      newInvestors: 150, // Default $150M from new investors
-      zenContribution: 100, // Default $100M from ZEN
-      assetCoRepayment: -50 // Default $50M repayment to AssetCo
-    };
-    
-    // Total initial investment
-    const totalInvestment = initialEquity.newInvestors + initialEquity.zenContribution + 
-                           Math.abs(initialEquity.assetCoRepayment);
-    
-    // Calculate acquisition premium (goodwill)
-    const acquisitionPremium = Math.max(0, totalInvestment - totalCapex);
-    
-    let retainedEarnings = 0;
-    let cashBalance = minimumCashBalance;
-    let cumulativeDepreciation = 0; // Track cumulative depreciation for fixed assets calculation
-    
-    // Get initial debt amounts from project finance data
-    const initialDebt = Object.values(assets).reduce((sum, asset) => {
-      const assetCosts = constants.assetCosts[asset.name] || {};
-      const gearing = assetCosts.calculatedGearing || assetCosts.maxGearing || 0.7;
-      return sum + ((assetCosts.capex || 0) * gearing);
-    }, 0);
-    
-    // Iterate through P&L and cashflow data to calculate balance sheet
-    for (let i = 0; i < plData.length; i++) {
-      const pnlData = plData[i];
-      const cfData = cashFlowData.find(cf => cf.period === pnlData.period) || {
-        cashBalance: 0,
-        interest: 0,
-        tax: 0,
-        dividend: 0,
-        principalRepayment: 0
-      };
-      
-      // Update cumulative depreciation
-      cumulativeDepreciation += Math.abs(pnlData.depreciation || 0);
-      
-      // Calculate balance sheet data
-      const balanceSheet = {
-        period: pnlData.period,
-        year: pnlData.year || parseInt(pnlData.period),
-        
-        // ASSETS
-        cash: cfData.cashBalance || 0,
-        receivables: (pnlData.revenue * 0.1), // Assumption: 10% of revenue
-        acquisitionPremium: acquisitionPremium,
-        fixedAssets: totalCapex - cumulativeDepreciation, // Use cumulative depreciation
-        goodwill: acquisitionPremium * 0.5, // Simplified goodwill calculation
-        otherAssets: totalCapex * 0.05, // Other assets as percentage of capex
-        deferredTaxAssets: Math.max(0, pnlData.tax < 0 ? -pnlData.tax : 0),
-        
-        // LIABILITIES
-        payables: (pnlData.assetOpex + pnlData.platformOpex) * 0.08, // Assume 1 month of opex
-        interestPayables: pnlData.interest * 0.25, // Assume one quarter of interest
-        taxPayables: pnlData.tax < 0 ? -pnlData.tax * 0.25 : 0,
-        dividendPayables: cfData.dividend < 0 ? -cfData.dividend * 0.25 : 0,
-        deferredTaxLiabilities: Math.max(0, pnlData.tax > 0 ? pnlData.tax : 0),
-      };
-      
-      // Calculate Senior Debt - Direct from project finance
-      if (i === 0) {
-        // For first period, use the initial debt
-        balanceSheet.seniorDebt = -initialDebt; // Negative value for liability
-        balanceSheet.portfolioFinancing = 0; // Initial period has no portfolio financing
-      } else {
-        // For subsequent periods, use debt repayments from cash flow
-        const prevSheet = balanceSheetData[i-1];
-        
-        // Get principal repayment from cash flow data
-        const principalPayment = Math.abs(cfData.principalRepayment || 0);
-        
-        // Debt decreases by principal payment amount
-        // The senior debt will be negative (as a liability), and we want it to get smaller in magnitude
-        // When we pay principal, the debt gets closer to zero (less negative)
-        balanceSheet.seniorDebt = prevSheet.seniorDebt + principalPayment;
-        
-        // Ensure debt doesn't go positive (would be illogical)
-        if (balanceSheet.seniorDebt > 0) balanceSheet.seniorDebt = 0;
-        
-        // Portfolio financing can be added here if needed
-        balanceSheet.portfolioFinancing = 0; // Placeholder for portfolio financing
-      }
-      
-      // Calculate totals for assets
-      balanceSheet.totalAssets = balanceSheet.cash + 
-                               balanceSheet.receivables +
-                               balanceSheet.acquisitionPremium +
-                               balanceSheet.fixedAssets + 
-                               balanceSheet.goodwill +
-                               balanceSheet.otherAssets +
-                               balanceSheet.deferredTaxAssets;
-      
-      // Calculate totals for liabilities
-      balanceSheet.totalLiabilities = balanceSheet.payables +
-                                    balanceSheet.interestPayables +
-                                    balanceSheet.taxPayables +
-                                    balanceSheet.dividendPayables +
-                                    balanceSheet.seniorDebt +
-                                    balanceSheet.portfolioFinancing +
-                                    balanceSheet.deferredTaxLiabilities;
-      
-      // Calculate updated retained earnings
-      if (i > 0) {
-        retainedEarnings += pnlData.npat + (cfData.dividend || 0);
-        balanceSheet.retainedEarnings = retainedEarnings;
-      } else {
-        retainedEarnings = 0;
-        balanceSheet.retainedEarnings = 0;
-      }
-      
-      // EQUITY (set on first record, then updated)
-      balanceSheet.newInvestorsCapital = initialEquity.newInvestors;
-      balanceSheet.zenContribution = initialEquity.zenContribution;
-      balanceSheet.assetCoRepayment = initialEquity.assetCoRepayment;
-      
-      // Calculate total equity
-      balanceSheet.totalEquity = balanceSheet.newInvestorsCapital +
-                               balanceSheet.zenContribution +
-                               balanceSheet.assetCoRepayment +
-                               balanceSheet.retainedEarnings;
-      
-      // Verify balance sheet equation: Assets = Liabilities + Equity
-      balanceSheet.balanceCheck = Math.abs(
-        balanceSheet.totalAssets - (balanceSheet.totalLiabilities + balanceSheet.totalEquity)
-      ) < 0.01; // Allow small rounding errors
-      
-      balanceSheetData.push(balanceSheet);
-    }
-    
-    return balanceSheetData;
-  };
 
   // Calculate financial data
   const financialData = useMemo(() => {
@@ -245,8 +100,15 @@ const FinancialStatements = ({ selectedRevenueCase = 'base' }) => {
       minimumCashBalance
     );
     
-    // Generate balance sheet data
-    const balanceSheetData = generateBalanceSheet(plData.platformPL, cashFlowData.annual);
+    // Generate balance sheet data using the centralized function
+    const balanceSheetData = generateBalanceSheet(
+      plData.platformPL, 
+      cashFlowData.annual,
+      assets,
+      constants,
+      newInvestorsPercentage,
+      zenPercentage
+    );
     
     return {
       incomeStatement: plData.platformPL,
@@ -259,10 +121,12 @@ const FinancialStatements = ({ selectedRevenueCase = 'base' }) => {
     getMerchantPrice, 
     selectedRevenueCase, 
     platformOpex, 
-    otherOpex, // Include otherOpex in dependencies
+    otherOpex, 
     platformOpexEscalation,
     dividendPolicy,
-    minimumCashBalance
+    minimumCashBalance,
+    newInvestorsPercentage,
+    zenPercentage
   ]);
 
   // Filter to show only selected years
@@ -340,8 +204,13 @@ const FinancialStatements = ({ selectedRevenueCase = 'base' }) => {
     assetOpex: { label: 'Asset Operating Expenses', isHeader: false },
     platformOpex: { label: 'Platform Operating Expenses', isHeader: false },
     ebitda: { label: 'EBITDA', isHeader: true },
-    ebitdaMargin: { label: 'EBITDA Margin (%)', isHeader: false, 
-      format: (val) => val ? formatPercent(val, 1) : '-' },
+    ebitdaMargin: { 
+      label: 'EBITDA Margin (%)', 
+      isHeader: false, 
+      format: (val) => val ? formatPercent(val, 1) : '-',
+      // Ensure EBITDA margin is correctly calculated as EBITDA / Revenue
+      calculate: (row) => row.ebitda / row.revenue
+    },
     depreciation: { label: 'Depreciation & Amortization', isHeader: false },
     ebit: { label: 'EBIT', isHeader: true },
     interest: { label: 'Interest Expense', isHeader: false },
@@ -372,8 +241,8 @@ const FinancialStatements = ({ selectedRevenueCase = 'base' }) => {
     totalLiabilities: { label: 'TOTAL LIABILITIES', isHeader: true },
     
     // Equity
-    newInvestorsCapital: { label: 'Contributed Capital - New Investors', isHeader: false },
-    zenContribution: { label: 'Contributed Capital - ZEN', isHeader: false },
+    newInvestorsCapital: { label: 'Contributed Capital - HDRE + New Investors (80%)', isHeader: false },
+    zenContribution: { label: 'Contributed Capital - ZEN (20%)', isHeader: false },
     assetCoRepayment: { label: 'Repayment of Contributed Capital - AssetCo', isHeader: false },
     retainedEarnings: { label: 'Retained Earnings', isHeader: false },
     totalEquity: { label: 'TOTAL EQUITY', isHeader: true, className: "bg-blue-50" },
@@ -397,6 +266,27 @@ const FinancialStatements = ({ selectedRevenueCase = 'base' }) => {
     netCashFlow: { label: 'Net Cash Flow', isHeader: true },
     cashBalance: { label: 'Cash Balance', isHeader: true },
   };
+
+  // Process financial data for display
+  const processedIncomeStatement = useMemo(() => {
+    if (!filteredData.incomeStatement || filteredData.incomeStatement.length === 0) {
+      return [];
+    }
+
+    return filteredData.incomeStatement.map(row => {
+      // Calculate EBIT as EBITDA - Depreciation
+      const ebit = row.ebitda + row.depreciation; // Since depreciation is already negative
+      
+      // Ensure EBITDA margin is correctly calculated 
+      const ebitdaMargin = row.revenue !== 0 ? row.ebitda / row.revenue : 0;
+
+      return {
+        ...row,
+        ebit,
+        ebitdaMargin
+      };
+    });
+  }, [filteredData.incomeStatement]);
 
   // If no data is available
   if (!financialData || Object.keys(assets).length === 0) {
@@ -451,14 +341,14 @@ const FinancialStatements = ({ selectedRevenueCase = 'base' }) => {
             </TabsList>
             
             <TabsContent value="income">
-              {renderHorizontalTable(filteredData.incomeStatement, incomeStatementMap)}
+              {renderHorizontalTable(processedIncomeStatement, incomeStatementMap)}
               
               {/* Income Statement Chart */}
               <div className="mt-8">
                 <h3 className="text-lg font-medium mb-4">Income Statement Visualization</h3>
                 <div className="h-72">
                   <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart data={filteredData.incomeStatement}>
+                    <ComposedChart data={processedIncomeStatement}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis 
                         dataKey="year" 

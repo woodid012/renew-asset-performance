@@ -13,6 +13,14 @@ import { calculateStressRevenue } from './ValuationAnalysis_Calcs';
  * @param {Number} platformOpexEscalation - Annual escalation rate for platform opex
  * @returns {Object} Object containing platform P&L, asset P&Ls and quarterly data
  */
+/**
+ * Helper function to calculate standard amortization payment
+ */
+const calculateAmortizationPayment = (principal, rate, years) => {
+  if (rate === 0) return principal / years; // Handle edge case
+  return principal * rate * Math.pow(1 + rate, years) / (Math.pow(1 + rate, years) - 1);
+};
+
 export const calculatePlatformPL = (
   assets,
   constants,
@@ -187,8 +195,11 @@ export const calculatePlatformPL = (
         }
       }
       
-      // Calculate EBT
-      const ebt = ebitda + depreciation + interest;
+      // Calculate EBIT (EBITDA - Depreciation)
+      const ebit = ebitda + depreciation;
+      
+      // Calculate EBT (EBIT - Interest)
+      const ebt = ebit + interest;
       
       // Calculate tax using the shared corporate tax rate
       const tax = ebt < 0 ? 0 : -(ebt * constants.corporateTaxRate / 100);
@@ -226,6 +237,7 @@ export const calculatePlatformPL = (
         opex,
         ebitda,
         depreciation,
+        ebit,
         interest,
         principalRepayment,
         ebt,
@@ -247,8 +259,11 @@ export const calculatePlatformPL = (
     // Recalculate EBITDA explicitly (to avoid accumulation errors)
     yearData.ebitda = yearData.revenue + yearData.assetOpex + yearPlatformOpex;
     
-    // Recalculate EBT
-    yearData.ebt = yearData.ebitda + yearData.depreciation + yearData.interest;
+    // Calculate EBIT (EBITDA - Depreciation)
+    yearData.ebit = yearData.ebitda + yearData.depreciation;
+    
+    // Recalculate EBT (EBIT - Interest)
+    yearData.ebt = yearData.ebit + yearData.interest;
     
     // Use a default tax rate if undefined
     const corporateTaxRate = constants.corporateTaxRate !== undefined ? constants.corporateTaxRate : 0;
@@ -256,6 +271,9 @@ export const calculatePlatformPL = (
     
     // Calculate NPAT
     yearData.npat = yearData.ebt + yearData.tax;
+    
+    // Calculate EBITDA margin as EBITDA / Revenue
+    yearData.ebitdaMargin = yearData.revenue !== 0 ? yearData.ebitda / yearData.revenue : 0;
   });
   
   // Update quarterly data
@@ -271,25 +289,23 @@ export const calculatePlatformPL = (
     // Recalculate EBITDA with platform opex
     quarterData.ebitda = quarterData.revenue + quarterData.assetOpex + quarterPlatformOpex;
     
-    // Recalculate EBT
-    quarterData.ebt = quarterData.ebitda + quarterData.depreciation + quarterData.interest;
+    // Calculate EBIT (EBITDA - Depreciation)
+    quarterData.ebit = quarterData.ebitda + quarterData.depreciation;
+    
+    // Recalculate EBT (EBIT - Interest)
+    quarterData.ebt = quarterData.ebit + quarterData.interest;
     
     // Calculate tax using the shared corporate tax rate
     quarterData.tax = quarterData.ebt < 0 ? 0 : -(quarterData.ebt * constants.corporateTaxRate / 100);
     
     // Calculate NPAT
     quarterData.npat = quarterData.ebt + quarterData.tax;
+    
+    // Calculate EBITDA margin as EBITDA / Revenue
+    quarterData.ebitdaMargin = quarterData.revenue !== 0 ? quarterData.ebitda / quarterData.revenue : 0;
   });
 
   return { assetPL, platformPL, quarters };
-};
-
-/**
- * Helper function to calculate standard amortization payment
- */
-const calculateAmortizationPayment = (principal, rate, years) => {
-  if (rate === 0) return principal / years; // Handle edge case
-  return principal * rate * Math.pow(1 + rate, years) / (Math.pow(1 + rate, years) - 1);
 };
 
 /**
@@ -464,10 +480,167 @@ export const generateYears = (startYear, endYear) => {
  * @param {Number} decimals - Number of decimal places
  * @returns {String} Formatted currency string
  */
+/**
+ * Format currency for display
+ * @param {Number} value - Value to format 
+ * @param {Number} decimals - Number of decimal places
+ * @returns {String} Formatted currency string
+ */
 export const formatCurrency = (value, decimals = 1) => {
   // Handle undefined, null or NaN values
   if (value === undefined || value === null || isNaN(value)) {
     return '$0.0M';
   }
   return `${value.toFixed(decimals)}M`;
+};
+export const generateBalanceSheet = (
+  plData, 
+  cashFlowData, 
+  assets, 
+  constants, 
+  newInvestorsPercentage = 80, 
+  zenPercentage = 20
+) => {
+  // Skip if no data
+  if (!plData || !cashFlowData || plData.length === 0 || cashFlowData.length === 0 || !assets) {
+    return [];
+  }
+  
+  // Get initial values
+  const balanceSheetData = [];
+  
+  // Calculate total capex from all assets
+  const totalCapex = Object.values(assets).reduce((sum, asset) => {
+    const assetCosts = constants.assetCosts[asset.name] || {};
+    return sum + (assetCosts.capex || 0);
+  }, 0);
+  
+  // Default values for equity structure
+  const initialEquity = {
+    newInvestors: totalCapex * (newInvestorsPercentage / 100), // New investors percentage of capex
+    zenContribution: totalCapex * (zenPercentage / 100), // ZEN percentage of capex
+    assetCoRepayment: -50 // Default $50M repayment to AssetCo
+  };
+  
+  // Total initial investment
+  const totalInvestment = initialEquity.newInvestors + initialEquity.zenContribution + 
+                         Math.abs(initialEquity.assetCoRepayment);
+  
+  // Calculate acquisition premium (goodwill)
+  const acquisitionPremium = Math.max(0, totalInvestment - totalCapex);
+  
+  let retainedEarnings = 0;
+  let cashBalance = constants.minimumCashBalance || 5.0;
+  let cumulativeDepreciation = 0; // Track cumulative depreciation for fixed assets calculation
+  
+  // Get initial debt amounts from project finance data
+  const initialDebt = Object.values(assets).reduce((sum, asset) => {
+    const assetCosts = constants.assetCosts[asset.name] || {};
+    const gearing = assetCosts.calculatedGearing || assetCosts.maxGearing || 0.7;
+    return sum + ((assetCosts.capex || 0) * gearing);
+  }, 0);
+  
+  // Iterate through P&L and cashflow data to calculate balance sheet
+  for (let i = 0; i < plData.length; i++) {
+    const pnlData = plData[i];
+    const cfData = cashFlowData.find(cf => cf.period === pnlData.period) || {
+      cashBalance: 0,
+      interest: 0,
+      tax: 0,
+      dividend: 0,
+      principalRepayment: 0
+    };
+    
+    // Update cumulative depreciation
+    cumulativeDepreciation += Math.abs(pnlData.depreciation || 0);
+    
+    // Calculate balance sheet data
+    const balanceSheet = {
+      period: pnlData.period,
+      year: pnlData.year || parseInt(pnlData.period),
+      
+      // ASSETS
+      cash: cfData.cashBalance || 0,
+      receivables: (pnlData.revenue * 0.1), // Assumption: 10% of revenue
+      acquisitionPremium: acquisitionPremium,
+      fixedAssets: totalCapex - cumulativeDepreciation, // Use cumulative depreciation
+      goodwill: acquisitionPremium * 0.5, // Simplified goodwill calculation
+      otherAssets: totalCapex * 0.05, // Other assets as percentage of capex
+      deferredTaxAssets: Math.max(0, pnlData.tax < 0 ? -pnlData.tax : 0),
+      
+      // LIABILITIES
+      payables: (pnlData.assetOpex + pnlData.platformOpex) * 0.08, // Assume 1 month of opex
+      interestPayables: pnlData.interest * 0.25, // Assume one quarter of interest
+      taxPayables: pnlData.tax < 0 ? -pnlData.tax * 0.25 : 0,
+      dividendPayables: cfData.dividend < 0 ? -cfData.dividend * 0.25 : 0,
+      deferredTaxLiabilities: Math.max(0, pnlData.tax > 0 ? pnlData.tax : 0),
+    };
+    
+    // Calculate Senior Debt - Direct from project finance
+    if (i === 0) {
+      // For first period, use the initial debt - IMPORTANT: store as positive number for liabilities
+      balanceSheet.seniorDebt = Math.abs(initialDebt); 
+      balanceSheet.portfolioFinancing = 0; // Initial period has no portfolio financing
+    } else {
+      // For subsequent periods, use debt repayments from cash flow
+      const prevSheet = balanceSheetData[i-1];
+      
+      // Get principal repayment from cash flow data
+      const principalPayment = Math.abs(cfData.principalRepayment || 0);
+      
+      // Debt decreases by principal payment amount
+      // The senior debt is stored as positive for liabilities, subtract payments
+      balanceSheet.seniorDebt = Math.max(0, prevSheet.seniorDebt - principalPayment);
+      
+      // Portfolio financing can be added here if needed
+      balanceSheet.portfolioFinancing = 0; // Placeholder for portfolio financing
+    }
+    
+    // Calculate totals for assets
+    balanceSheet.totalAssets = balanceSheet.cash + 
+                             balanceSheet.receivables +
+                             balanceSheet.acquisitionPremium +
+                             balanceSheet.fixedAssets + 
+                             balanceSheet.goodwill +
+                             balanceSheet.otherAssets +
+                             balanceSheet.deferredTaxAssets;
+    
+    // Calculate totals for liabilities
+    balanceSheet.totalLiabilities = balanceSheet.payables +
+                                  balanceSheet.interestPayables +
+                                  balanceSheet.taxPayables +
+                                  balanceSheet.dividendPayables +
+                                  balanceSheet.seniorDebt +
+                                  balanceSheet.portfolioFinancing +
+                                  balanceSheet.deferredTaxLiabilities;
+    
+    // Calculate updated retained earnings
+    if (i > 0) {
+      retainedEarnings += pnlData.npat + (cfData.dividend || 0);
+      balanceSheet.retainedEarnings = retainedEarnings;
+    } else {
+      retainedEarnings = 0;
+      balanceSheet.retainedEarnings = 0;
+    }
+    
+    // EQUITY (set on first record, then updated)
+    balanceSheet.newInvestorsCapital = initialEquity.newInvestors;
+    balanceSheet.zenContribution = initialEquity.zenContribution;
+    balanceSheet.assetCoRepayment = initialEquity.assetCoRepayment;
+    
+    // Calculate total equity
+    balanceSheet.totalEquity = balanceSheet.newInvestorsCapital +
+                             balanceSheet.zenContribution +
+                             balanceSheet.assetCoRepayment +
+                             balanceSheet.retainedEarnings;
+    
+    // Verify balance sheet equation: Assets = Liabilities + Equity
+    balanceSheet.balanceCheck = Math.abs(
+      balanceSheet.totalAssets - (balanceSheet.totalLiabilities + balanceSheet.totalEquity)
+    ) < 0.01; // Allow small rounding errors
+    
+    balanceSheetData.push(balanceSheet);
+  }
+  
+  return balanceSheetData;
 };
