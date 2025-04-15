@@ -180,9 +180,7 @@ const LoginScreen = ({ onLogin }) => {
                   )}
                 </div>
                 <Button type="submit" className="w-full">Login</Button>
-                <p className="text-center text-xs text-gray-500 mt-2">
-                  Demo credentials: Username: ZEBRE, Password: ZEBRE_Platform25
-                </p>
+
               </div>
             </form>
           </CardContent>
