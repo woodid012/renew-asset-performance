@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -21,11 +21,26 @@ import PPASummaryTable from "@/components/PPA_general_Summary";
 import EarningsRiskAnalysis from "@/components/EaR_Dashboard";
 import ValuationTabs from "@/components/ValuationTabs";
 import PortfolioSettings from "@/components/PortfolioSettings";
+import LoginScreen from "@/components/LoginScreen";
 
 // import TestDashboard from "@/components/TestDashboard";
 
 const App = () => {
   const [activeTab, setActiveTab] = useState("landingpage");
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  // Check if user was previously logged in
+  useEffect(() => {
+    const loginStatus = sessionStorage.getItem('portfolioLoggedIn');
+    if (loginStatus === 'true') {
+      setIsLoggedIn(true);
+    }
+  }, []);
+
+  const handleLogin = () => {
+    setIsLoggedIn(true);
+    sessionStorage.setItem('portfolioLoggedIn', 'true');
+  };
 
   // Tab configuration with colors
   const tabs = [
@@ -96,6 +111,10 @@ const App = () => {
 
   const date = new Date();
   const formattedDate = `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getFullYear()).slice(-2)}`;
+
+  if (!isLoggedIn) {
+    return <LoginScreen onLogin={handleLogin} />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">

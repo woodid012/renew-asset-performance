@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "exportDate": "2025-04-13T08:15:22.478Z",
+  "exportDate": "2025-04-15T01:29:57.843Z",
   "portfolioName": "ZEBRE",
   "assets": {
     "1": {
@@ -251,6 +251,42 @@
       "capacityFactor": "",
       "annualDegradation": 0.4,
       "volume": 840
+    },
+    "8": {
+      "id": "8",
+      "name": "Yarraville",
+      "state": "VIC",
+      "assetStartDate": "2026-07-01",
+      "capacity": 70,
+      "type": "storage",
+      "volumeLossAdjustment": 97.5,
+      "assetLife": 25,
+      "contracts": [
+        {
+          "id": "1",
+          "counterparty": "Tolling ZEN",
+          "type": "tolling",
+          "buyersPercentage": "",
+          "shape": "flat",
+          "strikePrice": 19.5,
+          "greenPrice": "",
+          "EnergyPrice": "",
+          "indexation": "2.5",
+          "indexationReferenceYear": "2025",
+          "settlementFormula": "",
+          "hasFloor": false,
+          "floorValue": "",
+          "startDate": "2026-07-01",
+          "endDate": "2036-06-30"
+        }
+      ],
+      "qtrCapacityFactor_q1": "",
+      "qtrCapacityFactor_q2": "",
+      "qtrCapacityFactor_q3": "",
+      "qtrCapacityFactor_q4": "",
+      "capacityFactor": "",
+      "annualDegradation": 0.4,
+      "volume": 210
     }
   },
   "constants": {
@@ -357,6 +393,17 @@
         "interestRate": 0.055,
         "tenorYears": 18,
         "debtStructure": "sculpting"
+      },
+      "Yarraville": {
+        "capex": 135,
+        "operatingCosts": 2.2,
+        "operatingCostEscalation": 2.5,
+        "terminalValue": 0,
+        "maxGearing": 0.7,
+        "targetDSCRContract": 1.4,
+        "targetDSCRMerchant": 2,
+        "interestRate": 0.06,
+        "tenorYears": 18
       }
     },
     "volumeVariation": 20,

@@ -28,6 +28,17 @@ const portfolios = [
     ]
   },
   {
+    id: 'templers',
+    filename: 'templers_only_2025-04-15.json',
+    displayName: 'Templers Only',
+    description: 'Single battery storage asset',
+    details: [
+      'Single Asset - Templers BESS',
+      'South Australia - 111MW / 293MWh',
+      '100% Tolling contract with ZEN'
+    ]
+  },
+  {
     id: 'zebre',
     filename: 'zebre_2025-01-13.json',
     displayName: 'ZEBRE',
@@ -38,7 +49,28 @@ const portfolios = [
       'Mix of merchant and contracted'
     ]
   },
-
+  {
+    id: 'portfolio1',
+    filename: '',
+    displayName: 'Portfolio 1',
+    description: 'Future portfolio placeholder',
+    details: [
+      'Placeholder for future assets',
+      'Import your own portfolio here',
+      'Use for additional asset analysis'
+    ]
+  },
+  {
+    id: 'portfolio2',
+    filename: '',
+    displayName: 'Portfolio 2',
+    description: 'Future portfolio placeholder',
+    details: [
+      'Placeholder for future assets',
+      'Import your own portfolio here',
+      'Use for comparative analysis'
+    ]
+  }
 ];
 
 const features = [
