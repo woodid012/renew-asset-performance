@@ -46,13 +46,29 @@ const AssetSummaryInputs = () => {
   useEffect(() => {
     const initialState = {};
     Object.values(assets).forEach(asset => {
-      initialState[asset.id] = { ...asset };
+      // Create a deep copy to avoid reference issues
+      initialState[asset.id] = JSON.parse(JSON.stringify(asset));
     });
     setEditState(initialState);
   }, [assets]);
 
   // Update a field for a specific asset
   const handleFieldUpdate = (assetId, field, value, options = {}) => {
+    console.log(`Updating field ${field} for asset ${assetId} with value:`, value);
+    
+    // If it's a date field, pass directly without additional processing
+    if (field === 'constructionStartDate' || field === 'assetStartDate') {
+      setEditState(prev => ({
+        ...prev,
+        [assetId]: {
+          ...prev[assetId],
+          [field]: value
+        }
+      }));
+      return;
+    }
+    
+    // For non-date fields, use the normal processing
     setEditState(prev => ({
       ...prev,
       [assetId]: {
@@ -79,6 +95,27 @@ const AssetSummaryInputs = () => {
 
   // Update a contract field for a specific asset
   const handleContractUpdate = (assetId, contractId, field, value, options = {}) => {
+    console.log(`Updating contract field ${field} for asset ${assetId}, contract ${contractId} with value:`, value);
+    
+    // If it's a date field, pass the value directly
+    if (field === 'startDate' || field === 'endDate') {
+      setEditState(prev => ({
+        ...prev,
+        [assetId]: {
+          ...prev[assetId],
+          contracts: prev[assetId]?.contracts?.map(contract => {
+            if (contract.id !== contractId) return contract;
+            return {
+              ...contract,
+              [field]: value
+            };
+          }) || []
+        }
+      }));
+      return;
+    }
+    
+    // For non-date fields, use normal processing
     setEditState(prev => ({
       ...prev,
       [assetId]: {
@@ -96,6 +133,7 @@ const AssetSummaryInputs = () => {
 
   // Save all changes
   const saveChanges = () => {
+    console.log("Saving changes to assets:", editState);
     setAssets(editState);
   };
 
@@ -191,11 +229,15 @@ const AssetSummaryInputs = () => {
           />
         );
       case 'date':
+        // For date inputs, keep the original value as is - don't try to format it
         return (
           <Input
             type="date"
             value={value || ''}
-            onChange={(e) => handleFieldUpdate(assetId, field.field, e.target.value)}
+            onChange={(e) => {
+              // Simply pass the value from the input without additional formatting
+              handleFieldUpdate(assetId, field.field, e.target.value);
+            }}
             className="w-full h-8"
           />
         );
@@ -250,6 +292,7 @@ const AssetSummaryInputs = () => {
           />
         );
       case 'date':
+        // For contract dates, keep the original value as is
         return (
           <Input
             type="date"

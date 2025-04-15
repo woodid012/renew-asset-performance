@@ -1,13 +1,13 @@
 {
   "version": "2.0",
-  "exportDate": "2025-04-15T01:29:57.843Z",
+  "exportDate": "2025-04-15T10:18:25.838Z",
   "portfolioName": "ZEBRE",
   "assets": {
     "1": {
       "id": "1",
       "name": "Templers BESS",
       "state": "SA",
-      "assetStartDate": "2025-07-01",
+      "assetStartDate": "2025-08-01",
       "capacity": 111,
       "type": "storage",
       "volumeLossAdjustment": 95,
@@ -24,8 +24,8 @@
           "indexation": 2.5,
           "hasFloor": true,
           "floorValue": "0",
-          "startDate": "2025-07-01",
-          "endDate": "2035-06-30",
+          "startDate": "2025-08-01",
+          "endDate": "2035-07-31",
           "indexationReferenceYear": 2025
         }
       ],
@@ -35,13 +35,15 @@
       "qtrCapacityFactor_q4": "",
       "capacityFactor": "",
       "volume": 293,
-      "assetLife": 25
+      "assetLife": 25,
+      "constructionDuration": 17,
+      "constructionStartDate": "2024-03-01"
     },
     "2": {
       "id": "2",
       "name": "Solar River Solar",
       "state": "SA",
-      "assetStartDate": "2027-04-01",
+      "assetStartDate": "2027-07-01",
       "capacity": 232,
       "type": "solar",
       "volumeLossAdjustment": 97,
@@ -60,8 +62,8 @@
           "settlementFormula": "",
           "hasFloor": false,
           "floorValue": "",
-          "startDate": "2027-04-01",
-          "endDate": "2037-03-31"
+          "startDate": "2027-07-01",
+          "endDate": "2037-06-30"
         }
       ],
       "qtrCapacityFactor_q1": "31",
@@ -70,13 +72,15 @@
       "qtrCapacityFactor_q4": "29",
       "capacityFactor": "27",
       "annualDegradation": 0.5,
-      "assetLife": 30
+      "assetLife": 30,
+      "constructionDuration": 21,
+      "constructionStartDate": "2025-10-01"
     },
     "3": {
       "id": "3",
       "name": "Solar River BESS",
       "state": "SA",
-      "assetStartDate": "2027-04-01",
+      "assetStartDate": "2027-07-01",
       "capacity": 256,
       "type": "storage",
       "volumeLossAdjustment": 97,
@@ -95,8 +99,8 @@
           "settlementFormula": "",
           "hasFloor": false,
           "floorValue": "",
-          "startDate": "2027-04-01",
-          "endDate": "2037-03-31"
+          "startDate": "2027-07-01",
+          "endDate": "2037-06-30"
         }
       ],
       "qtrCapacityFactor_q1": "",
@@ -106,13 +110,15 @@
       "capacityFactor": "",
       "annualDegradation": 1.6,
       "assetLife": 25,
-      "volume": 656
+      "volume": 656,
+      "constructionDuration": 21,
+      "constructionStartDate": "2025-10-01"
     },
     "4": {
       "id": "4",
       "name": "Wagga North",
       "state": "NSW",
-      "assetStartDate": "2028-01-01",
+      "assetStartDate": "2028-08-01",
       "capacity": 105,
       "type": "storage",
       "volumeLossAdjustment": "100",
@@ -132,8 +138,8 @@
           "settlementFormula": "",
           "hasFloor": false,
           "floorValue": "",
-          "startDate": "2028-01-01",
-          "endDate": "2037-12-31"
+          "startDate": "2028-08-01",
+          "endDate": "2037-07-31"
         }
       ],
       "qtrCapacityFactor_q1": "",
@@ -142,13 +148,15 @@
       "qtrCapacityFactor_q4": "",
       "capacityFactor": "",
       "annualDegradation": 0.4,
-      "volume": 420
+      "volume": 420,
+      "constructionDuration": 21,
+      "constructionStartDate": "2027-11-01"
     },
     "5": {
       "id": "5",
       "name": "Noblevale",
       "state": "QLD",
-      "assetStartDate": "2027-11-01",
+      "assetStartDate": "2028-05-01",
       "capacity": 180,
       "type": "storage",
       "volumeLossAdjustment": "100",
@@ -168,8 +176,8 @@
           "settlementFormula": "",
           "hasFloor": false,
           "floorValue": "",
-          "startDate": "2027-11-01",
-          "endDate": "2036-12-31"
+          "startDate": "2028-05-01",
+          "endDate": "2037-04-30"
         }
       ],
       "qtrCapacityFactor_q1": "",
@@ -178,13 +186,15 @@
       "qtrCapacityFactor_q4": "",
       "capacityFactor": "",
       "annualDegradation": 0.4,
-      "volume": 360
+      "volume": 360,
+      "constructionDuration": 21,
+      "constructionStartDate": "2026-08-01"
     },
     "6": {
       "id": "6",
       "name": "Hookey Creek (BESS)",
       "state": "NSW",
-      "assetStartDate": "2027-04-01",
+      "assetStartDate": "2028-05-01",
       "capacity": 200,
       "type": "storage",
       "volumeLossAdjustment": "100",
@@ -204,8 +214,8 @@
           "settlementFormula": "",
           "hasFloor": false,
           "floorValue": "",
-          "startDate": "2027-04-01",
-          "endDate": "2037-03-31"
+          "startDate": "2028-05-01",
+          "endDate": "2037-04-30"
         }
       ],
       "qtrCapacityFactor_q1": "",
@@ -214,13 +224,15 @@
       "qtrCapacityFactor_q4": "",
       "capacityFactor": "",
       "annualDegradation": 0.4,
-      "volume": 800
+      "volume": 800,
+      "constructionDuration": 24,
+      "constructionStartDate": "2026-05-01"
     },
     "7": {
       "id": "7",
       "name": "North Yarragon",
       "state": "VIC",
-      "assetStartDate": "2027-10-01",
+      "assetStartDate": "2029-05-01",
       "capacity": 210,
       "type": "storage",
       "volumeLossAdjustment": "100",
@@ -240,8 +252,8 @@
           "settlementFormula": "",
           "hasFloor": false,
           "floorValue": "",
-          "startDate": "2027-10-01",
-          "endDate": "2037-09-30"
+          "startDate": "2029-05-01",
+          "endDate": "2038-04-30"
         }
       ],
       "qtrCapacityFactor_q1": "",
@@ -250,13 +262,15 @@
       "qtrCapacityFactor_q4": "",
       "capacityFactor": "",
       "annualDegradation": 0.4,
-      "volume": 840
+      "volume": 840,
+      "constructionDuration": 21,
+      "constructionStartDate": "2027-08-01"
     },
     "8": {
       "id": "8",
       "name": "Yarraville",
       "state": "VIC",
-      "assetStartDate": "2026-07-01",
+      "assetStartDate": "2027-01-01",
       "capacity": 70,
       "type": "storage",
       "volumeLossAdjustment": 97.5,
@@ -264,7 +278,7 @@
       "contracts": [
         {
           "id": "1",
-          "counterparty": "Tolling ZEN",
+          "counterparty": "ZEN Tolling",
           "type": "tolling",
           "buyersPercentage": 100,
           "shape": "flat",
@@ -276,8 +290,8 @@
           "settlementFormula": "",
           "hasFloor": false,
           "floorValue": "",
-          "startDate": "2026-07-01",
-          "endDate": "2036-06-30"
+          "startDate": "2026-01-01",
+          "endDate": "2035-12-30"
         }
       ],
       "qtrCapacityFactor_q1": "",
@@ -286,7 +300,9 @@
       "qtrCapacityFactor_q4": "",
       "capacityFactor": "",
       "annualDegradation": 0.4,
-      "volume": 210
+      "volume": 210,
+      "constructionDuration": 12,
+      "constructionStartDate": "2026-01-01"
     }
   },
   "constants": {
@@ -344,7 +360,7 @@
         "targetDSCRMerchant": 1.8,
         "interestRate": 0.06,
         "tenorYears": 20,
-        "calculatedGearing": 0.5740577936172485,
+        "calculatedGearing": 0.65,
         "debtStructure": "sculpting"
       },
       "North Yarragon": {
@@ -357,7 +373,7 @@
         "targetDSCRMerchant": 1.8,
         "interestRate": 0.06,
         "tenorYears": 20,
-        "calculatedGearing": 0.5855468034744261,
+        "calculatedGearing": 0.65,
         "debtStructure": "sculpting"
       },
       "Noblevale": {
@@ -383,7 +399,7 @@
         "targetDSCRMerchant": 1.8,
         "interestRate": 0.06,
         "tenorYears": 20,
-        "calculatedGearing": 0.611161983013153,
+        "calculatedGearing": 0.65,
         "debtStructure": "sculpting"
       },
       "portfolio": {
@@ -403,7 +419,9 @@
         "targetDSCRContract": 1.4,
         "targetDSCRMerchant": 2,
         "interestRate": 0.06,
-        "tenorYears": 18
+        "tenorYears": 18,
+        "debtStructure": "sculpting",
+        "calculatedGearing": 0.6600277900695801
       }
     },
     "volumeVariation": 20,
