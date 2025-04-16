@@ -289,6 +289,13 @@ export const calculateProjectMetrics = (
       });
     }
     
+    // Add terminal value to the last year's cash flow
+    if (cashFlows.length > 0 && assetCosts.terminalValue) {
+      const lastCashFlow = cashFlows[cashFlows.length - 1];
+      lastCashFlow.terminalValue = assetCosts.terminalValue || 0;
+      lastCashFlow.operatingCashFlow += lastCashFlow.terminalValue; // Add terminal value to operating cash flow
+    }
+    
     // Use the debt structure from asset costs
     const debtStructure = assetCosts.debtStructure || 'sculpting';
     const tenorYears = assetCosts.tenorYears || 15;
@@ -369,7 +376,13 @@ export const calculateProjectMetrics = (
       cf.equityCashFlow = cf.operatingCashFlow - yearDebtService;
     });
 
-    const equityCashFlows = [-capex * (1 - gearing), ...cashFlows.map(cf => cf.equityCashFlow)];
+    // Initialize equity cash flow array with initial investment
+    const equityCashFlows = [-capex * (1 - gearing)];
+    
+    // Add operating years' equity cash flows
+    cashFlows.forEach(cf => {
+      equityCashFlows.push(cf.equityCashFlow);
+    });
     
     individualMetrics[asset.name] = {
       capex,
@@ -379,6 +392,7 @@ export const calculateProjectMetrics = (
       debtServiceByYear,
       debtStructure,
       minDSCR,
+      terminalValue: assetCosts.terminalValue || 0,
       cashFlows,
       equityCashFlows
     };
@@ -391,6 +405,7 @@ export const calculateProjectMetrics = (
   if (Object.keys(assets).length >= 2) {
     const portfolioValue = projectValues.portfolio || {};
     const totalCapex = Object.values(individualMetrics).reduce((sum, m) => sum + m.capex, 0);
+    const totalTerminalValue = Object.values(individualMetrics).reduce((sum, m) => sum + m.terminalValue, 0);
     
     // Determine portfolio refinancing start year (when all assets are operational)
     const portfolioStartYear = Math.max(...Object.values(assets).map(asset => 
@@ -410,7 +425,8 @@ export const calculateProjectMetrics = (
         contractedRevenue: 0,
         merchantRevenue: 0,
         opex: 0,
-        operatingCashFlow: 0
+        operatingCashFlow: 0,
+        terminalValue: 0
       };
 
       // Sum up cash flows from all projects for this year
@@ -422,6 +438,11 @@ export const calculateProjectMetrics = (
           yearlySum.merchantRevenue += yearCashFlow.merchantRevenue;
           yearlySum.opex += yearCashFlow.opex;
           yearlySum.operatingCashFlow += yearCashFlow.operatingCashFlow;
+          
+          // Add terminal value if present in the year's cash flow
+          if (yearCashFlow.terminalValue) {
+            yearlySum.terminalValue += yearCashFlow.terminalValue;
+          }
         }
       });
 
@@ -554,7 +575,11 @@ export const calculateProjectMetrics = (
       cf.equityCashFlow = cf.operatingCashFlow + cf.debtService; // Note: debtService is already negative
     });
 
-    const portfolioEquityCashFlows = [-totalCapex * (1 - portfolioGearing), ...portfolioCashFlows.map(cf => cf.equityCashFlow)];
+    // Create equity cash flows array with initial investment and yearly flows
+    const portfolioEquityCashFlows = [-totalCapex * (1 - portfolioGearing)];
+    portfolioCashFlows.forEach(cf => {
+      portfolioEquityCashFlows.push(cf.equityCashFlow);
+    });
 
     metrics.portfolio = {
       capex: totalCapex,
@@ -564,6 +589,7 @@ export const calculateProjectMetrics = (
       debtServiceByYear: portfolioDebtServiceByYear,
       debtStructure: portfolioDebtStructure,
       minDSCR: portfolioMinDSCR,
+      terminalValue: totalTerminalValue,
       cashFlows: portfolioCashFlows,
       equityCashFlows: portfolioEquityCashFlows
     };

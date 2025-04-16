@@ -191,7 +191,8 @@ const ProjectFinanceDashboard = () => {
       ...cf,
       // Convert opex and debt service to positive values for the chart
       opex: Math.abs(cf.opex || 0),
-      debtService: Math.abs(cf.debtService || 0)
+      debtService: Math.abs(cf.debtService || 0),
+      terminalValue: cf.terminalValue || 0 // Include terminal value
     }));
   };
   
@@ -257,7 +258,8 @@ const ProjectFinanceDashboard = () => {
         principalPayment: principalPayment > 0 ? parseFloat((principalPayment || 0).toFixed(2)) : 0,
         interestPayment: interestPayment > 0 ? parseFloat((interestPayment || 0).toFixed(2)) : 0,
         totalDebtPayment: principalPayment + interestPayment,
-        refinancePhase: cf.refinancePhase
+        refinancePhase: cf.refinancePhase,
+        terminalValue: cf.terminalValue || 0 // Include terminal value
       };
     });
     
@@ -284,6 +286,7 @@ const ProjectFinanceDashboard = () => {
       capex: 0,
       debtAmount: 0,
       annualDebtService: 0,
+      terminalValue: 0, // Add terminal value
     };
     
     // Collect equity cash flows and DSCRs
@@ -294,6 +297,7 @@ const ProjectFinanceDashboard = () => {
       totals.capex += metrics.capex || 0;
       totals.debtAmount += metrics.debtAmount || 0;
       totals.annualDebtService += metrics.annualDebtService || 0;
+      totals.terminalValue += metrics.terminalValue || 0; // Sum terminal values
       
       if (metrics.minDSCR) {
         allDSCRs.push(metrics.minDSCR);
@@ -377,6 +381,7 @@ const ProjectFinanceDashboard = () => {
                 <TableHead>Debt Amount ($M)</TableHead>
                 <TableHead>Annual Debt Service ($M)</TableHead>
                 <TableHead>Min DSCR</TableHead>
+                <TableHead>Terminal Value ($M)</TableHead>
                 <TableHead>Equity IRR</TableHead>
               </TableRow>
             </TableHeader>
@@ -392,6 +397,7 @@ const ProjectFinanceDashboard = () => {
                   <TableCell>${formatNumber(metrics.debtAmount)}</TableCell>
                   <TableCell>${formatNumber(metrics.annualDebtService)}</TableCell>
                   <TableCell>{formatDSCR(metrics.minDSCR)}</TableCell>
+                  <TableCell>${formatNumber(metrics.terminalValue)}</TableCell>
                   <TableCell>{calculateIRR(metrics.equityCashFlows) ? formatPercent(calculateIRR(metrics.equityCashFlows)) : 'N/A'}</TableCell>
                 </TableRow>
               ))}
@@ -405,6 +411,7 @@ const ProjectFinanceDashboard = () => {
                   <TableCell>${formatNumber(getPortfolioTotals()?.debtAmount)}</TableCell>
                   <TableCell>${formatNumber(getPortfolioTotals()?.annualDebtService)}</TableCell>
                   <TableCell>{formatDSCR(getPortfolioTotals()?.minDSCR)}</TableCell>
+                  <TableCell>${formatNumber(getPortfolioTotals()?.terminalValue)}</TableCell>
                   <TableCell>
                     {getPortfolioTotals()?.equityCashFlows && calculateIRR(getPortfolioTotals().equityCashFlows) 
                       ? formatPercent(calculateIRR(getPortfolioTotals().equityCashFlows)) 
@@ -461,6 +468,9 @@ const ProjectFinanceDashboard = () => {
                     if (name === 'Debt Service' && props.payload.refinancePhase) {
                       return [formattedValue, `${name} (${props.payload.refinancePhase} financing)`];
                     }
+                    if (name === 'Terminal Value' && value > 0) {
+                      return [formattedValue, name];
+                    }
                     return formattedValue;
                   }}
                 />
@@ -474,22 +484,17 @@ const ProjectFinanceDashboard = () => {
                   name="Debt Service" 
                   stroke="#9C27B0"
                   strokeWidth={2}
-                  dot={(props) => {
-                    if (!props.payload || !props.cx || !props.cy) return null;
-                    const { refinancePhase } = props.payload;
-                    return (
-                      <circle
-                        cx={props.cx}
-                        cy={props.cy}
-                        r={4}
-                        fill={refinancePhase === 'portfolio' ? '#9C27B0' : '#E1BEE7'}
-                        stroke="#9C27B0"
-                        strokeWidth={1}
-                      />
-                    );
-                  }}
+                  dot={false}
                 />
                 <Line type="monotone" dataKey="equityCashFlow" name="Equity Cash Flow" stroke="#2196F3" />
+                <Line 
+                  type="step" 
+                  dataKey="terminalValue" 
+                  name="Terminal Value" 
+                  stroke="#FF6D00" 
+                  strokeWidth={2}
+                  dot={false}
+                />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -528,6 +533,8 @@ const ProjectFinanceDashboard = () => {
                   formatter={(value, name) => {
                     if (name === 'DSCR' || name === 'Minimum DSCR') {
                       return [`${value}x`, name];
+                    } else if (name === 'Terminal Value' && value > 0) {
+                      return [`$${value.toLocaleString()}M`, name];
                     } else {
                       return [`$${value.toLocaleString()}M`, name];
                     }
@@ -563,6 +570,16 @@ const ProjectFinanceDashboard = () => {
                   stroke="#9C27B0" 
                   strokeWidth={1.5}
                 />
+                {/* Terminal value */}
+                <Line 
+                  yAxisId="right"
+                  type="step" 
+                  dataKey="terminalValue" 
+                  name="Terminal Value" 
+                  stroke="#FF6D00" 
+                  strokeWidth={2}
+                  dot={false}
+                />
                 {/* Debt service components as stacked bars */}
                 <Bar 
                   yAxisId="right"
@@ -585,6 +602,7 @@ const ProjectFinanceDashboard = () => {
           <div className="mt-4 text-sm bg-gray-50 p-4 rounded-md">
             <h3 className="font-semibold mb-2">Debt Structure: Sculpting</h3>
             <p className="mb-2">Debt service payments vary to maintain a constant Debt Service Coverage Ratio (DSCR) over the loan term.</p>
+            <p>Terminal Value is applied at the end of the asset's life and included in the equity IRR calculation.</p>
           </div>
         </CardContent>
       </Card>
