@@ -244,7 +244,8 @@ export const calculateProjectMetrics = (
   constants,
   getMerchantPrice,
   selectedRevenueCase = 'base',
-  solveGearingFlag = false
+  solveGearingFlag = false,
+  includeTerminalValue = true // Add parameter to toggle terminal value
 ) => {
   const metrics = {};
   const individualMetrics = {};
@@ -289,11 +290,15 @@ export const calculateProjectMetrics = (
       });
     }
     
-    // Add terminal value to the last year's cash flow
-    if (cashFlows.length > 0 && assetCosts.terminalValue) {
+    // Add terminal value to the last year's cash flow only if includeTerminalValue is true
+    if (cashFlows.length > 0 && assetCosts.terminalValue && includeTerminalValue) {
       const lastCashFlow = cashFlows[cashFlows.length - 1];
       lastCashFlow.terminalValue = assetCosts.terminalValue || 0;
       lastCashFlow.operatingCashFlow += lastCashFlow.terminalValue; // Add terminal value to operating cash flow
+    } else if (cashFlows.length > 0) {
+      // If terminal value is not included, ensure it's set to 0
+      const lastCashFlow = cashFlows[cashFlows.length - 1];
+      lastCashFlow.terminalValue = 0;
     }
     
     // Use the debt structure from asset costs
@@ -392,7 +397,7 @@ export const calculateProjectMetrics = (
       debtServiceByYear,
       debtStructure,
       minDSCR,
-      terminalValue: assetCosts.terminalValue || 0,
+      terminalValue: includeTerminalValue ? (assetCosts.terminalValue || 0) : 0,
       cashFlows,
       equityCashFlows
     };
@@ -405,7 +410,8 @@ export const calculateProjectMetrics = (
   if (Object.keys(assets).length >= 2) {
     const portfolioValue = projectValues.portfolio || {};
     const totalCapex = Object.values(individualMetrics).reduce((sum, m) => sum + m.capex, 0);
-    const totalTerminalValue = Object.values(individualMetrics).reduce((sum, m) => sum + m.terminalValue, 0);
+    const totalTerminalValue = includeTerminalValue ? 
+      Object.values(individualMetrics).reduce((sum, m) => sum + m.terminalValue, 0) : 0;
     
     // Determine portfolio refinancing start year (when all assets are operational)
     const portfolioStartYear = Math.max(...Object.values(assets).map(asset => 
@@ -439,8 +445,8 @@ export const calculateProjectMetrics = (
           yearlySum.opex += yearCashFlow.opex;
           yearlySum.operatingCashFlow += yearCashFlow.operatingCashFlow;
           
-          // Add terminal value if present in the year's cash flow
-          if (yearCashFlow.terminalValue) {
+          // Add terminal value if present in the year's cash flow and if includeTerminalValue is true
+          if (yearCashFlow.terminalValue && includeTerminalValue) {
             yearlySum.terminalValue += yearCashFlow.terminalValue;
           }
         }

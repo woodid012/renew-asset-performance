@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "exportDate": "2025-04-16T01:13:45.931Z",
+  "exportDate": "2025-04-16T01:58:34.892Z",
   "portfolioName": "ZEBRE",
   "assets": {
     "1": {
@@ -150,7 +150,7 @@
       "annualDegradation": 0.4,
       "volume": 420,
       "constructionDuration": 21,
-      "constructionStartDate": "2027-11-01"
+      "constructionStartDate": "2026-11-01"
     },
     "5": {
       "id": "5",
@@ -270,7 +270,7 @@
       "id": "8",
       "name": "Yarraville",
       "state": "VIC",
-      "assetStartDate": "2027-01-01",
+      "assetStartDate": "2028-01-01",
       "capacity": 70,
       "type": "storage",
       "volumeLossAdjustment": 97.5,
@@ -282,7 +282,7 @@
           "type": "tolling",
           "buyersPercentage": 100,
           "shape": "flat",
-          "strikePrice": 19.5,
+          "strikePrice": 21,
           "greenPrice": "",
           "EnergyPrice": "",
           "indexation": "2.5",
@@ -290,8 +290,8 @@
           "settlementFormula": "",
           "hasFloor": false,
           "floorValue": "",
-          "startDate": "2026-01-01",
-          "endDate": "2035-12-30"
+          "startDate": "2028-01-01",
+          "endDate": "2037-12-31"
         }
       ],
       "qtrCapacityFactor_q1": "",
@@ -302,7 +302,7 @@
       "annualDegradation": 0.4,
       "volume": 210,
       "constructionDuration": 12,
-      "constructionStartDate": "2026-01-01"
+      "constructionStartDate": "2027-01-01"
     }
   },
   "constants": {
@@ -421,7 +421,7 @@
         "interestRate": 0.06,
         "tenorYears": 18,
         "debtStructure": "sculpting",
-        "calculatedGearing": 0.6775622367858887
+        "calculatedGearing": 0.7
       }
     },
     "volumeVariation": 20,

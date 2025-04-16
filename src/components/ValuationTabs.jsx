@@ -3,7 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Download, Upload } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import ValuationAnalysis from './ValuationAnalysis';
+
 import ProjectFinanceDashboard from './ProjectFinanceDashboard';
 import FinancialStatements from './FinancialStatements.jsx';
 import PlatformInputs from './PlatformInputs.jsx';  // Import the new component
@@ -92,11 +92,6 @@ const ValuationTabs = () => {
         </div>
       </div>
 
-      <div className="bg-blue-50 border border-blue-200 p-4 rounded-md mb-4">
-        <p className="text-sm text-blue-800">
-          Use the tabs below to analyze your portfolio from different perspectives: project finance, financial statements, and operating portfolio valuation.
-        </p>
-      </div>
 
       <Tabs defaultValue="platform-inputs" className="w-full">
         <TabsList className="border-b mb-4">

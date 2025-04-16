@@ -4,6 +4,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart, Bar } from 'recharts';
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { usePortfolio } from '@/contexts/PortfolioContext';
 import { 
   calculateProjectMetrics, 
@@ -20,6 +22,7 @@ const ProjectFinanceDashboard = () => {
   
   const [isGearingSolved, setIsGearingSolved] = useState(false);
   const [missingData, setMissingData] = useState(false);
+  const [includeTerminalValue, setIncludeTerminalValue] = useState(true);
   
   // Reset gearing solved state when revenue case changes
   useEffect(() => {
@@ -117,14 +120,15 @@ const ProjectFinanceDashboard = () => {
         constants,
         getMerchantPrice,
         selectedRevenueCase,
-        false  // Never solve gearing in metrics calculation
+        false,  // Never solve gearing in metrics calculation
+        includeTerminalValue // Pass terminal value inclusion flag
       );
       return metrics;
     } catch (error) {
       console.error("Error calculating project metrics:", error);
       return {};
     }
-  }, [assets, constants.assetCosts, selectedRevenueCase, constants, getMerchantPrice]);
+  }, [assets, constants.assetCosts, selectedRevenueCase, constants, getMerchantPrice, includeTerminalValue]);
 
   const handleSolveGearing = () => {
     try {
@@ -135,7 +139,8 @@ const ProjectFinanceDashboard = () => {
         constants,
         getMerchantPrice,
         selectedRevenueCase,
-        true
+        true,
+        includeTerminalValue
       );
       
       // Update assetCosts with the solved gearing
@@ -192,7 +197,7 @@ const ProjectFinanceDashboard = () => {
       // Convert opex and debt service to positive values for the chart
       opex: Math.abs(cf.opex || 0),
       debtService: Math.abs(cf.debtService || 0),
-      terminalValue: cf.terminalValue || 0 // Include terminal value
+      terminalValue: includeTerminalValue ? (cf.terminalValue || 0) : 0 // Apply terminal value toggle
     }));
   };
   
@@ -259,7 +264,7 @@ const ProjectFinanceDashboard = () => {
         interestPayment: interestPayment > 0 ? parseFloat((interestPayment || 0).toFixed(2)) : 0,
         totalDebtPayment: principalPayment + interestPayment,
         refinancePhase: cf.refinancePhase,
-        terminalValue: cf.terminalValue || 0 // Include terminal value
+        terminalValue: includeTerminalValue ? (cf.terminalValue || 0) : 0 // Apply terminal value toggle
       };
     });
     
@@ -271,7 +276,7 @@ const ProjectFinanceDashboard = () => {
       ...point,
       minDSCR: parseFloat((minDSCR || 0).toFixed(2))
     }));
-  }, [projectMetrics, selectedAsset, constants.assetCosts, getSelectedMetrics]);
+  }, [projectMetrics, selectedAsset, constants.assetCosts, getSelectedMetrics, includeTerminalValue]);
   
   // Calculate aggregated portfolio totals
   const getPortfolioTotals = () => {
@@ -326,6 +331,29 @@ const ProjectFinanceDashboard = () => {
     return totals;
   };
 
+  // Filter terminal value based on toggle for IRR calculation
+  const getEquityCashFlowsForIRR = (metrics) => {
+    if (!metrics || !metrics.equityCashFlows) return null;
+    
+    if (includeTerminalValue) {
+      return metrics.equityCashFlows;
+    } else {
+      // Create a copy of the cash flows and remove terminal value from last year
+      const cashFlows = [...metrics.equityCashFlows];
+      if (cashFlows.length > 1) {
+        // Find the last cash flow with terminal value
+        for (let i = cashFlows.length - 1; i >= 0; i--) {
+          if (metrics.cashFlows && i - 1 < metrics.cashFlows.length) {
+            // Subtract terminal value from the corresponding cash flow
+            cashFlows[i] -= (metrics.cashFlows[i - 1]?.terminalValue || 0);
+            break;
+          }
+        }
+      }
+      return cashFlows;
+    }
+  };
+
   return (
     <div className="w-full p-4 space-y-4">
       {missingData && (
@@ -351,23 +379,35 @@ const ProjectFinanceDashboard = () => {
           <div className="flex items-center space-x-4">
             <CardTitle>Project Metrics</CardTitle>
             <div className="flex-1" />
-            <Select value={selectedRevenueCase} onValueChange={setSelectedRevenueCase}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Select case" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="base">Base Case</SelectItem>
-                <SelectItem value="worst">Downside Volume & Price</SelectItem>
-                <SelectItem value="volume">Volume Stress</SelectItem>
-                <SelectItem value="price">Price Stress</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button 
-              onClick={handleSolveGearing}
-              className={isGearingSolved ? "bg-green-500 hover:bg-green-600" : "bg-red-500 hover:bg-red-600"}
-            >
-              {isGearingSolved ? "Gearing Solved" : "Solve Gearing"}
-            </Button>
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <Switch 
+                  id="terminal-value-toggle" 
+                  checked={includeTerminalValue} 
+                  onCheckedChange={setIncludeTerminalValue}
+                />
+                <Label htmlFor="terminal-value-toggle" className="font-medium">
+                  Include Terminal Value
+                </Label>
+              </div>
+              <Select value={selectedRevenueCase} onValueChange={setSelectedRevenueCase}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Select case" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="base">Base Case</SelectItem>
+                  <SelectItem value="worst">Downside Volume & Price</SelectItem>
+                  <SelectItem value="volume">Volume Stress</SelectItem>
+                  <SelectItem value="price">Price Stress</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button 
+                onClick={handleSolveGearing}
+                className={isGearingSolved ? "bg-green-500 hover:bg-green-600" : "bg-red-500 hover:bg-red-600"}
+              >
+                {isGearingSolved ? "Gearing Solved" : "Solve Gearing"}
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -397,8 +437,12 @@ const ProjectFinanceDashboard = () => {
                   <TableCell>${formatNumber(metrics.debtAmount)}</TableCell>
                   <TableCell>${formatNumber(metrics.annualDebtService)}</TableCell>
                   <TableCell>{formatDSCR(metrics.minDSCR)}</TableCell>
-                  <TableCell>${formatNumber(metrics.terminalValue)}</TableCell>
-                  <TableCell>{calculateIRR(metrics.equityCashFlows) ? formatPercent(calculateIRR(metrics.equityCashFlows)) : 'N/A'}</TableCell>
+                  <TableCell>${formatNumber(includeTerminalValue ? metrics.terminalValue : 0)}</TableCell>
+                  <TableCell>
+                    {calculateIRR(getEquityCashFlowsForIRR(metrics)) 
+                      ? formatPercent(calculateIRR(getEquityCashFlowsForIRR(metrics))) 
+                      : 'N/A'}
+                  </TableCell>
                 </TableRow>
               ))}
               
@@ -411,10 +455,16 @@ const ProjectFinanceDashboard = () => {
                   <TableCell>${formatNumber(getPortfolioTotals()?.debtAmount)}</TableCell>
                   <TableCell>${formatNumber(getPortfolioTotals()?.annualDebtService)}</TableCell>
                   <TableCell>{formatDSCR(getPortfolioTotals()?.minDSCR)}</TableCell>
-                  <TableCell>${formatNumber(getPortfolioTotals()?.terminalValue)}</TableCell>
+                  <TableCell>${formatNumber(includeTerminalValue ? getPortfolioTotals()?.terminalValue : 0)}</TableCell>
                   <TableCell>
-                    {getPortfolioTotals()?.equityCashFlows && calculateIRR(getPortfolioTotals().equityCashFlows) 
-                      ? formatPercent(calculateIRR(getPortfolioTotals().equityCashFlows)) 
+                    {getPortfolioTotals()?.equityCashFlows && calculateIRR(getEquityCashFlowsForIRR({
+                      equityCashFlows: getPortfolioTotals()?.equityCashFlows,
+                      cashFlows: projectMetrics.portfolio?.cashFlows
+                    })) 
+                      ? formatPercent(calculateIRR(getEquityCashFlowsForIRR({
+                          equityCashFlows: getPortfolioTotals()?.equityCashFlows,
+                          cashFlows: projectMetrics.portfolio?.cashFlows
+                        }))) 
                       : 'N/A'}
                   </TableCell>
                 </TableRow>
@@ -602,7 +652,7 @@ const ProjectFinanceDashboard = () => {
           <div className="mt-4 text-sm bg-gray-50 p-4 rounded-md">
             <h3 className="font-semibold mb-2">Debt Structure: Sculpting</h3>
             <p className="mb-2">Debt service payments vary to maintain a constant Debt Service Coverage Ratio (DSCR) over the loan term.</p>
-            <p>Terminal Value is applied at the end of the asset's life and included in the equity IRR calculation.</p>
+            <p>Terminal Value is applied at the end of the asset's life and {includeTerminalValue ? 'included in' : 'excluded from'} the equity IRR calculation.</p>
           </div>
         </CardContent>
       </Card>

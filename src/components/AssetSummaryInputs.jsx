@@ -168,6 +168,46 @@ const AssetSummaryInputs = () => {
     updateConstants('deprecationPeriods', updatedPeriods);
   };
 
+  // Check if ops start date is valid based on construction start + duration
+  const isOpsStartValid = (asset) => {
+    if (!asset.constructionStartDate || !asset.constructionDuration || !asset.assetStartDate) return true;
+    
+    const consStart = new Date(asset.constructionStartDate);
+    const opsStart = new Date(asset.assetStartDate);
+    const duration = parseInt(asset.constructionDuration) || 0;
+    
+    // Calculate expected ops start date based on construction start + duration
+    const expectedOpsStart = new Date(consStart);
+    expectedOpsStart.setMonth(expectedOpsStart.getMonth() + duration);
+    
+    // Format to YYYY-MM-DD to compare just the dates
+    const expectedDateStr = expectedOpsStart.toISOString().split('T')[0];
+    const actualDateStr = opsStart.toISOString().split('T')[0];
+    
+    return expectedDateStr === actualDateStr;
+  };
+
+  // Check if contract start equals asset ops start
+  const isContractStartValid = (asset, contract) => {
+    if (!asset.assetStartDate || !contract.startDate) return null; // Null means no validation
+    
+    const assetStart = new Date(asset.assetStartDate).toISOString().split('T')[0];
+    const contractStart = new Date(contract.startDate).toISOString().split('T')[0];
+    
+    return assetStart === contractStart;
+  };
+
+  // Calculate contract duration in years
+  const calculateContractTenor = (contract) => {
+    if (!contract.startDate || !contract.endDate) return null;
+    
+    const start = new Date(contract.startDate);
+    const end = new Date(contract.endDate);
+    const diffTime = Math.abs(end - start);
+    const diffYears = (diffTime / (1000 * 60 * 60 * 24 * 365.25)).toFixed(1);
+    return diffYears;
+  };
+
   // Check if assets have any contracts
   const hasContracts = Object.values(assets).some(asset => asset.contracts.length > 0);
   const allContractIds = getAllContractIds();
@@ -229,7 +269,15 @@ const AssetSummaryInputs = () => {
           />
         );
       case 'date':
-        // For date inputs, keep the original value as is - don't try to format it
+        // For Ops Start, add color validation
+        const cellStyle = field.field === 'assetStartDate' 
+          ? { 
+              backgroundColor: isOpsStartValid(asset)
+                ? 'rgba(0, 255, 0, 0.1)' // Light green
+                : 'rgba(255, 0, 0, 0.1)'  // Light red
+            }
+          : {};
+          
         return (
           <Input
             type="date"
@@ -239,6 +287,7 @@ const AssetSummaryInputs = () => {
               handleFieldUpdate(assetId, field.field, e.target.value);
             }}
             className="w-full h-8"
+            style={cellStyle}
           />
         );
       case 'select':
@@ -292,14 +341,35 @@ const AssetSummaryInputs = () => {
           />
         );
       case 'date':
-        // For contract dates, keep the original value as is
+        const isValid = field.field === 'startDate' 
+          ? isContractStartValid(asset, contract)
+          : null;
+          
+        let cellStyle = {};
+        
+        if (field.field === 'startDate' && isValid !== null) {
+          cellStyle = {
+            backgroundColor: isValid 
+              ? 'rgba(0, 255, 0, 0.1)'  // Light green
+              : 'rgba(255, 165, 0, 0.1)' // Light orange
+          };
+        }
+        
         return (
-          <Input
-            type="date"
-            value={value || ''}
-            onChange={(e) => handleContractUpdate(assetId, contractId, field.field, e.target.value)}
-            className="w-full h-8"
-          />
+          <div>
+            <Input
+              type="date"
+              value={value || ''}
+              onChange={(e) => handleContractUpdate(assetId, contractId, field.field, e.target.value)}
+              className="w-full h-8 mb-1"
+              style={cellStyle}
+            />
+            {field.field === 'endDate' && (
+              <div className="text-xs text-gray-500 mt-1">
+                {calculateContractTenor(contract) ? `${calculateContractTenor(contract)} years` : ''}
+              </div>
+            )}
+          </div>
         );
       case 'select':
         const contractType = asset.type === 'storage' ? 
@@ -642,31 +712,6 @@ const AssetSummaryInputs = () => {
                         <CardTitle className="text-lg">Corporate Tax Rate</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium">Corporate Tax Rate (%)</label>
-                          <Input 
-                            type="number"
-                            min="0"
-                            max="100"
-                            step="0.1"
-                            value={corporateTaxRate}
-                            onChange={(e) => handleTaxRateChange(e.target.value)}
-                            className="w-full max-w-xs"
-                          />
-                          <p className="text-sm text-gray-500">
-                            Corporate tax rate applied to taxable income
-                          </p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                  
-                  <div className="space-y-4">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-lg">Depreciation Periods</CardTitle>
-                      </CardHeader>
-                      <CardContent>
                         <div className="grid grid-cols-3 gap-4">
                           <div className="space-y-2">
                             <label className="text-sm font-medium">Solar (Years)</label>
@@ -705,6 +750,7 @@ const AssetSummaryInputs = () => {
                         <p className="text-sm text-gray-500 mt-2">
                           Asset depreciation periods for tax and accounting purposes
                         </p>
+
                       </CardContent>
                     </Card>
                   </div>
