@@ -18,15 +18,16 @@ import {
 } from '@/components/ProjectFinance_Calcs';
 
 const SummaryFinancialsLanding = () => {
-  const { assets, constants, getMerchantPrice } = usePortfolio();
+  const { assets, constants, getMerchantPrice, portfolioName } = usePortfolio();
   const [selectedRevenueCase, setSelectedRevenueCase] = useState('base');
   const [includeTerminalValue, setIncludeTerminalValue] = useState(true);
   
   // State for expandable tables
   const [showPLTable, setShowPLTable] = useState(false);
-  const [showCFTable, setShowCFTable] = useState(false);
   const [expandedPLYears, setExpandedPLYears] = useState(new Set());
-  const [expandedCFYears, setExpandedCFYears] = useState(new Set());
+
+  // Get current user from session storage
+  const currentUser = sessionStorage.getItem('currentUser') || portfolioName || 'Portfolio';
 
   // Generate years for analysis
   const years = useMemo(() => {
@@ -113,16 +114,6 @@ const SummaryFinancialsLanding = () => {
     setExpandedPLYears(newExpanded);
   };
 
-  const toggleCFYearGroup = (groupId) => {
-    const newExpanded = new Set(expandedCFYears);
-    if (newExpanded.has(groupId)) {
-      newExpanded.delete(groupId);
-    } else {
-      newExpanded.add(groupId);
-    }
-    setExpandedCFYears(newExpanded);
-  };
-
   const expandAllPL = () => {
     const plGroups = groupDataByYears(plData.platformPL);
     setExpandedPLYears(new Set(plGroups.map(g => g.id)));
@@ -130,15 +121,6 @@ const SummaryFinancialsLanding = () => {
 
   const collapseAllPL = () => {
     setExpandedPLYears(new Set());
-  };
-
-  const expandAllCF = () => {
-    const cfGroups = groupDataByYears(cashFlowData.annual);
-    setExpandedCFYears(new Set(cfGroups.map(g => g.id)));
-  };
-
-  const collapseAllCF = () => {
-    setExpandedCFYears(new Set());
   };
   const formatPercent = (value) => {
     if (value === undefined || value === null) return 'N/A';
