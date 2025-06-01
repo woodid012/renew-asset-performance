@@ -118,6 +118,34 @@ export const DEFAULT_DATA_SOURCES = {
   ]
 };
 
+// System Constants - Fixed technical parameters
+export const DEFAULT_SYSTEM_CONSTANTS = {
+  HOURS_IN_YEAR: 8760,
+  priceAggregation: 'yearly'
+};
+
+// Capacity Factors - Default generation profiles by technology and region
+export const DEFAULT_CAPACITY_FACTORS = {
+  annual: {
+    solar: { NSW: 0.28, VIC: 0.25, QLD: 0.29, SA: 0.27 },
+    wind: { NSW: 0.35, VIC: 0.38, QLD: 0.32, SA: 0.40 }
+  },
+  quarterly: {
+    solar: {
+      NSW: { Q1: 0.32, Q2: 0.26, Q3: 0.24, Q4: 0.30 },
+      VIC: { Q1: 0.29, Q2: 0.23, Q3: 0.21, Q4: 0.27 },
+      QLD: { Q1: 0.33, Q2: 0.28, Q3: 0.25, Q4: 0.30 },
+      SA:  { Q1: 0.31, Q2: 0.25, Q3: 0.23, Q4: 0.29 }
+    },
+    wind: {
+      NSW: { Q1: 0.32, Q2: 0.35, Q3: 0.38, Q4: 0.35 },
+      VIC: { Q1: 0.35, Q2: 0.38, Q3: 0.42, Q4: 0.37 },
+      QLD: { Q1: 0.29, Q2: 0.32, Q3: 0.35, Q4: 0.32 },
+      SA:  { Q1: 0.37, Q2: 0.40, Q3: 0.44, Q4: 0.39 }
+    }
+  }
+};
+
 // Utility Functions for working with defaults
 export const getDefaultValue = (category, key, assetType = null) => {
   const categoryMap = {
@@ -132,7 +160,9 @@ export const getDefaultValue = (category, key, assetType = null) => {
     data: DEFAULT_DATA_SOURCES,
     performance: DEFAULT_ASSET_PERFORMANCE,
     terminal: DEFAULT_TERMINAL_RATES,
-    analysis: DEFAULT_ANALYSIS_SETTINGS
+    analysis: DEFAULT_ANALYSIS_SETTINGS,
+    system: DEFAULT_SYSTEM_CONSTANTS,
+    capacity: DEFAULT_CAPACITY_FACTORS
   };
 
   const categoryDefaults = categoryMap[category];
@@ -186,6 +216,8 @@ export default {
   DEFAULT_ASSET_PERFORMANCE,
   DEFAULT_TERMINAL_RATES,
   DEFAULT_ANALYSIS_SETTINGS,
+  DEFAULT_SYSTEM_CONSTANTS,
+  DEFAULT_CAPACITY_FACTORS,
   getDefaultValue,
   VALID_ASSET_TYPES,
   isValidAssetType,

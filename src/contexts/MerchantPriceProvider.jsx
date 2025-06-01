@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import Papa from 'papaparse';
 import _ from 'lodash';
+import { DEFAULT_DATA_SOURCES } from '../lib/default_constants';
 
 const getQuarterFromDate = (dateStr) => {
   if (!dateStr) return null;
@@ -25,7 +26,7 @@ export function useMerchantPrices() {
 }
 
 export function MerchantPriceProvider({ children }) {
-  const [priceSource, setPriceSource] = useState('merchant_price_monthly.csv');
+  const [priceSource, setPriceSource] = useState(DEFAULT_DATA_SOURCES.priceCurveSource);
   const [spreadSource, setSpreadSource] = useState('merchant_yearly_spreads.csv');
   const [spreadData, setSpreadData] = useState({});
   const [priceData, setPriceData] = useState({
