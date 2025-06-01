@@ -12,6 +12,14 @@ import {
   handleNumericInput,
   createNewContract
 } from './AssetUtils';
+import {
+  DEFAULT_CAPEX_RATES,
+  DEFAULT_OPEX_RATES,
+  DEFAULT_PROJECT_FINANCE,
+  DEFAULT_TAX_DEPRECIATION,
+  getDefaultValue,
+  UI_CONSTANTS
+} from '@/lib/default_constants';
 
 const AssetSummaryInputs = () => {
   const { assets, setAssets, constants, updateConstants } = usePortfolio();
@@ -20,25 +28,57 @@ const AssetSummaryInputs = () => {
   const assetCosts = constants.assetCosts || {};
 
   // Ensure deprecation periods and tax rate exist with defaults
-  const corporateTaxRate = constants.corporateTaxRate !== undefined ? constants.corporateTaxRate : 0;
-  const deprecationPeriods = constants.deprecationPeriods || {
-    solar: 30,
-    wind: 30,
-    storage: 20
+  const corporateTaxRate = constants.corporateTaxRate !== undefined ? constants.corporateTaxRate : DEFAULT_TAX_DEPRECIATION.corporateTaxRate;
+  const deprecationPeriods = constants.deprecationPeriods || DEFAULT_TAX_DEPRECIATION.deprecationPeriods;
+
+  // Helper function to determine if a value is default (blue) or user-defined (black)
+  const getValueStyle = (currentValue, defaultValue) => {
+    const isDefault = currentValue === undefined || currentValue === null || currentValue === defaultValue;
+    return isDefault ? UI_CONSTANTS.colors.defaultValue : UI_CONSTANTS.colors.userValue;
+  };
+
+  // Helper function to get default values for asset costs
+  const getAssetCostDefault = (field, assetType, capacity) => {
+    const parsedCapacity = parseFloat(capacity) || 100;
+    
+    switch(field) {
+      case 'capex':
+        return getDefaultValue('capex', 'default', assetType) * parsedCapacity;
+      case 'operatingCosts':
+        return getDefaultValue('opex', 'default', assetType) * parsedCapacity;
+      case 'operatingCostEscalation':
+        return DEFAULT_PROJECT_FINANCE.opexEscalation;
+      case 'terminalValue':
+        const defaultTerminalRate = {
+          solar: 0.15,
+          wind: 0.20,
+          storage: 0.10,
+          default: 0.15
+        }[assetType] || 0.15;
+        return defaultTerminalRate * parsedCapacity;
+      case 'maxGearing':
+        return DEFAULT_PROJECT_FINANCE.maxGearing;
+      case 'targetDSCRContract':
+        return DEFAULT_PROJECT_FINANCE.targetDSCRContract;
+      case 'targetDSCRMerchant':
+        return DEFAULT_PROJECT_FINANCE.targetDSCRMerchant;
+      case 'interestRate':
+        return DEFAULT_PROJECT_FINANCE.interestRate;
+      case 'tenorYears':
+        return getDefaultValue('finance', 'tenorYears', assetType);
+      default:
+        return 0;
+    }
   };
 
   // Initialize tax/depreciation values if they don't exist
   useEffect(() => {
     if (constants.corporateTaxRate === undefined) {
-      updateConstants('corporateTaxRate', 0);
+      updateConstants('corporateTaxRate', DEFAULT_TAX_DEPRECIATION.corporateTaxRate);
     }
     
     if (!constants.deprecationPeriods) {
-      updateConstants('deprecationPeriods', {
-        solar: 30,
-        wind: 30,
-        storage: 20
-      });
+      updateConstants('deprecationPeriods', DEFAULT_TAX_DEPRECIATION.deprecationPeriods);
     }
   }, [constants, updateConstants]);
 
@@ -249,6 +289,23 @@ const AssetSummaryInputs = () => {
     if (!asset) return null;
 
     const value = asset[field.field];
+    let defaultValue = null;
+    let cellStyle = '';
+
+    // Get default values for color coding
+    if (field.field === 'constructionDuration') {
+      const defaultDuration = { solar: 12, wind: 18, storage: 12 }[asset.type] || 12;
+      defaultValue = defaultDuration;
+      cellStyle = getValueStyle(value, defaultValue);
+    } else if (field.field === 'annualDegradation') {
+      defaultValue = constants.annualDegradation?.[asset.type];
+      cellStyle = getValueStyle(value, defaultValue);
+    } else if (field.field.startsWith('qtrCapacityFactor_')) {
+      const quarter = field.field.split('_')[1].toUpperCase();
+      const defaultFactor = constants.capacityFactors_qtr?.[asset.type]?.[asset.state]?.[quarter];
+      defaultValue = defaultFactor ? String(Math.round(defaultFactor * 100)) : '';
+      cellStyle = getValueStyle(value, defaultValue);
+    }
 
     switch (type) {
       case 'text':
@@ -256,7 +313,7 @@ const AssetSummaryInputs = () => {
           <Input
             value={value || ''}
             onChange={(e) => handleFieldUpdate(assetId, field.field, e.target.value)}
-            className="w-full h-8"
+            className={`w-full h-8 ${cellStyle}`}
           />
         );
       case 'number':
@@ -265,12 +322,12 @@ const AssetSummaryInputs = () => {
             type="number"
             value={formatNumericValue(value)}
             onChange={(e) => handleFieldUpdate(assetId, field.field, e.target.value, { min: 0 })}
-            className="w-full h-8"
+            className={`w-full h-8 ${cellStyle}`}
           />
         );
       case 'date':
         // For Ops Start, add color validation
-        const cellStyle = field.field === 'assetStartDate' 
+        const opsStartStyle = field.field === 'assetStartDate' 
           ? { 
               backgroundColor: isOpsStartValid(asset)
                 ? 'rgba(0, 255, 0, 0.1)' // Light green
@@ -286,8 +343,8 @@ const AssetSummaryInputs = () => {
               // Simply pass the value from the input without additional formatting
               handleFieldUpdate(assetId, field.field, e.target.value);
             }}
-            className="w-full h-8"
-            style={cellStyle}
+            className={`w-full h-8 ${cellStyle}`}
+            style={opsStartStyle}
           />
         );
       case 'select':
@@ -296,7 +353,7 @@ const AssetSummaryInputs = () => {
             value={value || ''}
             onValueChange={(value) => handleFieldUpdate(assetId, field.field, value)}
           >
-            <SelectTrigger className="w-full h-8">
+            <SelectTrigger className={`w-full h-8 ${cellStyle}`}>
               <SelectValue placeholder="Select..." />
             </SelectTrigger>
             <SelectContent>
@@ -400,21 +457,24 @@ const AssetSummaryInputs = () => {
 
   // Handle asset cost field update
   const handleAssetCostChange = (assetName, field, value) => {
+    const asset = Object.values(assets).find(a => a.name === assetName);
+    if (!asset) return;
+
     // Make sure the asset costs object exists for this asset
     if (!constants.assetCosts[assetName]) {
       updateConstants('assetCosts', {
         ...constants.assetCosts,
         [assetName]: {
-          // Set some default values
-          capex: 0,
-          operatingCosts: 0,
-          operatingCostEscalation: 2.5,
-          terminalValue: 0,
-          maxGearing: 0.7,
-          targetDSCRContract: 1.35,
-          targetDSCRMerchant: 2.0,
-          interestRate: 0.06,
-          tenorYears: 15
+          // Set default values based on asset type and capacity
+          capex: getAssetCostDefault('capex', asset.type, asset.capacity),
+          operatingCosts: getAssetCostDefault('operatingCosts', asset.type, asset.capacity),
+          operatingCostEscalation: getAssetCostDefault('operatingCostEscalation', asset.type, asset.capacity),
+          terminalValue: getAssetCostDefault('terminalValue', asset.type, asset.capacity),
+          maxGearing: getAssetCostDefault('maxGearing', asset.type, asset.capacity) / 100,
+          targetDSCRContract: getAssetCostDefault('targetDSCRContract', asset.type, asset.capacity),
+          targetDSCRMerchant: getAssetCostDefault('targetDSCRMerchant', asset.type, asset.capacity),
+          interestRate: getAssetCostDefault('interestRate', asset.type, asset.capacity) / 100,
+          tenorYears: getAssetCostDefault('tenorYears', asset.type, asset.capacity)
         }
       });
     }
@@ -568,55 +628,71 @@ const AssetSummaryInputs = () => {
                   <TableBody>
                     <TableRow>
                       <TableCell className="font-medium">Capex ($M)</TableCell>
-                      {Object.values(assets).map(asset => (
-                        <TableCell key={`capex-${asset.id}`}>
-                          <Input
-                            type="number"
-                            value={assetCosts[asset.name]?.capex ?? ''}
-                            onChange={(e) => handleAssetCostChange(asset.name, 'capex', e.target.value)}
-                            className="w-32 h-8"
-                          />
-                        </TableCell>
-                      ))}
+                      {Object.values(assets).map(asset => {
+                        const currentValue = assetCosts[asset.name]?.capex;
+                        const defaultValue = getAssetCostDefault('capex', asset.type, asset.capacity);
+                        return (
+                          <TableCell key={`capex-${asset.id}`}>
+                            <Input
+                              type="number"
+                              value={currentValue ?? ''}
+                              onChange={(e) => handleAssetCostChange(asset.name, 'capex', e.target.value)}
+                              className={`w-32 h-8 ${getValueStyle(currentValue, defaultValue)}`}
+                            />
+                          </TableCell>
+                        );
+                      })}
                     </TableRow>
                     <TableRow>
                       <TableCell className="font-medium">Opex ($M/pa)</TableCell>
-                      {Object.values(assets).map(asset => (
-                        <TableCell key={`opex-${asset.id}`}>
-                          <Input
-                            type="number"
-                            value={assetCosts[asset.name]?.operatingCosts ?? ''}
-                            onChange={(e) => handleAssetCostChange(asset.name, 'operatingCosts', e.target.value)}
-                            className="w-32 h-8"
-                          />
-                        </TableCell>
-                      ))}
+                      {Object.values(assets).map(asset => {
+                        const currentValue = assetCosts[asset.name]?.operatingCosts;
+                        const defaultValue = getAssetCostDefault('operatingCosts', asset.type, asset.capacity);
+                        return (
+                          <TableCell key={`opex-${asset.id}`}>
+                            <Input
+                              type="number"
+                              value={currentValue ?? ''}
+                              onChange={(e) => handleAssetCostChange(asset.name, 'operatingCosts', e.target.value)}
+                              className={`w-32 h-8 ${getValueStyle(currentValue, defaultValue)}`}
+                            />
+                          </TableCell>
+                        );
+                      })}
                     </TableRow>
                     <TableRow>
                       <TableCell className="font-medium">Opex Escalation (%)</TableCell>
-                      {Object.values(assets).map(asset => (
-                        <TableCell key={`opexesc-${asset.id}`}>
-                          <Input
-                            type="number"
-                            value={assetCosts[asset.name]?.operatingCostEscalation ?? ''}
-                            onChange={(e) => handleAssetCostChange(asset.name, 'operatingCostEscalation', e.target.value)}
-                            className="w-32 h-8"
-                          />
-                        </TableCell>
-                      ))}
+                      {Object.values(assets).map(asset => {
+                        const currentValue = assetCosts[asset.name]?.operatingCostEscalation;
+                        const defaultValue = getAssetCostDefault('operatingCostEscalation', asset.type, asset.capacity);
+                        return (
+                          <TableCell key={`opexesc-${asset.id}`}>
+                            <Input
+                              type="number"
+                              value={currentValue ?? ''}
+                              onChange={(e) => handleAssetCostChange(asset.name, 'operatingCostEscalation', e.target.value)}
+                              className={`w-32 h-8 ${getValueStyle(currentValue, defaultValue)}`}
+                            />
+                          </TableCell>
+                        );
+                      })}
                     </TableRow>
                     <TableRow>
                       <TableCell className="font-medium">Terminal Value ($M)</TableCell>
-                      {Object.values(assets).map(asset => (
-                        <TableCell key={`terminal-${asset.id}`}>
-                          <Input
-                            type="number"
-                            value={assetCosts[asset.name]?.terminalValue ?? ''}
-                            onChange={(e) => handleAssetCostChange(asset.name, 'terminalValue', e.target.value)}
-                            className="w-32 h-8"
-                          />
-                        </TableCell>
-                      ))}
+                      {Object.values(assets).map(asset => {
+                        const currentValue = assetCosts[asset.name]?.terminalValue;
+                        const defaultValue = getAssetCostDefault('terminalValue', asset.type, asset.capacity);
+                        return (
+                          <TableCell key={`terminal-${asset.id}`}>
+                            <Input
+                              type="number"
+                              value={currentValue ?? ''}
+                              onChange={(e) => handleAssetCostChange(asset.name, 'terminalValue', e.target.value)}
+                              className={`w-32 h-8 ${getValueStyle(currentValue, defaultValue)}`}
+                            />
+                          </TableCell>
+                        );
+                      })}
                     </TableRow>
                   </TableBody>
                 </Table>
@@ -634,68 +710,88 @@ const AssetSummaryInputs = () => {
                   <TableBody>
                     <TableRow>
                       <TableCell className="font-medium">Max Gearing (%)</TableCell>
-                      {Object.values(assets).map(asset => (
-                        <TableCell key={`gearing-${asset.id}`}>
-                          <Input
-                            type="number"
-                            value={(assetCosts[asset.name]?.maxGearing * 100) ?? ''}
-                            onChange={(e) => handleAssetCostChange(asset.name, 'maxGearing', e.target.value)}
-                            className="w-32 h-8"
-                          />
-                        </TableCell>
-                      ))}
+                      {Object.values(assets).map(asset => {
+                        const currentValue = assetCosts[asset.name]?.maxGearing;
+                        const defaultValue = getAssetCostDefault('maxGearing', asset.type, asset.capacity);
+                        return (
+                          <TableCell key={`gearing-${asset.id}`}>
+                            <Input
+                              type="number"
+                              value={(currentValue * 100) ?? ''}
+                              onChange={(e) => handleAssetCostChange(asset.name, 'maxGearing', e.target.value)}
+                              className={`w-32 h-8 ${getValueStyle(currentValue, defaultValue)}`}
+                            />
+                          </TableCell>
+                        );
+                      })}
                     </TableRow>
                     <TableRow>
                       <TableCell className="font-medium">Target DSCR Contract (x)</TableCell>
-                      {Object.values(assets).map(asset => (
-                        <TableCell key={`dscrcontract-${asset.id}`}>
-                          <Input
-                            type="number"
-                            value={assetCosts[asset.name]?.targetDSCRContract ?? ''}
-                            onChange={(e) => handleAssetCostChange(asset.name, 'targetDSCRContract', e.target.value)}
-                            className="w-32 h-8"
-                          />
-                        </TableCell>
-                      ))}
+                      {Object.values(assets).map(asset => {
+                        const currentValue = assetCosts[asset.name]?.targetDSCRContract;
+                        const defaultValue = getAssetCostDefault('targetDSCRContract', asset.type, asset.capacity);
+                        return (
+                          <TableCell key={`dscrcontract-${asset.id}`}>
+                            <Input
+                              type="number"
+                              value={currentValue ?? ''}
+                              onChange={(e) => handleAssetCostChange(asset.name, 'targetDSCRContract', e.target.value)}
+                              className={`w-32 h-8 ${getValueStyle(currentValue, defaultValue)}`}
+                            />
+                          </TableCell>
+                        );
+                      })}
                     </TableRow>
                     <TableRow>
                       <TableCell className="font-medium">Target DSCR Merchant (x)</TableCell>
-                      {Object.values(assets).map(asset => (
-                        <TableCell key={`dscrmerchant-${asset.id}`}>
-                          <Input
-                            type="number"
-                            value={assetCosts[asset.name]?.targetDSCRMerchant ?? ''}
-                            onChange={(e) => handleAssetCostChange(asset.name, 'targetDSCRMerchant', e.target.value)}
-                            className="w-32 h-8"
-                          />
-                        </TableCell>
-                      ))}
+                      {Object.values(assets).map(asset => {
+                        const currentValue = assetCosts[asset.name]?.targetDSCRMerchant;
+                        const defaultValue = getAssetCostDefault('targetDSCRMerchant', asset.type, asset.capacity);
+                        return (
+                          <TableCell key={`dscrmerchant-${asset.id}`}>
+                            <Input
+                              type="number"
+                              value={currentValue ?? ''}
+                              onChange={(e) => handleAssetCostChange(asset.name, 'targetDSCRMerchant', e.target.value)}
+                              className={`w-32 h-8 ${getValueStyle(currentValue, defaultValue)}`}
+                            />
+                          </TableCell>
+                        );
+                      })}
                     </TableRow>
                     <TableRow>
                       <TableCell className="font-medium">Interest Rate (%)</TableCell>
-                      {Object.values(assets).map(asset => (
-                        <TableCell key={`interest-${asset.id}`}>
-                          <Input
-                            type="number"
-                            value={(assetCosts[asset.name]?.interestRate * 100) ?? ''}
-                            onChange={(e) => handleAssetCostChange(asset.name, 'interestRate', e.target.value)}
-                            className="w-32 h-8"
-                          />
-                        </TableCell>
-                      ))}
+                      {Object.values(assets).map(asset => {
+                        const currentValue = assetCosts[asset.name]?.interestRate;
+                        const defaultValue = getAssetCostDefault('interestRate', asset.type, asset.capacity);
+                        return (
+                          <TableCell key={`interest-${asset.id}`}>
+                            <Input
+                              type="number"
+                              value={(currentValue * 100) ?? ''}
+                              onChange={(e) => handleAssetCostChange(asset.name, 'interestRate', e.target.value)}
+                              className={`w-32 h-8 ${getValueStyle(currentValue, defaultValue)}`}
+                            />
+                          </TableCell>
+                        );
+                      })}
                     </TableRow>
                     <TableRow>
                       <TableCell className="font-medium">Tenor (Years)</TableCell>
-                      {Object.values(assets).map(asset => (
-                        <TableCell key={`tenor-${asset.id}`}>
-                          <Input
-                            type="number"
-                            value={assetCosts[asset.name]?.tenorYears ?? ''}
-                            onChange={(e) => handleAssetCostChange(asset.name, 'tenorYears', e.target.value)}
-                            className="w-32 h-8"
-                          />
-                        </TableCell>
-                      ))}
+                      {Object.values(assets).map(asset => {
+                        const currentValue = assetCosts[asset.name]?.tenorYears;
+                        const defaultValue = getAssetCostDefault('tenorYears', asset.type, asset.capacity);
+                        return (
+                          <TableCell key={`tenor-${asset.id}`}>
+                            <Input
+                              type="number"
+                              value={currentValue ?? ''}
+                              onChange={(e) => handleAssetCostChange(asset.name, 'tenorYears', e.target.value)}
+                              className={`w-32 h-8 ${getValueStyle(currentValue, defaultValue)}`}
+                            />
+                          </TableCell>
+                        );
+                      })}
                     </TableRow>
                   </TableBody>
                 </Table>
@@ -712,7 +808,32 @@ const AssetSummaryInputs = () => {
                         <CardTitle className="text-lg">Corporate Tax Rate</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <div className="grid grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Tax Rate (%)</label>
+                          <Input 
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.1"
+                            value={corporateTaxRate}
+                            onChange={(e) => handleTaxRateChange(e.target.value)}
+                            className={`max-w-xs ${getValueStyle(corporateTaxRate, DEFAULT_TAX_DEPRECIATION.corporateTaxRate)}`}
+                          />
+                          <p className="text-sm text-gray-500">
+                            Corporate tax rate applied to taxable income
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Asset Depreciation Periods</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-1 gap-4">
                           <div className="space-y-2">
                             <label className="text-sm font-medium">Solar (Years)</label>
                             <Input 
@@ -721,7 +842,7 @@ const AssetSummaryInputs = () => {
                               max="40"
                               value={deprecationPeriods.solar}
                               onChange={(e) => handleDepreciationChange('solar', e.target.value)}
-                              className="max-w-xs"
+                              className={`max-w-xs ${getValueStyle(deprecationPeriods.solar, DEFAULT_TAX_DEPRECIATION.deprecationPeriods.solar)}`}
                             />
                           </div>
                           <div className="space-y-2">
@@ -732,7 +853,7 @@ const AssetSummaryInputs = () => {
                               max="40"
                               value={deprecationPeriods.wind}
                               onChange={(e) => handleDepreciationChange('wind', e.target.value)}
-                              className="max-w-xs"
+                              className={`max-w-xs ${getValueStyle(deprecationPeriods.wind, DEFAULT_TAX_DEPRECIATION.deprecationPeriods.wind)}`}
                             />
                           </div>
                           <div className="space-y-2">
@@ -743,14 +864,13 @@ const AssetSummaryInputs = () => {
                               max="40"
                               value={deprecationPeriods.storage}
                               onChange={(e) => handleDepreciationChange('storage', e.target.value)}
-                              className="max-w-xs"
+                              className={`max-w-xs ${getValueStyle(deprecationPeriods.storage, DEFAULT_TAX_DEPRECIATION.deprecationPeriods.storage)}`}
                             />
                           </div>
                         </div>
                         <p className="text-sm text-gray-500 mt-2">
                           Asset depreciation periods for tax and accounting purposes
                         </p>
-
                       </CardContent>
                     </Card>
                   </div>

@@ -16,6 +16,13 @@ import {
   createNewContract,
   updateBundledPrices
 } from './AssetUtils';
+import {
+  DEFAULT_CAPEX_RATES,
+  DEFAULT_OPEX_RATES,
+  DEFAULT_PROJECT_FINANCE,
+  getDefaultValue,
+  UI_CONSTANTS
+} from '@/lib/default_constants';
 
 const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) => {
   const { constants, updateConstants } = usePortfolio();
@@ -35,6 +42,46 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
 
   const year1Volume = calculateYear1Volume(asset);
   const assetCosts = constants.assetCosts ? constants.assetCosts[asset.name] || {} : {};
+
+  // Helper function to determine if a value is default (blue) or user-defined (black)
+  const getValueStyle = (currentValue, defaultValue) => {
+    const isDefault = currentValue === undefined || currentValue === null || currentValue === defaultValue;
+    return isDefault ? UI_CONSTANTS.colors.defaultValue : UI_CONSTANTS.colors.userValue;
+  };
+
+  // Helper function to get default values for asset costs
+  const getAssetCostDefault = (field, assetType, capacity) => {
+    const parsedCapacity = parseFloat(capacity) || 100;
+    
+    switch(field) {
+      case 'capex':
+        return getDefaultValue('capex', 'default', assetType) * parsedCapacity;
+      case 'operatingCosts':
+        return getDefaultValue('opex', 'default', assetType) * parsedCapacity;
+      case 'operatingCostEscalation':
+        return DEFAULT_PROJECT_FINANCE.opexEscalation;
+      case 'terminalValue':
+        const defaultTerminalRate = {
+          solar: 0.15,
+          wind: 0.20,
+          storage: 0.10,
+          default: 0.15
+        }[assetType] || 0.15;
+        return defaultTerminalRate * parsedCapacity;
+      case 'maxGearing':
+        return DEFAULT_PROJECT_FINANCE.maxGearing / 100;
+      case 'targetDSCRContract':
+        return DEFAULT_PROJECT_FINANCE.targetDSCRContract;
+      case 'targetDSCRMerchant':
+        return DEFAULT_PROJECT_FINANCE.targetDSCRMerchant;
+      case 'interestRate':
+        return DEFAULT_PROJECT_FINANCE.interestRate / 100;
+      case 'tenorYears':
+        return getDefaultValue('finance', 'tenorYears', assetType);
+      default:
+        return 0;
+    }
+  };
 
   // Load renewables data
   useEffect(() => {
@@ -85,43 +132,20 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
     
     // Initialize asset costs if they don't exist
     if (!constants.assetCosts[asset.name]) {
-      // Set default cost values based on asset type and capacity
-      const defaultCapexRate = {
-        solar: 1.2,  // $M per MW
-        wind: 2.5,   // $M per MW
-        storage: 1.6, // $M per MW
-        default: 2.0  // $M per MW
-      }[asset.type] || 2.0;
-      
-      const defaultOpexRate = {
-        solar: 0.014,    // $M per MW
-        wind: 0.040,     // $M per MW
-        storage: 0.015,  // $M per MW
-        default: 0.030   // $M per MW
-      }[asset.type] || 0.030;
-      
-      const defaultTerminalValueRate = {
-        solar: 0.15,    // $M per MW
-        wind: 0.20,     // $M per MW
-        storage: 0.10,  // $M per MW
-        default: 0.15   // $M per MW
-      }[asset.type] || 0.15;
-      
       const capacity = parseFloat(asset.capacity) || 100;
       
       const newAssetCosts = {
         ...constants.assetCosts,
         [asset.name]: {
-          capex: defaultCapexRate * capacity,
-          operatingCosts: defaultOpexRate * capacity,
-          operatingCostEscalation: 2.5,
-          terminalValue: defaultTerminalValueRate * capacity,
-          // Add project finance parameters
-          maxGearing: 0.70,
-          targetDSCRContract: 1.35,
-          targetDSCRMerchant: 2.00,
-          interestRate: 0.06,
-          tenorYears: 15
+          capex: getAssetCostDefault('capex', asset.type, capacity),
+          operatingCosts: getAssetCostDefault('operatingCosts', asset.type, capacity),
+          operatingCostEscalation: getAssetCostDefault('operatingCostEscalation', asset.type, capacity),
+          terminalValue: getAssetCostDefault('terminalValue', asset.type, capacity),
+          maxGearing: getAssetCostDefault('maxGearing', asset.type, capacity),
+          targetDSCRContract: getAssetCostDefault('targetDSCRContract', asset.type, capacity),
+          targetDSCRMerchant: getAssetCostDefault('targetDSCRMerchant', asset.type, capacity),
+          interestRate: getAssetCostDefault('interestRate', asset.type, capacity),
+          tenorYears: getAssetCostDefault('tenorYears', asset.type, capacity)
         }
       };
       
@@ -214,11 +238,18 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
 
   // Handle cost field updates
   const handleCostUpdate = (field, value) => {
+    let processedValue = value === '' ? '' : parseFloat(value);
+    
+    // Handle percentage fields that need to be stored as decimals
+    if (field === 'maxGearing' || field === 'interestRate') {
+      processedValue = processedValue === '' ? '' : processedValue / 100;
+    }
+    
     const newAssetCosts = {
       ...constants.assetCosts,
       [asset.name]: {
         ...assetCosts,
-        [field]: value === '' ? '' : parseFloat(value)
+        [field]: processedValue
       }
     };
     updateConstants('assetCosts', newAssetCosts);
@@ -400,7 +431,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
                 min="1"
                 value={formatNumericValue(asset.constructionDuration)}
                 onChange={(e) => handleFieldUpdate('constructionDuration', e.target.value, { round: true })}
-                className={outOfSync.constructionDuration ? "text-red-500" : ""}
+                className={`${outOfSync.constructionDuration ? "text-red-500" : ""} ${getValueStyle(asset.constructionDuration, 12)}`}
               />
               <p className="text-xs text-gray-500">Construction period length</p>
             </div>
@@ -431,22 +462,29 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
               <div className="col-span-2">
                 <h4 className="text-sm font-medium mb-2">Quarterly Capacity Factors (%)</h4>
                 <div className="grid grid-cols-4 gap-4">
-                  {['Q1', 'Q2', 'Q3', 'Q4'].map((quarter) => (
-                    <div key={quarter}>
-                      <label className="text-xs text-gray-500">{quarter}</label>
-                      <Input
-                        type="number"
-                        min="0"
-                        max="100"
-                        value={asset[`qtrCapacityFactor_${quarter.toLowerCase()}`] || ''}
-                        onChange={(e) => handleFieldUpdate(
-                          `qtrCapacityFactor_${quarter.toLowerCase()}`, 
-                          e.target.value,
-                          { min: 0, max: 100, round: true, asString: true }
-                        )}
-                      />
-                    </div>
-                  ))}
+                  {['Q1', 'Q2', 'Q3', 'Q4'].map((quarter) => {
+                    const currentValue = asset[`qtrCapacityFactor_${quarter.toLowerCase()}`];
+                    const defaultFactor = constants.capacityFactors_qtr?.[asset.type]?.[asset.state]?.[quarter];
+                    const defaultValueFormatted = defaultFactor ? String(Math.round(defaultFactor * 100)) : '';
+                    
+                    return (
+                      <div key={quarter}>
+                        <label className="text-xs text-gray-500">{quarter}</label>
+                        <Input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={currentValue || ''}
+                          onChange={(e) => handleFieldUpdate(
+                            `qtrCapacityFactor_${quarter.toLowerCase()}`, 
+                            e.target.value,
+                            { min: 0, max: 100, round: true, asString: true }
+                          )}
+                          className={getValueStyle(currentValue, defaultValueFormatted)}
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">Defaults from global settings based on State and Type</p>
               </div>
@@ -475,6 +513,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
                 step="0.1"
                 value={formatNumericValue(asset.annualDegradation)}
                 onChange={(e) => handleFieldUpdate('annualDegradation', e.target.value, { min: 0, max: 100 })}
+                className={getValueStyle(asset.annualDegradation, constants.annualDegradation?.[asset.type])}
               />
               <p className="text-xs text-gray-500">Annual reduction in output (e.g. 0.4% per year)</p>
             </div>
@@ -515,7 +554,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
                 type="number"
                 value={assetCosts.capex ?? ''}
                 onChange={(e) => handleCostUpdate('capex', e.target.value)}
-                className="w-full"
+                className={`w-full ${getValueStyle(assetCosts.capex, getAssetCostDefault('capex', asset.type, asset.capacity))}`}
               />
               <p className="text-xs text-gray-500">Total capital expenditure</p>
             </div>
@@ -525,7 +564,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
                 type="number"
                 value={assetCosts.operatingCosts ?? ''}
                 onChange={(e) => handleCostUpdate('operatingCosts', e.target.value)}
-                className="w-full"
+                className={`w-full ${getValueStyle(assetCosts.operatingCosts, getAssetCostDefault('operatingCosts', asset.type, asset.capacity))}`}
               />
               <p className="text-xs text-gray-500">Annual operating costs</p>
             </div>
@@ -535,7 +574,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
                 type="number"
                 value={assetCosts.operatingCostEscalation ?? ''}
                 onChange={(e) => handleCostUpdate('operatingCostEscalation', e.target.value)}
-                className="w-full"
+                className={`w-full ${getValueStyle(assetCosts.operatingCostEscalation, getAssetCostDefault('operatingCostEscalation', asset.type, asset.capacity))}`}
               />
               <p className="text-xs text-gray-500">Annual increase in costs</p>
             </div>
@@ -545,7 +584,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
                 type="number"
                 value={assetCosts.terminalValue ?? ''}
                 onChange={(e) => handleCostUpdate('terminalValue', e.target.value)}
-                className="w-full"
+                className={`w-full ${getValueStyle(assetCosts.terminalValue, getAssetCostDefault('terminalValue', asset.type, asset.capacity))}`}
               />
               <p className="text-xs text-gray-500">End of life value</p>
             </div>
@@ -565,8 +604,8 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
               <Input
                 type="number"
                 value={(assetCosts.maxGearing * 100) ?? ''}
-                onChange={(e) => handleCostUpdate('maxGearing', parseFloat(e.target.value) / 100)}
-                className="w-full"
+                onChange={(e) => handleCostUpdate('maxGearing', e.target.value)}
+                className={`w-full ${getValueStyle(assetCosts.maxGearing, getAssetCostDefault('maxGearing', asset.type, asset.capacity))}`}
               />
               <p className="text-xs text-gray-500">Maximum debt-to-capital ratio</p>
             </div>
@@ -576,7 +615,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
                 type="number"
                 value={assetCosts.targetDSCRContract ?? ''}
                 onChange={(e) => handleCostUpdate('targetDSCRContract', e.target.value)}
-                className="w-full"
+                className={`w-full ${getValueStyle(assetCosts.targetDSCRContract, getAssetCostDefault('targetDSCRContract', asset.type, asset.capacity))}`}
               />
               <p className="text-xs text-gray-500">For contracted revenue</p>
             </div>
@@ -586,7 +625,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
                 type="number"
                 value={assetCosts.targetDSCRMerchant ?? ''}
                 onChange={(e) => handleCostUpdate('targetDSCRMerchant', e.target.value)}
-                className="w-full"
+                className={`w-full ${getValueStyle(assetCosts.targetDSCRMerchant, getAssetCostDefault('targetDSCRMerchant', asset.type, asset.capacity))}`}
               />
               <p className="text-xs text-gray-500">For merchant revenue</p>
             </div>
@@ -595,8 +634,8 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
               <Input
                 type="number"
                 value={(assetCosts.interestRate * 100) ?? ''}
-                onChange={(e) => handleCostUpdate('interestRate', parseFloat(e.target.value) / 100)}
-                className="w-full"
+                onChange={(e) => handleCostUpdate('interestRate', e.target.value)}
+                className={`w-full ${getValueStyle(assetCosts.interestRate, getAssetCostDefault('interestRate', asset.type, asset.capacity))}`}
               />
               <p className="text-xs text-gray-500">Annual interest rate</p>
             </div>
@@ -606,7 +645,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
                 type="number"
                 value={assetCosts.tenorYears ?? ''}
                 onChange={(e) => handleCostUpdate('tenorYears', e.target.value)}
-                className="w-full"
+                className={`w-full ${getValueStyle(assetCosts.tenorYears, getAssetCostDefault('tenorYears', asset.type, asset.capacity))}`}
               />
               <p className="text-xs text-gray-500">Loan term length</p>
             </div>

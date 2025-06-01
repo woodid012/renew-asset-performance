@@ -9,6 +9,10 @@ import { read, utils, writeFile } from 'xlsx';
 import { Download, Upload } from 'lucide-react';
 import PriceChart from './InputsPriceChart';
 import { useMerchantPrices } from '@/contexts/MerchantPriceProvider';
+import {
+  DEFAULT_PRICE_SETTINGS,
+  UI_CONSTANTS
+} from '@/lib/default_constants';
 
 const InputsGlobal = () => {
   const { 
@@ -20,6 +24,12 @@ const InputsGlobal = () => {
   
   const { setMerchantPrices } = useMerchantPrices();
   const fileInputRef = useRef(null);
+
+  // Helper function to determine if a value is default (blue) or user-defined (black)
+  const getValueStyle = (currentValue, defaultValue) => {
+    const isDefault = currentValue === undefined || currentValue === null || currentValue === defaultValue;
+    return isDefault ? UI_CONSTANTS.colors.defaultValue : UI_CONSTANTS.colors.userValue;
+  };
 
   const processData = (data) => {
     try {
@@ -169,6 +179,10 @@ const InputsGlobal = () => {
     );
   };
 
+  // Get current values with defaults
+  const currentEscalation = constants.escalation !== undefined ? constants.escalation : DEFAULT_PRICE_SETTINGS.escalation;
+  const currentReferenceYear = constants.referenceYear !== undefined ? constants.referenceYear : DEFAULT_PRICE_SETTINGS.referenceYear;
+
   return (
     <div className="w-full p-4 space-y-4"> 
       <Card>
@@ -214,19 +228,20 @@ const InputsGlobal = () => {
                   <Input
                     type="number"
                     step="0.1"
-                    value={constants.escalation}
+                    value={currentEscalation}
                     onChange={e => updateConstants('escalation', parseFloat(e.target.value) || 0)}
                     placeholder="Enter escalation rate"
+                    className={getValueStyle(currentEscalation, DEFAULT_PRICE_SETTINGS.escalation)}
                   />
                   <p className="text-sm text-gray-500">Applied indexation to real pricing</p>
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Reference Year</label>
                   <Select
-                    value={String(constants.referenceYear)}
+                    value={String(currentReferenceYear)}
                     onValueChange={value => updateConstants('referenceYear', parseInt(value))}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className={getValueStyle(currentReferenceYear, DEFAULT_PRICE_SETTINGS.referenceYear)}>
                       <SelectValue placeholder="Select reference year" />
                     </SelectTrigger>
                     <SelectContent>
