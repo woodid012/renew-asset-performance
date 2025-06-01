@@ -67,6 +67,36 @@ const AssetSummaryInputs = () => {
     }
   };
 
+  // Helper function to round date to first of nearest month
+  const roundToFirstOfMonth = (dateStr) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    // Set to first day of the month
+    date.setDate(1);
+    return date.toISOString().split('T')[0];
+  };
+
+  // Helper function to add months to a date and round to first of month
+  const addMonthsToDate = (dateStr, months) => {
+    if (!dateStr || !months) return '';
+    const date = new Date(dateStr);
+    date.setMonth(date.getMonth() + parseInt(months));
+    date.setDate(1); // Always set to first of month
+    return date.toISOString().split('T')[0];
+  };
+
+  // Helper function to calculate months between two dates
+  const calculateMonthsBetween = (startDateStr, endDateStr) => {
+    if (!startDateStr || !endDateStr) return '';
+    const startDate = new Date(startDateStr);
+    const endDate = new Date(endDateStr);
+    
+    const yearDiff = endDate.getFullYear() - startDate.getFullYear();
+    const monthDiff = endDate.getMonth() - startDate.getMonth();
+    
+    return yearDiff * 12 + monthDiff;
+  };
+
   // Initialize tax/depreciation values if they don't exist
   useEffect(() => {
     if (constants.corporateTaxRate === undefined) {
@@ -88,23 +118,23 @@ const AssetSummaryInputs = () => {
     setEditState(initialState);
   }, [assets]);
 
-  // Update a field for a specific asset
+  // Update a field for a specific asset with linked date logic
   const handleFieldUpdate = (assetId, field, value, options = {}) => {
     console.log(`Updating field ${field} for asset ${assetId} with value:`, value);
     
-    // If it's a date field, pass directly without additional processing
+    // Handle date fields with linked logic
     if (field === 'constructionStartDate' || field === 'assetStartDate') {
-      setEditState(prev => ({
-        ...prev,
-        [assetId]: {
-          ...prev[assetId],
-          [field]: value
-        }
-      }));
+      handleDateFieldUpdate(assetId, field, value);
       return;
     }
     
-    // For non-date fields, use the normal processing
+    // Handle construction duration with linked logic
+    if (field === 'constructionDuration') {
+      handleConstructionDurationUpdate(assetId, value);
+      return;
+    }
+    
+    // For all other fields, use normal processing
     setEditState(prev => ({
       ...prev,
       [assetId]: {
@@ -112,6 +142,84 @@ const AssetSummaryInputs = () => {
         [field]: handleNumericInput(value, options)
       }
     }));
+  };
+
+  // Enhanced date field handler with automatic calculation
+  const handleDateFieldUpdate = (assetId, field, value) => {
+    // Round the input date to first of month
+    const roundedValue = roundToFirstOfMonth(value);
+    
+    // Update the changed field first
+    setEditState(prev => ({
+      ...prev,
+      [assetId]: {
+        ...prev[assetId],
+        [field]: roundedValue
+      }
+    }));
+    
+    // Get current asset data
+    const currentAsset = editState[assetId];
+    if (!currentAsset) return;
+    
+    // Then calculate the dependent field based on which field was changed
+    if (field === 'constructionStartDate' && currentAsset.constructionDuration) {
+      // Calculate ops start from cons start + duration
+      const newOpsStart = addMonthsToDate(roundedValue, currentAsset.constructionDuration);
+      if (newOpsStart !== currentAsset.assetStartDate) {
+        setEditState(prev => ({
+          ...prev,
+          [assetId]: {
+            ...prev[assetId],
+            assetStartDate: newOpsStart
+          }
+        }));
+      }
+    } else if (field === 'assetStartDate' && currentAsset.constructionStartDate) {
+      // Calculate construction duration from the difference
+      const newDuration = calculateMonthsBetween(currentAsset.constructionStartDate, roundedValue);
+      if (newDuration !== currentAsset.constructionDuration) {
+        setEditState(prev => ({
+          ...prev,
+          [assetId]: {
+            ...prev[assetId],
+            constructionDuration: newDuration
+          }
+        }));
+      }
+    }
+  };
+
+  // Enhanced construction duration handler
+  const handleConstructionDurationUpdate = (assetId, value) => {
+    const processedValue = handleNumericInput(value, { round: true });
+    
+    // Update the construction duration field
+    setEditState(prev => ({
+      ...prev,
+      [assetId]: {
+        ...prev[assetId],
+        constructionDuration: processedValue
+      }
+    }));
+    
+    // Get current asset data
+    const currentAsset = editState[assetId];
+    if (!currentAsset) return;
+    
+    // If we have a construction start date, calculate the ops start
+    if (currentAsset.constructionStartDate && processedValue) {
+      const newOpsStart = addMonthsToDate(currentAsset.constructionStartDate, processedValue);
+      if (newOpsStart !== currentAsset.assetStartDate) {
+        setEditState(prev => ({
+          ...prev,
+          [assetId]: {
+            ...prev[assetId],
+            assetStartDate: newOpsStart
+          }
+        }));
+      }
+    }
   };
 
   // Add a new contract to all assets
@@ -336,7 +444,7 @@ const AssetSummaryInputs = () => {
             type="date"
             value={value || ''}
             onChange={(e) => {
-              // Simply pass the value from the input without additional formatting
+              // Use the enhanced date field handler
               handleFieldUpdate(assetId, field.field, e.target.value);
             }}
             className={`w-full h-8 ${cellStyle}`}
@@ -523,7 +631,14 @@ const AssetSummaryInputs = () => {
                 <TableBody>
                   {assetFields.map(field => (
                     <TableRow key={field.field}>
-                      <TableCell className="font-medium">{field.label}</TableCell>
+                      <TableCell className="font-medium">
+                        {field.label}
+                        {(field.field === 'constructionStartDate' || field.field === 'assetStartDate') && (
+                          <div className="text-xs text-gray-500 mt-1">
+                            (rounds to 1st of month)
+                          </div>
+                        )}
+                      </TableCell>
                       {Object.values(assets).map(asset => (
                         <TableCell key={`${asset.id}-${field.field}`}>
                           {renderCellContent(asset.id, field, field.type, field.options)}
@@ -560,55 +675,6 @@ const AssetSummaryInputs = () => {
               </Table>
             </TabsContent>
             
-            <TabsContent value="contracts">
-              <div className="space-y-4">
-                {hasContracts ? (
-                  <>
-                    {allContractIds.map(contractId => (
-                      <div key={contractId} className="mb-6">
-                        <div className="flex justify-between mb-2">
-                          <h4 className="text-md font-medium">Contract {contractId}</h4>
-                        </div>
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Field</TableHead>
-                              {Object.values(assets).map(asset => (
-                                <TableHead key={`asset-${asset.id}`}>{asset.name}</TableHead>
-                              ))}
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {contractFields.map(field => (
-                              <TableRow key={field.field}>
-                                <TableCell className="font-medium">{field.label}</TableCell>
-                                {Object.values(assets).map(asset => (
-                                  <TableCell key={`${asset.id}-${contractId}-${field.field}`}>
-                                    {renderContractCellContent(asset.id, contractId, field, field.type, field.options)}
-                                  </TableCell>
-                                ))}
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    ))}
-                    <div className="flex justify-center mt-4">
-                      <Button onClick={addContractToAll}>
-                        Add Contract to All Assets
-                      </Button>
-                    </div>
-                  </>
-                ) : (
-                  <div className="text-center py-4">
-                    <p className="text-gray-500 mb-2">No contracts have been added yet</p>
-                    <Button onClick={addContractToAll}>
-                      Add Contract to All Assets
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </TabsContent>
             
             <TabsContent value="finance">
               <div className="space-y-6">

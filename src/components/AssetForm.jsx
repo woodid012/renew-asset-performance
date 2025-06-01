@@ -79,6 +79,36 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
     }
   };
 
+  // Helper function to round date to first of nearest month
+  const roundToFirstOfMonth = (dateStr) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    // Set to first day of the month
+    date.setDate(1);
+    return date.toISOString().split('T')[0];
+  };
+
+  // Helper function to add months to a date and round to first of month
+  const addMonthsToDate = (dateStr, months) => {
+    if (!dateStr || !months) return '';
+    const date = new Date(dateStr);
+    date.setMonth(date.getMonth() + parseInt(months));
+    date.setDate(1); // Always set to first of month
+    return date.toISOString().split('T')[0];
+  };
+
+  // Helper function to calculate months between two dates
+  const calculateMonthsBetween = (startDateStr, endDateStr) => {
+    if (!startDateStr || !endDateStr) return '';
+    const startDate = new Date(startDateStr);
+    const endDate = new Date(endDateStr);
+    
+    const yearDiff = endDate.getFullYear() - startDate.getFullYear();
+    const monthDiff = endDate.getMonth() - startDate.getMonth();
+    
+    return yearDiff * 12 + monthDiff;
+  };
+
   // Load renewables data
   useEffect(() => {
     const loadRenewablesData = async () => {
@@ -209,6 +239,44 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
     onUpdateAsset(field, processedValue);
   };
 
+  // Enhanced date field handler with automatic calculation
+  const handleDateFieldUpdate = (field, value) => {
+    // Round the input date to first of month
+    const roundedValue = roundToFirstOfMonth(value);
+    
+    // Update the changed field first
+    onUpdateAsset(field, roundedValue);
+    
+    // Then calculate the dependent field based on which field was changed
+    if (field === 'constructionStartDate' && asset.constructionDuration) {
+      // Calculate ops start from cons start + duration
+      const newOpsStart = addMonthsToDate(roundedValue, asset.constructionDuration);
+      if (newOpsStart !== asset.assetStartDate) {
+        onUpdateAsset('assetStartDate', newOpsStart);
+      }
+    } else if (field === 'assetStartDate' && asset.constructionStartDate) {
+      // Calculate construction duration from the difference
+      const newDuration = calculateMonthsBetween(asset.constructionStartDate, roundedValue);
+      if (newDuration !== asset.constructionDuration) {
+        onUpdateAsset('constructionDuration', newDuration);
+      }
+    }
+  };
+
+  // Enhanced construction duration handler
+  const handleConstructionDurationUpdate = (value) => {
+    const processedValue = handleNumericInput(value, { round: true });
+    onUpdateAsset('constructionDuration', processedValue);
+    
+    // If we have a construction start date, calculate the ops start
+    if (asset.constructionStartDate && processedValue) {
+      const newOpsStart = addMonthsToDate(asset.constructionStartDate, processedValue);
+      if (newOpsStart !== asset.assetStartDate) {
+        onUpdateAsset('assetStartDate', newOpsStart);
+      }
+    }
+  };
+
   const handleRenewableSelection = (selectedRenewableId) => {
     const selected = renewablesData.find(r => r.id === selectedRenewableId);
     if (selected) {
@@ -279,24 +347,6 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
   const removeContract = (contractId) => {
     onUpdateContracts(asset.contracts.filter(c => c.id !== contractId));
   };
-  
-  // Calculate default construction start date based on operations start date and construction duration
-  const calculateDefaultConstructionStart = () => {
-    if (!asset.assetStartDate || !asset.constructionDuration) return '';
-    
-    const opsDate = new Date(asset.assetStartDate);
-    const constructionMonths = parseInt(asset.constructionDuration) || 0;
-    opsDate.setMonth(opsDate.getMonth() - constructionMonths);
-    
-    return opsDate.toISOString().split('T')[0];
-  };
-  
-  // Set construction start date if it doesn't exist but we have ops start date and construction duration
-  useEffect(() => {
-    if (!asset.constructionStartDate && asset.assetStartDate && asset.constructionDuration) {
-      onUpdateAsset('constructionStartDate', calculateDefaultConstructionStart());
-    }
-  }, [asset.assetStartDate, asset.constructionDuration]);
 
   return (
     <div className="space-y-6">
@@ -406,16 +456,16 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
               )}
             </div>
 
-            {/* Dates and Construction */}
+            {/* Enhanced Dates and Construction Section with Linked Logic */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Cons Start</label>
               <Input
                 type="date"
                 value={asset.constructionStartDate || ''}
-                onChange={(e) => onUpdateAsset('constructionStartDate', e.target.value)}
+                onChange={(e) => handleDateFieldUpdate('constructionStartDate', e.target.value)}
                 className={outOfSync.constructionStartDate ? "text-red-500" : ""}
               />
-              <p className="text-xs text-gray-500">When construction begins</p>
+              <p className="text-xs text-gray-500">When construction begins (rounded to 1st of month)</p>
             </div>
             
             <div className="space-y-2">
@@ -424,7 +474,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
                 type="number"
                 min="1"
                 value={formatNumericValue(asset.constructionDuration)}
-                onChange={(e) => handleFieldUpdate('constructionDuration', e.target.value, { round: true })}
+                onChange={(e) => handleConstructionDurationUpdate(e.target.value)}
                 className={`${outOfSync.constructionDuration ? "text-red-500" : ""} ${getValueStyle(asset.constructionDuration, getDefaultValue('performance', 'constructionDuration', asset.type))}`}
               />
               <p className="text-xs text-gray-500">Construction period length</p>
@@ -435,10 +485,10 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
               <Input
                 type="date"
                 value={asset.assetStartDate || ''}
-                onChange={(e) => onUpdateAsset('assetStartDate', e.target.value)}
+                onChange={(e) => handleDateFieldUpdate('assetStartDate', e.target.value)}
                 className={outOfSync.assetStartDate ? "text-red-500" : ""}
               />
-              <p className="text-xs text-gray-500">When operations begin</p>
+              <p className="text-xs text-gray-500">When operations begin (rounded to 1st of month)</p>
             </div>
 
             <div className="space-y-2">
