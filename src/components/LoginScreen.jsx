@@ -10,14 +10,44 @@ import { TabsContent } from '@/components/ui/tabs';
 // Import the shared Navigation component and tabs config
 import Navigation from '@/components/shared/Navigation';
 
+// Define users with their credentials and default portfolios
+const USERS = {
+  'ZEBRE': {
+    password: '**',
+    portfolioFile: 'zebre_2025-01-13.json',
+    portfolioId: 'zebre',
+    portfolioName: 'ZEBRE'
+  },
+  'AULA': {
+    password: '**',
+    portfolioFile: 'aula_2025-01-13.json',
+    portfolioId: 'aula',
+    portfolioName: 'Aula'
+  },
+  'ACCIONA': {
+    password: '**',
+    portfolioFile: 'acciona_merchant_2025-01-13.json',
+    portfolioId: 'acciona',
+    portfolioName: 'Acciona Merchant'
+  }
+};
+
 const LoginScreen = ({ onLogin }) => {
-  const [username, setUsername] = useState('ZEBRE');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(false);
   
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (username === 'ZEBRE' && password === 'ZEBRE_Platform25') {
+    
+    const user = USERS[username.toUpperCase()];
+    if (user && password === user.password) {
+      // Store user info in session storage for the app to use
+      sessionStorage.setItem('currentUser', username.toUpperCase());
+      sessionStorage.setItem('userPortfolioFile', user.portfolioFile);
+      sessionStorage.setItem('userPortfolioId', user.portfolioId);
+      sessionStorage.setItem('userPortfolioName', user.portfolioName);
+      
       onLogin();
     } else {
       setError(true);
@@ -56,6 +86,9 @@ const LoginScreen = ({ onLogin }) => {
             </div>
             <CardTitle className="text-2xl font-bold text-center">Portfolio Earnings Platform</CardTitle>
             <p className="text-center text-gray-500">Please enter your credentials</p>
+            <div className="text-center text-xs text-gray-400 mt-2">
+              Available users: ZEBRE, AULA, ACCIONA (password: **)
+            </div>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit}>

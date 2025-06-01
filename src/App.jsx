@@ -15,22 +15,90 @@ import LoginScreen from "@/components/LoginScreen";
 
 // Import the shared navigation component
 import Navigation, { navigationTabs } from "@/components/shared/Navigation";
+import { usePortfolio } from "@/contexts/PortfolioContext";
 
 const App = () => {
   const [activeTab, setActiveTab] = useState("landingpage");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  
+  const { 
+    setAssets, 
+    setPortfolioName, 
+    setActivePortfolio,
+    setPortfolioSource,
+    importPortfolioData
+  } = usePortfolio();
 
   // Check if user was previously logged in
   useEffect(() => {
     const loginStatus = sessionStorage.getItem('portfolioLoggedIn');
-    if (loginStatus === 'true') {
+    const storedUser = sessionStorage.getItem('currentUser');
+    
+    if (loginStatus === 'true' && storedUser) {
       setIsLoggedIn(true);
+      setCurrentUser(storedUser);
+      loadUserPortfolio(storedUser);
     }
   }, []);
 
-  const handleLogin = () => {
+  const loadUserPortfolio = async (username) => {
+    try {
+      const portfolioFile = sessionStorage.getItem('userPortfolioFile');
+      const portfolioId = sessionStorage.getItem('userPortfolioId');
+      const portfolioName = sessionStorage.getItem('userPortfolioName');
+      
+      if (portfolioFile) {
+        console.log(`Loading portfolio for user ${username}:`, portfolioFile);
+        
+        const response = await fetch(`/${portfolioFile}`);
+        if (!response.ok) throw new Error('Failed to load user portfolio');
+        
+        const data = await response.json();
+        
+        // Use the import function to load all data including constants
+        await importPortfolioData(data);
+        
+        // Set additional user-specific state
+        setActivePortfolio(portfolioId || username.toLowerCase());
+        setPortfolioSource(portfolioFile);
+        
+        console.log(`Portfolio loaded successfully for user ${username}`);
+      }
+    } catch (error) {
+      console.error('Error loading user portfolio:', error);
+      // Fall back to empty portfolio
+      setAssets({});
+      setPortfolioName('New Portfolio');
+    }
+  };
+
+  const handleLogin = async () => {
+    const username = sessionStorage.getItem('currentUser');
+    
     setIsLoggedIn(true);
+    setCurrentUser(username);
     sessionStorage.setItem('portfolioLoggedIn', 'true');
+    
+    // Load the user's specific portfolio
+    if (username) {
+      await loadUserPortfolio(username);
+    }
+  };
+
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    setCurrentUser(null);
+    sessionStorage.removeItem('portfolioLoggedIn');
+    sessionStorage.removeItem('currentUser');
+    sessionStorage.removeItem('userPortfolioFile');
+    sessionStorage.removeItem('userPortfolioId');
+    sessionStorage.removeItem('userPortfolioName');
+    
+    // Reset to blank portfolio
+    setAssets({});
+    setPortfolioName('New Portfolio');
+    setActivePortfolio('blank');
   };
 
   const date = new Date();
@@ -45,6 +113,8 @@ const App = () => {
       activeTab={activeTab}
       onTabChange={setActiveTab}
       formattedDate={formattedDate}
+      currentUser={currentUser}
+      onLogout={handleLogout}
     >
       {navigationTabs.map((tab) => {
         const TabComponent = (() => {

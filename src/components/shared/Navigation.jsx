@@ -1,6 +1,7 @@
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import {
   Building2,
   BarChart3,
@@ -10,6 +11,8 @@ import {
   Settings,
   HelpCircle,
   Calculator,
+  LogOut,
+  User
 } from 'lucide-react';
 
 // Navigation tabs configuration that can be shared between App and LoginScreen
@@ -71,7 +74,9 @@ const Navigation = ({
   children, 
   disabled = false,
   title = "Portfolio Earnings and Risk Analysis",
-  formattedDate
+  formattedDate,
+  currentUser = null,
+  onLogout = null
 }) => {
   return (
     <div className="min-h-screen bg-gray-50 p-4">
@@ -79,8 +84,33 @@ const Navigation = ({
         <div className="p-4">
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-2xl font-bold">{title}</h1>
-            <div className="text-sm text-muted-foreground">
-              Last Updated: {formattedDate}
+            
+            <div className="flex items-center gap-4">
+              {/* Current User Display */}
+              {currentUser && (
+                <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 rounded-md border">
+                  <User className="h-4 w-4 text-blue-600" />
+                  <span className="text-sm font-medium text-blue-700">{currentUser}</span>
+                </div>
+              )}
+              
+              {/* Date Display */}
+              <div className="text-sm text-muted-foreground">
+                Last Updated: {formattedDate}
+              </div>
+              
+              {/* Logout Button */}
+              {currentUser && onLogout && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onLogout}
+                  className="flex items-center gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span className="hidden sm:inline">Logout</span>
+                </Button>
+              )}
             </div>
           </div>
 
@@ -111,6 +141,9 @@ const Navigation = ({
 
       <footer className="mt-4 text-center text-xs text-muted-foreground">
         <p>Portfolio Management Dashboard © {new Date().getFullYear()}</p>
+        {currentUser && (
+          <p className="mt-1">Logged in as: <span className="font-medium">{currentUser}</span></p>
+        )}
       </footer>
     </div>
   );
