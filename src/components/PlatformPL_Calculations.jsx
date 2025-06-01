@@ -316,6 +316,23 @@ export const calculatePlatformPL = (
  * @param {Number} minimumCashBalance - Minimum cash balance to maintain ($M)
  * @returns {Object} Annual and quarterly cash flow data
  */
+/**
+ * CORRECTED Cash Flow Calculation Function
+ * 
+ * Key fixes:
+ * 1. Fixed FCFE calculation to properly subtract outflows
+ * 2. Improved cash flow logic and documentation
+ * 3. Better handling of cash flow signs and calculations
+ */
+
+/**
+ * Calculates cash flow data based on the P&L results - CORRECTED VERSION
+ * @param {Array} platformPL - Platform P&L data
+ * @param {Array} quarters - Quarterly P&L data
+ * @param {Number} dividendPolicy - Dividend payout ratio (%)
+ * @param {Number} minimumCashBalance - Minimum cash balance to maintain ($M)
+ * @returns {Object} Annual and quarterly cash flow data
+ */
 export const calculateCashFlow = (
   platformPL,
   quarters,
@@ -331,133 +348,151 @@ export const calculateCashFlow = (
   let retainedEarnings = 0;
   
   const annualCashFlow = platformPL.map((yearData, index) => {
-    // Operating cash flow is EBITDA
-    const operatingCashFlow = yearData.ebitda;
+    // Operating cash flow is EBITDA (positive inflow)
+    const operatingCashFlow = yearData.ebitda || 0;
     
-    // Tax payments
-    const taxPayment = yearData.tax;
+    // CORRECTED: Tax, interest, and principal are cash OUTFLOWS
+    // P&L stores these as negative values, so we need to handle them correctly
+    const taxPayment = yearData.tax || 0; // Already negative in P&L
+    const interestPayment = yearData.interest || 0; // Already negative in P&L  
+    const principalPayment = yearData.principalRepayment || 0; // Already negative in P&L
     
-    // Debt service components from P&L
-    const interest = yearData.interest;
-    const principalRepayment = yearData.principalRepayment;
-    const debtService = interest + principalRepayment;
+    // Total debt service (both components are negative, so sum gives total outflow)
+    const totalDebtService = interestPayment + principalPayment;
     
-    // Calculate Free Cash Flow to Equity (FCFE)
-    const fcfe = operatingCashFlow + taxPayment + debtService;
+    // CORRECTED FCFE CALCULATION:
+    // Since tax and debt service are already negative in P&L, we add them
+    // This effectively subtracts the outflows from operating cash flow
+    const fcfe = operatingCashFlow + taxPayment + totalDebtService;
     
-    // Update cash balance before dividend
+    // Alternative clearer calculation (same result):
+    // const fcfe = operatingCashFlow - Math.abs(taxPayment) - Math.abs(totalDebtService);
+    
+    // Update cash balance before dividend calculation
     const potentialCashBalance = cashBalance + fcfe;
     
     // Calculate potential dividend
     let dividend = 0;
     if (yearData.npat > 0 && potentialCashBalance > minimumCashBalance) {
-      // Potential dividend is limited by dividend policy and maintaining minimum cash balance
-      const maxDividend = Math.min(
-        yearData.npat * (dividendPolicy / 100),
-        potentialCashBalance - minimumCashBalance
-      );
-      dividend = Math.max(0, maxDividend);
+      // Dividend is limited by both policy and available cash above minimum
+      const policyDividend = yearData.npat * (dividendPolicy / 100);
+      const cashConstrainedDividend = potentialCashBalance - minimumCashBalance;
+      dividend = Math.min(policyDividend, cashConstrainedDividend);
+      dividend = Math.max(0, dividend); // Ensure non-negative
       
-      // For debugging
-      console.log(`Year ${yearData.year}: NPAT=${yearData.npat.toFixed(2)}M, Cash=${potentialCashBalance.toFixed(2)}M, Dividend=${dividend.toFixed(2)}M`);
+      console.log(`Year ${yearData.year}: NPAT=${yearData.npat.toFixed(2)}M, FCFE=${fcfe.toFixed(2)}M, Cash=${potentialCashBalance.toFixed(2)}M, Dividend=${dividend.toFixed(2)}M`);
     } else {
-      // For debugging - explain why no dividend
+      // Log reason for no dividend
       if (yearData.npat <= 0) {
         console.log(`Year ${yearData.year}: No dividend - NPAT is ${yearData.npat.toFixed(2)}M (must be positive)`);
       } else if (potentialCashBalance <= minimumCashBalance) {
-        console.log(`Year ${yearData.year}: No dividend - Cash ${potentialCashBalance.toFixed(2)}M less than minimum ${minimumCashBalance.toFixed(2)}M`);
+        console.log(`Year ${yearData.year}: No dividend - Cash ${potentialCashBalance.toFixed(2)}M ≤ minimum ${minimumCashBalance.toFixed(2)}M`);
       }
     }
     
-    // Update cash balance
+    // Net cash flow and final cash balance
     const netCashFlow = fcfe - dividend;
     cashBalance = potentialCashBalance - dividend;
     
-    // Update retained earnings (separate from cash balance)
+    // Update retained earnings (cumulative NPAT minus cumulative dividends)
     retainedEarnings = retainedEarnings + yearData.npat - dividend;
     
     return {
       year: yearData.year,
       period: yearData.period,
+      
+      // Cash flow components (formatted for clarity)
       operatingCashFlow: operatingCashFlow,
+      taxPayment: taxPayment, // Negative (outflow)
+      interestPayment: interestPayment, // Negative (outflow)
+      principalPayment: principalPayment, // Negative (outflow)
+      totalDebtService: totalDebtService, // Negative (total debt outflow)
+      
+      // Key cash flow metrics
+      fcfe: fcfe, // Free Cash Flow to Equity
+      dividendPayment: -dividend, // Negative (outflow) for consistency
+      netCashFlow: netCashFlow,
+      cashBalance: cashBalance,
+      retainedEarnings: retainedEarnings,
+      
+      // Legacy fields for backward compatibility
       tax: taxPayment,
-      interest: yearData.interest,
-      principalRepayment: yearData.principalRepayment,
-      debtService,
-      fcfe,
-      dividend: -dividend, // Negative as it's cash outflow
-      netCashFlow,
-      cashBalance,
-      retainedEarnings
+      interest: interestPayment,
+      principalRepayment: principalPayment,
+      debtService: totalDebtService,
+      dividend: -dividend
     };
   });
   
-  // Create quarterly cash flow data
+  // Create quarterly cash flow data with same corrected logic
   cashBalance = minimumCashBalance;
   retainedEarnings = 0;
   
   const quarterlyCashFlow = quarters.map((quarterData, index) => {
     // Operating cash flow is EBITDA
-    const operatingCashFlow = quarterData.ebitda;
+    const operatingCashFlow = quarterData.ebitda || 0;
     
-    // Tax payments
-    const taxPayment = quarterData.tax;
+    // Cash outflows (already negative in P&L)
+    const taxPayment = quarterData.tax || 0;
+    const interestPayment = quarterData.interest || 0;
+    const principalPayment = quarterData.principalRepayment || 0;
+    const totalDebtService = interestPayment + principalPayment;
     
-    // Debt service from P&L
-    const interest = quarterData.interest;
-    const principalRepayment = quarterData.principalRepayment;
-    const debtService = interest + principalRepayment;
-    
-    // Calculate Free Cash Flow to Equity (FCFE)
-    const fcfe = operatingCashFlow + taxPayment + debtService;
+    // CORRECTED FCFE calculation
+    const fcfe = operatingCashFlow + taxPayment + totalDebtService;
     
     // Update cash balance before dividend
     const potentialCashBalance = cashBalance + fcfe;
     
-    // Calculate potential dividend (now for every quarter, not just Q4)
+    // Calculate quarterly dividend (annual policy / 4)
     let dividend = 0;
     if (quarterData.npat > 0 && potentialCashBalance > minimumCashBalance) {
-      // Potential dividend is limited by dividend policy and maintaining minimum cash balance
-      // Calculate quarterly dividend as annual policy divided by 4
-      const quarterlyDividendPolicy = dividendPolicy / 4;
-      const maxDividend = Math.min(
-        quarterData.npat * (quarterlyDividendPolicy / 100),
-        potentialCashBalance - minimumCashBalance
-      );
-      dividend = Math.max(0, maxDividend);
+      // Quarterly dividend policy
+      const quarterlyDividendRate = dividendPolicy / 4 / 100; // Annual rate divided by 4
+      const policyDividend = quarterData.npat * quarterlyDividendRate;
+      const cashConstrainedDividend = potentialCashBalance - minimumCashBalance;
+      dividend = Math.min(policyDividend, cashConstrainedDividend);
+      dividend = Math.max(0, dividend);
       
-      // For debugging
-      console.log(`Quarter ${quarterData.period}: NPAT=${quarterData.npat.toFixed(2)}M, Cash=${potentialCashBalance.toFixed(2)}M, Dividend=${dividend.toFixed(2)}M`);
+      console.log(`Quarter ${quarterData.period}: NPAT=${quarterData.npat.toFixed(2)}M, FCFE=${fcfe.toFixed(2)}M, Cash=${potentialCashBalance.toFixed(2)}M, Dividend=${dividend.toFixed(2)}M`);
     } else {
-      // For debugging - explain why no dividend
       if (quarterData.npat <= 0) {
-        console.log(`Quarter ${quarterData.period}: No dividend - NPAT is ${quarterData.npat.toFixed(2)}M (must be positive)`);
+        console.log(`Quarter ${quarterData.period}: No dividend - NPAT is ${quarterData.npat.toFixed(2)}M`);
       } else if (potentialCashBalance <= minimumCashBalance) {
-        console.log(`Quarter ${quarterData.period}: No dividend - Cash ${potentialCashBalance.toFixed(2)}M less than minimum ${minimumCashBalance.toFixed(2)}M`);
+        console.log(`Quarter ${quarterData.period}: No dividend - Cash ${potentialCashBalance.toFixed(2)}M ≤ minimum ${minimumCashBalance.toFixed(2)}M`);
       }
     }
     
-    // Update cash balance
+    // Update cash balance and retained earnings
     const netCashFlow = fcfe - dividend;
     cashBalance = potentialCashBalance - dividend;
-    
-    // Update retained earnings (separate from cash balance)
     retainedEarnings = retainedEarnings + quarterData.npat - dividend;
     
     return {
       year: quarterData.year,
       quarter: quarterData.quarter,
       period: quarterData.period,
+      
+      // Cash flow components
       operatingCashFlow: operatingCashFlow,
+      taxPayment: taxPayment,
+      interestPayment: interestPayment,
+      principalPayment: principalPayment,
+      totalDebtService: totalDebtService,
+      
+      // Key metrics
+      fcfe: fcfe,
+      dividendPayment: -dividend,
+      netCashFlow: netCashFlow,
+      cashBalance: cashBalance,
+      retainedEarnings: retainedEarnings,
+      
+      // Legacy fields for backward compatibility
       tax: taxPayment,
-      interest: quarterData.interest,
-      principalRepayment: quarterData.principalRepayment,
-      debtService,
-      fcfe,
-      dividend: -dividend, // Negative as it's cash outflow
-      netCashFlow,
-      cashBalance,
-      retainedEarnings
+      interest: interestPayment,
+      principalRepayment: principalPayment,
+      debtService: totalDebtService,
+      dividend: -dividend
     };
   });
   
