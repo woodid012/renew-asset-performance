@@ -3,15 +3,15 @@ import { Card } from "@/components/ui/card";
 import { TabsContent } from "@/components/ui/tabs";
 
 // Import components for each tab
-import LandingPage from "@/components/LandingPage";
+import LandingPage from "@/pages/LandingPage";
 import PortfolioInputs from "@/components/InputsGlobal";
 import AssetDashboard from "@/pages/AssetDashboard";
 import PortfolioRevenue from "@/components/OutputC_Main";
 import PPASummaryTable from "@/components/PPA_general_Summary";
-import EarningsRiskAnalysis from "@/components/EaR_Dashboard";
+import EarningsRiskAnalysis from "@/pages/EaR_Dashboard";
 import ValuationTabs from "@/pages/ValuationTabs";
 import PortfolioSettings from "@/pages/PortfolioSettings";
-import LoginScreen from "@/components/LoginScreen";
+import LoginScreen from "@/pages/LoginScreen";
 
 // Import the shared navigation component
 import Navigation, { navigationTabs } from "@/components/shared/Navigation";

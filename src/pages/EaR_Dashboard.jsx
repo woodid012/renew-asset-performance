@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { usePortfolio } from '@/contexts/PortfolioContext';
-import { useEarAnalysis } from './useEarAnalysis';
-import EarInputs from './EarInputs';
-import EarOutputs from './EarOutputs';
+import { useEarAnalysis } from '@/components/useEarAnalysis';
+import EarInputs from '@/components/EarInputs';
+import EarOutputs from '@/components/EarOutputs';
 
 const createInitialTimePeriods = (constants) => {
   const midYear = Math.floor((constants.analysisEndYear - constants.analysisStartYear) / 2) + constants.analysisStartYear;
