@@ -20,6 +20,8 @@ import {
   DEFAULT_CAPEX_RATES,
   DEFAULT_OPEX_RATES,
   DEFAULT_PROJECT_FINANCE,
+  DEFAULT_ASSET_PERFORMANCE,
+  DEFAULT_TERMINAL_RATES,
   getDefaultValue,
   UI_CONSTANTS
 } from '@/lib/default_constants';
@@ -61,13 +63,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
       case 'operatingCostEscalation':
         return DEFAULT_PROJECT_FINANCE.opexEscalation;
       case 'terminalValue':
-        const defaultTerminalRate = {
-          solar: 0.15,
-          wind: 0.20,
-          storage: 0.10,
-          default: 0.15
-        }[assetType] || 0.15;
-        return defaultTerminalRate * parsedCapacity;
+        return getDefaultValue('terminal', 'default', assetType) * parsedCapacity;
       case 'maxGearing':
         return DEFAULT_PROJECT_FINANCE.maxGearing / 100;
       case 'targetDSCRContract':
@@ -112,22 +108,20 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
 
   // Effect to set default degradation and initialize asset costs if needed
   useEffect(() => {
-    // Set default degradation
+    // Set default degradation using centralized constants
     if (asset.type && !asset.annualDegradation) {
-      const defaultDegradation = constants.annualDegradation[asset.type];
+      const defaultDegradation = getDefaultValue('performance', 'annualDegradation', asset.type);
       if (defaultDegradation !== undefined) {
         onUpdateAsset('annualDegradation', defaultDegradation);
       }
     }
     
-    // Set default construction duration if not set
+    // Set default construction duration using centralized constants
     if (!asset.constructionDuration) {
-      const defaultDuration = {
-        solar: 12,
-        wind: 18,
-        storage: 12
-      }[asset.type] || 12;
-      onUpdateAsset('constructionDuration', defaultDuration);
+      const defaultDuration = getDefaultValue('performance', 'constructionDuration', asset.type);
+      if (defaultDuration !== undefined) {
+        onUpdateAsset('constructionDuration', defaultDuration);
+      }
     }
     
     // Initialize asset costs if they don't exist
@@ -431,7 +425,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
                 min="1"
                 value={formatNumericValue(asset.constructionDuration)}
                 onChange={(e) => handleFieldUpdate('constructionDuration', e.target.value, { round: true })}
-                className={`${outOfSync.constructionDuration ? "text-red-500" : ""} ${getValueStyle(asset.constructionDuration, 12)}`}
+                className={`${outOfSync.constructionDuration ? "text-red-500" : ""} ${getValueStyle(asset.constructionDuration, getDefaultValue('performance', 'constructionDuration', asset.type))}`}
               />
               <p className="text-xs text-gray-500">Construction period length</p>
             </div>
@@ -513,7 +507,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
                 step="0.1"
                 value={formatNumericValue(asset.annualDegradation)}
                 onChange={(e) => handleFieldUpdate('annualDegradation', e.target.value, { min: 0, max: 100 })}
-                className={getValueStyle(asset.annualDegradation, constants.annualDegradation?.[asset.type])}
+                className={getValueStyle(asset.annualDegradation, getDefaultValue('performance', 'annualDegradation', asset.type))}
               />
               <p className="text-xs text-gray-500">Annual reduction in output (e.g. 0.4% per year)</p>
             </div>

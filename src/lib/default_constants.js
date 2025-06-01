@@ -74,6 +74,41 @@ export const DEFAULT_PRICE_SETTINGS = {
   referenceYear: new Date().getFullYear()
 };
 
+// Asset Performance Parameters - Default degradation and construction periods
+export const DEFAULT_ASSET_PERFORMANCE = {
+  annualDegradation: {
+    solar: 0.4,                // % per year
+    wind: 0.3,                 // % per year  
+    storage: 0.5               // % per year
+  },
+  constructionDuration: {
+    solar: 12,                 // months
+    wind: 18,                  // months
+    storage: 12                // months
+  },
+  assetLife: {
+    solar: 35,                 // years
+    wind: 30,                  // years
+    storage: 20                // years
+  },
+  volumeLossAdjustment: 95     // % - default MLF/availability
+};
+
+// Terminal Value Rates - Default end-of-life asset values
+export const DEFAULT_TERMINAL_RATES = {
+  solar: 0.15,                 // $M per MW
+  wind: 0.20,                  // $M per MW
+  storage: 0.10,               // $M per MW
+  default: 0.15                // $M per MW
+};
+
+// Analysis Parameters - Default analysis period settings
+export const DEFAULT_ANALYSIS_SETTINGS = {
+  analysisStartYear: new Date().getFullYear(),
+  analysisEndYear: new Date().getFullYear() + 30,
+  analysisLength: 30           // years
+};
+
 // Data Sources - Default price curve sources
 export const DEFAULT_DATA_SOURCES = {
   priceCurveSource: 'merchant_price_monthly.csv',
@@ -94,7 +129,10 @@ export const getDefaultValue = (category, key, assetType = null) => {
     discount: DEFAULT_DISCOUNT_RATES,
     risk: DEFAULT_RISK_PARAMETERS,
     price: DEFAULT_PRICE_SETTINGS,
-    data: DEFAULT_DATA_SOURCES
+    data: DEFAULT_DATA_SOURCES,
+    performance: DEFAULT_ASSET_PERFORMANCE,
+    terminal: DEFAULT_TERMINAL_RATES,
+    analysis: DEFAULT_ANALYSIS_SETTINGS
   };
 
   const categoryDefaults = categoryMap[category];
@@ -145,6 +183,9 @@ export default {
   DEFAULT_RISK_PARAMETERS,
   DEFAULT_PRICE_SETTINGS,
   DEFAULT_DATA_SOURCES,
+  DEFAULT_ASSET_PERFORMANCE,
+  DEFAULT_TERMINAL_RATES,
+  DEFAULT_ANALYSIS_SETTINGS,
   getDefaultValue,
   VALID_ASSET_TYPES,
   isValidAssetType,

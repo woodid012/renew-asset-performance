@@ -17,6 +17,8 @@ import {
   DEFAULT_OPEX_RATES,
   DEFAULT_PROJECT_FINANCE,
   DEFAULT_TAX_DEPRECIATION,
+  DEFAULT_ASSET_PERFORMANCE,
+  DEFAULT_TERMINAL_RATES,
   getDefaultValue,
   UI_CONSTANTS
 } from '@/lib/default_constants';
@@ -49,13 +51,7 @@ const AssetSummaryInputs = () => {
       case 'operatingCostEscalation':
         return DEFAULT_PROJECT_FINANCE.opexEscalation;
       case 'terminalValue':
-        const defaultTerminalRate = {
-          solar: 0.15,
-          wind: 0.20,
-          storage: 0.10,
-          default: 0.15
-        }[assetType] || 0.15;
-        return defaultTerminalRate * parsedCapacity;
+        return getDefaultValue('terminal', 'default', assetType) * parsedCapacity;
       case 'maxGearing':
         return DEFAULT_PROJECT_FINANCE.maxGearing;
       case 'targetDSCRContract':
@@ -294,11 +290,11 @@ const AssetSummaryInputs = () => {
 
     // Get default values for color coding
     if (field.field === 'constructionDuration') {
-      const defaultDuration = { solar: 12, wind: 18, storage: 12 }[asset.type] || 12;
+      const defaultDuration = getDefaultValue('performance', 'constructionDuration', asset.type);
       defaultValue = defaultDuration;
       cellStyle = getValueStyle(value, defaultValue);
     } else if (field.field === 'annualDegradation') {
-      defaultValue = constants.annualDegradation?.[asset.type];
+      defaultValue = getDefaultValue('performance', 'annualDegradation', asset.type);
       cellStyle = getValueStyle(value, defaultValue);
     } else if (field.field.startsWith('qtrCapacityFactor_')) {
       const quarter = field.field.split('_')[1].toUpperCase();

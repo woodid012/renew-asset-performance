@@ -4,26 +4,33 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { usePortfolio } from '@/contexts/PortfolioContext';
+import {
+  DEFAULT_PLATFORM_COSTS,
+  DEFAULT_TAX_DEPRECIATION,
+  UI_CONSTANTS
+} from '@/lib/default_constants';
 
 const PlatformInputs = () => {
   const { assets, constants, updateConstants } = usePortfolio();
   
-  // Platform operating parameters
-  const [platformOpex, setPlatformOpex] = useState(constants.platformOpex || 4.2);
-  const [platformOpexEscalation, setPlatformOpexEscalation] = useState(constants.platformOpexEscalation || 2.5);
-  const [otherOpex, setOtherOpex] = useState(constants.otherOpex || 1.0);
+  // Platform operating parameters with defaults
+  const [platformOpex, setPlatformOpex] = useState(constants.platformOpex ?? DEFAULT_PLATFORM_COSTS.platformOpex);
+  const [platformOpexEscalation, setPlatformOpexEscalation] = useState(constants.platformOpexEscalation ?? DEFAULT_PLATFORM_COSTS.platformOpexEscalation);
+  const [otherOpex, setOtherOpex] = useState(constants.otherOpex ?? DEFAULT_PLATFORM_COSTS.otherOpex);
   
-  // Cash management parameters
-  const [dividendPolicy, setDividendPolicy] = useState(constants.dividendPolicy || 100);
-  const [minimumCashBalance, setMinimumCashBalance] = useState(constants.minimumCashBalance || 5);
+  // Cash management parameters with defaults
+  const [dividendPolicy, setDividendPolicy] = useState(constants.dividendPolicy ?? DEFAULT_PLATFORM_COSTS.dividendPolicy);
+  const [minimumCashBalance, setMinimumCashBalance] = useState(constants.minimumCashBalance ?? DEFAULT_PLATFORM_COSTS.minimumCashBalance);
   
-  // Tax parameters
-  const [corporateTaxRate, setCorporateTaxRate] = useState(constants.corporateTaxRate || 0);
-  const [deprecationPeriods, setDeprecationPeriods] = useState(constants.deprecationPeriods || {
-    solar: 30,
-    wind: 30,
-    storage: 20
-  });
+  // Tax parameters with defaults
+  const [corporateTaxRate, setCorporateTaxRate] = useState(constants.corporateTaxRate ?? DEFAULT_TAX_DEPRECIATION.corporateTaxRate);
+  const [deprecationPeriods, setDeprecationPeriods] = useState(constants.deprecationPeriods ?? DEFAULT_TAX_DEPRECIATION.deprecationPeriods);
+
+  // Helper function to determine if a value is default (blue) or user-defined (black)
+  const getValueStyle = (currentValue, defaultValue) => {
+    const isDefault = currentValue === undefined || currentValue === null || currentValue === defaultValue;
+    return isDefault ? UI_CONSTANTS.colors.defaultValue : UI_CONSTANTS.colors.userValue;
+  };
 
   // Save values to constants when they change
   useEffect(() => {
@@ -71,6 +78,7 @@ const PlatformInputs = () => {
                   value={platformOpex}
                   onChange={(e) => setPlatformOpex(parseFloat(e.target.value) || 0)}
                   placeholder="Annual cost in $M"
+                  className={getValueStyle(platformOpex, DEFAULT_PLATFORM_COSTS.platformOpex)}
                 />
                 <p className="text-sm text-gray-500">Annual platform management cost ($M)</p>
               </div>
@@ -84,6 +92,7 @@ const PlatformInputs = () => {
                   value={platformOpexEscalation}
                   onChange={(e) => setPlatformOpexEscalation(parseFloat(e.target.value) || 0)}
                   placeholder="Annual escalation %"
+                  className={getValueStyle(platformOpexEscalation, DEFAULT_PLATFORM_COSTS.platformOpexEscalation)}
                 />
                 <p className="text-sm text-gray-500">Annual increase in platform costs (%)</p>
               </div>
@@ -97,6 +106,7 @@ const PlatformInputs = () => {
                   value={otherOpex}
                   onChange={(e) => setOtherOpex(parseFloat(e.target.value) || 0)}
                   placeholder="Other annual costs in $M"
+                  className={getValueStyle(otherOpex, DEFAULT_PLATFORM_COSTS.otherOpex)}
                 />
                 <p className="text-sm text-gray-500">Other annual operational costs ($M)</p>
               </div>
@@ -121,6 +131,7 @@ const PlatformInputs = () => {
                   value={dividendPolicy}
                   onChange={(e) => setDividendPolicy(parseFloat(e.target.value) || 0)}
                   placeholder="Dividend payout ratio %"
+                  className={getValueStyle(dividendPolicy, DEFAULT_PLATFORM_COSTS.dividendPolicy)}
                 />
                 <p className="text-sm text-gray-500">Percentage of NPAT distributed as dividends</p>
               </div>
@@ -134,6 +145,7 @@ const PlatformInputs = () => {
                   value={minimumCashBalance}
                   onChange={(e) => setMinimumCashBalance(parseFloat(e.target.value) || 0)}
                   placeholder="Minimum cash balance ($M)"
+                  className={getValueStyle(minimumCashBalance, DEFAULT_PLATFORM_COSTS.minimumCashBalance)}
                 />
                 <p className="text-sm text-gray-500">Minimum cash balance to maintain before paying dividends ($M)</p>
               </div>
@@ -160,7 +172,7 @@ const PlatformInputs = () => {
                   step="0.1"
                   value={corporateTaxRate}
                   onChange={(e) => setCorporateTaxRate(parseFloat(e.target.value) || 0)}
-                  className="w-full max-w-xs"
+                  className={`w-full max-w-xs ${getValueStyle(corporateTaxRate, DEFAULT_TAX_DEPRECIATION.corporateTaxRate)}`}
                 />
                 <p className="text-sm text-gray-500">
                   Corporate tax rate applied to taxable income
@@ -179,7 +191,7 @@ const PlatformInputs = () => {
                     max="40"
                     value={deprecationPeriods.solar}
                     onChange={(e) => handleDepreciationChange('solar', e.target.value)}
-                    className="max-w-xs"
+                    className={`max-w-xs ${getValueStyle(deprecationPeriods.solar, DEFAULT_TAX_DEPRECIATION.deprecationPeriods.solar)}`}
                   />
                 </div>
                 <div className="space-y-2">
@@ -190,7 +202,7 @@ const PlatformInputs = () => {
                     max="40"
                     value={deprecationPeriods.wind}
                     onChange={(e) => handleDepreciationChange('wind', e.target.value)}
-                    className="max-w-xs"
+                    className={`max-w-xs ${getValueStyle(deprecationPeriods.wind, DEFAULT_TAX_DEPRECIATION.deprecationPeriods.wind)}`}
                   />
                 </div>
                 <div className="space-y-2">
@@ -201,7 +213,7 @@ const PlatformInputs = () => {
                     max="40"
                     value={deprecationPeriods.storage}
                     onChange={(e) => handleDepreciationChange('storage', e.target.value)}
-                    className="max-w-xs"
+                    className={`max-w-xs ${getValueStyle(deprecationPeriods.storage, DEFAULT_TAX_DEPRECIATION.deprecationPeriods.storage)}`}
                   />
                 </div>
               </div>
@@ -240,13 +252,13 @@ const PlatformInputs = () => {
                   return (
                     <TableRow key={asset.name}>
                       <TableCell className="font-medium">{asset.name}</TableCell>
-                      <TableCell>{asset.type.charAt(0).toUpperCase() + asset.type.slice(1)|| "-"}</TableCell>
+                      <TableCell>{asset.type ? (asset.type.charAt(0).toUpperCase() + asset.type.slice(1)) : "-"}</TableCell>
                       <TableCell>{asset.capacity || "-"}</TableCell>
                       <TableCell>{asset.state || "-"}</TableCell>
                       <TableCell>{asset.assetStartDate ? new Date(asset.assetStartDate).toLocaleDateString('en-GB') : "-"}</TableCell>
-                      <TableCell>${assetCost.capex?.toLocaleString() || "-"}</TableCell>
-                      <TableCell>${assetCost.operatingCosts?.toLocaleString() || "-"}</TableCell>
-                      <TableCell>${assetCost.terminalValue?.toLocaleString() || "-"}</TableCell>
+                      <TableCell>{assetCost.capex ? `$${assetCost.capex.toLocaleString()}` : "-"}</TableCell>
+                      <TableCell>{assetCost.operatingCosts ? `$${assetCost.operatingCosts.toLocaleString()}` : "-"}</TableCell>
+                      <TableCell>{assetCost.terminalValue ? `$${assetCost.terminalValue.toLocaleString()}` : "-"}</TableCell>
                     </TableRow>
                   );
                 })
