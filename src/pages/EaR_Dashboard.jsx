@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { usePortfolio } from '@/contexts/PortfolioContext';
-import { useEarAnalysis } from '@/components/useEarAnalysis';
+import { useEarAnalysis } from '@/components/EarCalculations';
 import EarInputs from '@/components/EarInputs';
 import EarOutputs from '@/components/EarOutputs';
 

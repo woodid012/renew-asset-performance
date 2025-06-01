@@ -1,8 +1,8 @@
-// EarInputs.jsx
+// EarInputs.jsx - Updated EaR Inputs Component
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { validateTimePeriods } from './useEarAnalysis';
+import { validateTimePeriods } from './EarCalculations';
 
 // Component for parameter input fields
 const ParameterInput = ({ label, value, onChange, min = 0, error }) => (

@@ -1,7 +1,7 @@
-// EarOutputs.jsx
-import React, { useMemo } from 'react';
+// EarOutputs.jsx - Updated EaR Outputs Component
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceArea } from 'recharts';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Loader2 } from 'lucide-react';
 
 // Component for displaying empty state when no assets are available
@@ -85,7 +85,7 @@ const StressTestResults = ({ metrics, baseCase, selectedYear }) => {
   );
 };
 
-// Modified DistributionChart Component with memoization
+// Distribution Chart Component with memoization
 const DistributionChart = React.memo(({ histogram, selectedYear, onYearChange, startYear, endYear }) => (
   <Card>
     <CardHeader>
@@ -123,8 +123,8 @@ const DistributionChart = React.memo(({ histogram, selectedYear, onYearChange, s
   </Card>
 ));
 
-// Modified WaterfallChart Component with memoization
-const WaterfallChart = React.memo(({ data, constants }) => (
+// Waterfall Chart Component with memoization
+const WaterfallChart = React.memo(({ data }) => (
   <Card>
     <CardHeader>
       <CardTitle>Portfolio Revenue Range Over Time</CardTitle>
@@ -142,7 +142,6 @@ const WaterfallChart = React.memo(({ data, constants }) => (
             <Line dataKey="worstCase" stroke="#ff0000" name="Combined Downside Case" dot={false} strokeWidth={2} strokeDasharray="5 5" />
             <Line dataKey="volumeStress" stroke="#FFA500" name="Volume Stress" dot={false} strokeWidth={2} strokeDasharray="5 5" />
             <Line dataKey="priceStress" stroke="#800080" name="Price Stress" dot={false} strokeWidth={2} strokeDasharray="5 5" />
-            
           </LineChart>
         </ResponsiveContainer>
       </div>
@@ -217,7 +216,7 @@ const EarOutputs = ({
         />
       </div>
 
-      <WaterfallChart data={waterfallData} constants={constants} />
+      <WaterfallChart data={waterfallData} />
     </div>
   );
 };

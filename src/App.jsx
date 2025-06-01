@@ -4,10 +4,10 @@ import { TabsContent } from "@/components/ui/tabs";
 
 // Import components for each tab
 import LandingPage from "@/pages/LandingPage";
-import PortfolioInputs from "@/components/InputsGlobal";
+import PortfolioInputs from "@/pages/InputsGlobal";
 import AssetDashboard from "@/pages/AssetDashboard";
-import PortfolioRevenue from "@/components/OutputC_Main";
-import PPASummaryTable from "@/components/PPA_general_Summary";
+import PortfolioRevenue from "@/pages/Revenue_Charts";
+import ConsolidatedPPATables from "@/pages/ExportTables";
 import EarningsRiskAnalysis from "@/pages/EaR_Dashboard";
 import ValuationTabs from "@/pages/ValuationTabs";
 import PortfolioSettings from "@/pages/PortfolioSettings";
@@ -125,7 +125,7 @@ const App = () => {
             case "revenue": return PortfolioRevenue;
             case "risk": return EarningsRiskAnalysis;
             case "valuation": return ValuationTabs;
-            case "ppa": return PPASummaryTable;
+            case "ppa": return ConsolidatedPPATables;
             case "settings": return PortfolioSettings;
             default: return null;
           }
