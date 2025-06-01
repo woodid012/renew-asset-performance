@@ -5,12 +5,12 @@ import { TabsContent } from "@/components/ui/tabs";
 // Import components for each tab
 import LandingPage from "@/components/LandingPage";
 import PortfolioInputs from "@/components/InputsGlobal";
-import AssetDashboard from "@/components/AssetDashboard";
+import AssetDashboard from "@/pages/AssetDashboard";
 import PortfolioRevenue from "@/components/OutputC_Main";
 import PPASummaryTable from "@/components/PPA_general_Summary";
 import EarningsRiskAnalysis from "@/components/EaR_Dashboard";
-import ValuationTabs from "@/components/ValuationTabs";
-import PortfolioSettings from "@/components/PortfolioSettings";
+import ValuationTabs from "@/pages/ValuationTabs";
+import PortfolioSettings from "@/pages/PortfolioSettings";
 import LoginScreen from "@/components/LoginScreen";
 
 // Import the shared navigation component

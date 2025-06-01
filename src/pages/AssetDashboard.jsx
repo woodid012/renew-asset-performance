@@ -1,30 +1,31 @@
+// pages/AssetDashboard.jsx
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, X, ChevronLeft, ChevronRight, Download, Upload } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, Download, Upload } from 'lucide-react';
 import { usePortfolio } from '@/contexts/PortfolioContext';
-import AssetForm from './AssetForm';
-import AssetSummaryInputs from './AssetSummaryInputs';
+import { useAssetManagement } from '@/hooks/useAssetManagement';
+import AssetForm from '@/components/AssetForm';
+import AssetSummaryInputs from '@/components/AssetSummaryInputs';
 
 const AssetDashboard = () => {
   const { 
-    assets, 
-    setAssets, 
     portfolioName, 
     setPortfolioName, 
     exportPortfolioData,
     importPortfolioData
   } = usePortfolio();
   
+  const { assets, addNewAsset } = useAssetManagement();
+  
   const [activeTab, setActiveTab] = useState('summary');
-  const [newAssets, setNewAssets] = useState(new Set());
   const [showScrollButtons, setShowScrollButtons] = useState(false);
   const tabsListRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  // Import functionality - now using the global importPortfolioData function
+  // Import functionality
   const handleImport = (event) => {
     const file = event.target.files[0];
     if (file) {
@@ -45,7 +46,7 @@ const AssetDashboard = () => {
     event.target.value = '';
   };
 
-  // Export functionality - now using the global exportPortfolioData function
+  // Export functionality
   const exportPortfolio = () => {
     const exportData = exportPortfolioData();
     
@@ -59,6 +60,7 @@ const AssetDashboard = () => {
     linkElement.click();
   };
 
+  // Check if tabs overflow and show scroll buttons
   useEffect(() => {
     const checkOverflow = () => {
       if (tabsListRef.current) {
@@ -72,6 +74,7 @@ const AssetDashboard = () => {
     return () => window.removeEventListener('resize', checkOverflow);
   }, [assets]);
 
+  // Scroll tabs left or right
   const scroll = (direction) => {
     if (tabsListRef.current) {
       const scrollAmount = direction === 'left' ? -200 : 200;
@@ -79,66 +82,18 @@ const AssetDashboard = () => {
     }
   };
 
-  const addNewTab = () => {
-    const newId = String(Object.keys(assets).length + 1);
-    const assetNumber = Object.keys(assets).length + 1;
-    setAssets(prev => ({
-      ...prev,
-      [newId]: {
-        id: newId,
-        name: `Default Asset ${assetNumber}`,
-        state: 'NSW',
-        assetStartDate: '2024-01-01',
-        capacity: '100',
-        type: 'solar',
-        volumeLossAdjustment: '100',
-        assetLife: '35',
-        contracts: []
-      }
-    }));
-    setNewAssets(prev => new Set([...prev, newId]));
-    setActiveTab(newId);
+  // Add new asset and switch to its tab
+  const handleAddNewAsset = () => {
+    const newAssetId = addNewAsset();
+    setActiveTab(newAssetId);
   };
 
-  const updateAsset = (id, field, value) => {
-    setAssets(prev => ({
-      ...prev,
-      [id]: {
-        ...prev[id],
-        [field]: value
-      }
-    }));
-  };
-
-  const updateAssetContracts = (id, contracts) => {
-    setAssets(prev => ({
-      ...prev,
-      [id]: {
-        ...prev[id],
-        contracts
-      }
-    }));
-  };
-
-  const removeAsset = (id) => {
-    setAssets(prev => {
-      const newAssets = { ...prev };
-      delete newAssets[id];
-      return newAssets;
-    });
-    setNewAssets(prev => {
-      const updated = new Set(prev);
-      updated.delete(id);
-      return updated;
-    });
-    setActiveTab(Object.keys(assets).find(key => key !== id) || '1');
-  };
-
+  // Handle empty state
   if (Object.keys(assets).length === 0) {
     return (
       <div className="flex flex-col items-left justify-left p-8">
         <p className="text-gray-500 mb-4">No assets in portfolio</p>
-        <Button variant="default" size="icon" onClick={addNewTab}>
+        <Button variant="default" size="icon" onClick={handleAddNewAsset}>
           <Plus className="h-4 w-4" />
         </Button>
       </div>
@@ -238,7 +193,7 @@ const AssetDashboard = () => {
                 </Button>
               )}
 
-              <Button onClick={addNewTab} className="flex-shrink-0">
+              <Button onClick={handleAddNewAsset} className="flex-shrink-0">
                 <Plus className="h-4 w-4" />
               </Button>
             </div>
@@ -249,13 +204,7 @@ const AssetDashboard = () => {
             
             {Object.values(assets).map((asset) => (
               <TabsContent key={asset.id} value={asset.id}>
-                <AssetForm
-                  asset={asset}
-                  isNewAsset={newAssets.has(asset.id)}
-                  onUpdateAsset={(field, value) => updateAsset(asset.id, field, value)}
-                  onUpdateContracts={(contracts) => updateAssetContracts(asset.id, contracts)}
-                  onRemoveAsset={() => removeAsset(asset.id)}
-                />
+                <AssetForm assetId={asset.id} />
               </TabsContent>
             ))}
           </Tabs>

@@ -4,9 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Download, Upload } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-import ProjectFinanceDashboard from './ProjectFinanceDashboard';
-import FinancialStatements from './FinancialStatements.jsx';
-import PlatformInputs from './PlatformInputs.jsx';  // Import the new component
+import ProjectFinanceDashboard from '@/components/ProjectFinanceDashboard';
+import FinancialStatements from '@/components/FinancialStatements.jsx';
+import PlatformInputs from '@/components/PlatformInputs.jsx';  // Import the new component
 import { usePortfolio } from '@/contexts/PortfolioContext';
 
 const ValuationTabs = () => {

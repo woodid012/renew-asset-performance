@@ -1,10 +1,11 @@
-// Update to AssetFormContract.jsx
+// components/AssetFormContract.jsx
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { X } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useContractForm } from '@/hooks/useContractForm';
 
 const AssetFormContract = ({ 
   contract, 
@@ -16,41 +17,30 @@ const AssetFormContract = ({
   volumeLossAdjustment = 95,
   volume
 }) => {
-  // Helper function to safely handle numeric inputs
-  const handleNumericInput = (field, value) => {
-    // Always pass through empty string to allow typing
-    if (value === '') {
-      updateContract(field, '');
-      return;
-    }
-    
-    // Only parse if it's a valid number
-    const parsed = Number(value);
-    if (!isNaN(parsed)) {
-      updateContract(field, parsed);
-    }
-  };
+  const {
+    handleNumericInput,
+    handleContractTypeChange,
+    calculateTenor,
+    calculateAnnualRevenue,
+    getContractTypeOptions,
+    getRevenueLabel,
+    shouldShowBuyersPercentage,
+    isBuyersPercentageDisabled
+  } = useContractForm({
+    contract,
+    updateContract,
+    isStorage,
+    capacity,
+    capacityFactor,
+    volumeLossAdjustment,
+    volume
+  });
 
-  // Calculate contract duration in years
-  const calculateTenor = () => {
-    if (!contract.startDate || !contract.endDate) return null;
-    
-    const start = new Date(contract.startDate);
-    const end = new Date(contract.endDate);
-    const diffTime = Math.abs(end - start);
-    const diffYears = (diffTime / (1000 * 60 * 60 * 24 * 365.25)).toFixed(1);
-    return diffYears;
-  };
-
-  // Handle contract type change and set buyersPercentage to 100 for storage tolling
-  const handleContractTypeChange = (value) => {
-    updateContract('type', value);
-    
-    // For storage assets with tolling contracts, always set buyersPercentage to 100
-    if (isStorage && value === 'tolling') {
-      updateContract('buyersPercentage', 100);
-    }
-  };
+  const contractTypeOptions = getContractTypeOptions();
+  const revenueLabel = getRevenueLabel();
+  const showBuyersPercentage = shouldShowBuyersPercentage();
+  const buyersPercentageDisabled = isBuyersPercentageDisabled();
+  const annualRevenue = calculateAnnualRevenue();
 
   return (
     <Card className="relative">
@@ -72,6 +62,7 @@ const AssetFormContract = ({
               placeholder="Counterparty Name"
             />
           </div>
+          
           <div className="space-y-2">
             <label className="text-sm font-medium">Contract Type</label>
             <Select 
@@ -82,36 +73,17 @@ const AssetFormContract = ({
                 <SelectValue placeholder="Select Type" />
               </SelectTrigger>
               <SelectContent>
-                {isStorage ? (
-                  <>
-                    <SelectItem value="cfd">CfD</SelectItem>
-                    <SelectItem value="fixed">Fixed Revenue</SelectItem>
-                    <SelectItem value="tolling">Tolling</SelectItem>
-                  </>
-                ) : (
-                  <>
-                    <SelectItem value="bundled">Bundled PPA</SelectItem>
-                    <SelectItem value="green">Green Only</SelectItem>
-                    <SelectItem value="Energy">Energy Only</SelectItem>
-                    <SelectItem value="fixed">Fixed Revenue</SelectItem>
-                  </>
-                )}
+                {contractTypeOptions.map(option => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">
-              {contract.type === 'fixed'
-                ? 'Annual Revenue ($M)'
-                : isStorage 
-                  ? contract.type === 'tolling'
-                    ? 'Price ($/MW/hr)'
-                    : contract.type === 'fixed'
-                      ? 'Annual Revenue ($M)'
-                      : 'Price Spread ($/MWh)'
-                  : 'Strike Price ($)'}
-            </label>
+            <label className="text-sm font-medium">{revenueLabel}</label>
             <Input
               type="number"
               value={contract.strikePrice || ''}
@@ -120,7 +92,7 @@ const AssetFormContract = ({
           </div>
           
           <div className="space-y-2">
-            {contract.type !== 'fixed' ? (
+            {showBuyersPercentage ? (
               <>
                 <label className="text-sm font-medium">Buyer's Percentage (%)</label>
                 <Input
@@ -128,9 +100,9 @@ const AssetFormContract = ({
                   min="0"
                   max="100"
                   step="0.1"
-                  value={isStorage && contract.type === 'tolling' ? 100 : (contract.buyersPercentage || '')}
+                  value={buyersPercentageDisabled ? 100 : (contract.buyersPercentage || '')}
                   onChange={(e) => handleNumericInput('buyersPercentage', e.target.value)}
-                  disabled={isStorage && contract.type === 'tolling'}
+                  disabled={buyersPercentageDisabled}
                 />
               </>
             ) : (
@@ -141,37 +113,7 @@ const AssetFormContract = ({
             )}
           </div>
 
-          {/* Revenue calculation displays for storage types */}
-          {contract.strikePrice && isStorage && (
-            <div className="col-span-2 bg-gray-50 p-4 rounded-md">
-              <h4 className="text-sm font-medium mb-2">Annual Revenue Calculation</h4>
-              
-              {/* Storage Tolling Contract */}
-              {contract.type === 'tolling' && (
-                <>
-                  <div className="text-lg font-semibold">
-                    ${((8760 * contract.strikePrice * capacity) / 1000000).toFixed(2)}M per year
-                  </div>
-                  <p className="text-xs text-gray-500">
-                    Based on {capacity} MW × 8,760 hours × ${contract.strikePrice}/MW/hr
-                  </p>
-                </>
-              )}
-
-              {/* Storage CfD Contract */}
-              {contract.type === 'cfd' && (
-                <>
-                  <div className="text-lg font-semibold">
-                    ${((contract.strikePrice * volume * 365 * (volumeLossAdjustment/100) * (contract.buyersPercentage / 100)) / 1000000).toFixed(2)}M per year
-                  </div>
-                  <p className="text-xs text-gray-500">
-                    Based on {volume} MWh × 365 days × ${contract.strikePrice} spread × {volumeLossAdjustment}% efficiency × {contract.buyersPercentage}% contracted
-                  </p>
-                </>
-              )}
-            </div>
-          )}
-
+          {/* Bundled PPA specific fields */}
           {!isStorage && contract.type === 'bundled' && (
             <>
               <div className="space-y-2">
@@ -192,38 +134,23 @@ const AssetFormContract = ({
                   className="bg-gray-100"
                 />
               </div>
-
-              {/* Renewable PPA Revenue Calculation */}
-              {contract.strikePrice && contract.buyersPercentage && (
-                <div className="col-span-2 bg-gray-50 p-4 rounded-md mt-4">
-                  <h4 className="text-sm font-medium mb-2">Annual Revenue Calculation</h4>
-                  
-                  {/* Calculate Energy and green components */}
-                  {(() => {
-                    const baseRevenue = 8760 * capacity * (capacityFactor/100) * (contract.buyersPercentage/100);
-                    const EnergyPrice = contract.EnergyPrice || 0;
-                    const greenPrice = contract.greenPrice || 0;
-                    const EnergyRevenue = (baseRevenue * EnergyPrice) / 1000000;
-                    const greenRevenue = (baseRevenue * greenPrice) / 1000000;
-                    const totalRevenue = EnergyRevenue + greenRevenue;
-                    
-                    return (
-                      <>
-                        <div className="text-lg font-semibold">
-                          ${totalRevenue.toFixed(2)}M per year (Energy = ${EnergyRevenue.toFixed(2)}M, Green = ${greenRevenue.toFixed(2)}M)
-                        </div>
-                        <p className="text-xs text-gray-500">
-                          Based on {capacity} MW × {capacityFactor}% CF × 8,760 hours × ${contract.strikePrice}/MWh × {contract.buyersPercentage}% contracted
-                        </p>
-                      </>
-                    );
-                  })()}
-                </div>
-              )}
             </>
           )}
 
-          {/* Modified date section */}
+          {/* Annual Revenue Calculation */}
+          {annualRevenue && (
+            <div className="col-span-2 bg-gray-50 p-4 rounded-md">
+              <h4 className="text-sm font-medium mb-2">Annual Revenue Calculation</h4>
+              <div className="text-lg font-semibold">
+                {annualRevenue.display}
+              </div>
+              <p className="text-xs text-gray-500">
+                {annualRevenue.description}
+              </p>
+            </div>
+          )}
+
+          {/* Date Section */}
           <div className="col-span-2 grid grid-cols-2 gap-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -254,6 +181,7 @@ const AssetFormContract = ({
             </div>
           </div>
 
+          {/* Indexation Section */}
           <div className="space-y-2">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">

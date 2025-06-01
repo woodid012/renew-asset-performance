@@ -1,351 +1,59 @@
-import React, { useEffect, useState } from 'react';
+// components/AssetForm.jsx
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, X, DollarSign } from 'lucide-react';
-import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { usePortfolio } from '@/contexts/PortfolioContext';
+import { Plus, X } from 'lucide-react';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useAssetForm } from '@/hooks/useAssetForm';
+import { useAssetTemplates } from '@/hooks/useAssetTemplates';
+import { useAssetManagement } from '@/hooks/useAssetManagement';
 import AssetFormContract from './AssetFormContract';
-import Papa from 'papaparse';
-import { 
-  calculateYear1Volume, 
-  formatNumericValue, 
-  handleNumericInput,
-  getDefaultCapacityFactors,
-  processAssetData,
-  createNewContract,
-  updateBundledPrices
-} from './AssetUtils';
-import {
-  DEFAULT_CAPEX_RATES,
-  DEFAULT_OPEX_RATES,
-  DEFAULT_PROJECT_FINANCE,
-  DEFAULT_ASSET_PERFORMANCE,
-  DEFAULT_TERMINAL_RATES,
-  getDefaultValue,
-  UI_CONSTANTS
-} from '@/lib/default_constants';
+import { formatNumericValue } from '@/utils/assetUtils';
 
-const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) => {
-  const { constants, updateConstants } = usePortfolio();
-  const [renewablesData, setRenewablesData] = useState([]);
-  const [selectedRenewable, setSelectedRenewable] = useState(null);
-  const [outOfSync, setOutOfSync] = useState({
-    name: false,
-    state: false,
-    capacity: false,
-    type: false,
-    volumeLossAdjustment: false,
-    constructionStartDate: false,
-    constructionDuration: false,
-    assetStartDate: false
-  });
-  const [previousName, setPreviousName] = useState(asset.name);
+const AssetForm = ({ assetId }) => {
+  const { assets, removeAsset, addContract, removeContract, updateContract } = useAssetManagement();
+  const { getSortedTemplates } = useAssetTemplates();
+  const asset = assets[assetId];
+  
+  const {
+    assetCosts,
+    year1Volume,
+    selectedTemplate,
+    outOfSync,
+    handleAssetFieldUpdate,
+    handleAssetDateUpdate,
+    handleAssetConstructionDurationUpdate,
+    handleAssetCostUpdate,
+    handleTemplateSelection,
+    isOpsStartValid,
+    getValueStyle,
+    getFieldDefault,
+    getQuarterlyDefaults,
+    getAssetCostDefault,
+  } = useAssetForm(asset);
 
-  const year1Volume = calculateYear1Volume(asset);
-  const assetCosts = constants.assetCosts ? constants.assetCosts[asset.name] || {} : {};
+  if (!asset) {
+    return <div>Asset not found</div>;
+  }
 
-  // Helper function to determine if a value is default (blue) or user-defined (black)
-  const getValueStyle = (currentValue, defaultValue) => {
-    const isDefault = currentValue === undefined || currentValue === null || currentValue === defaultValue;
-    return isDefault ? UI_CONSTANTS.colors.defaultValue : UI_CONSTANTS.colors.userValue;
+  const sortedTemplates = getSortedTemplates();
+  const quarterlyDefaults = getQuarterlyDefaults();
+
+  const handleRemove = () => {
+    removeAsset(assetId);
   };
 
-  // Helper function to get default values for asset costs
-  const getAssetCostDefault = (field, assetType, capacity) => {
-    const parsedCapacity = parseFloat(capacity) || 100;
-    
-    switch(field) {
-      case 'capex':
-        return getDefaultValue('capex', 'default', assetType) * parsedCapacity;
-      case 'operatingCosts':
-        return getDefaultValue('opex', 'default', assetType) * parsedCapacity;
-      case 'operatingCostEscalation':
-        return DEFAULT_PROJECT_FINANCE.opexEscalation;
-      case 'terminalValue':
-        return getDefaultValue('terminal', 'default', assetType) * parsedCapacity;
-      case 'maxGearing':
-        return DEFAULT_PROJECT_FINANCE.maxGearing / 100;
-      case 'targetDSCRContract':
-        return DEFAULT_PROJECT_FINANCE.targetDSCRContract;
-      case 'targetDSCRMerchant':
-        return DEFAULT_PROJECT_FINANCE.targetDSCRMerchant;
-      case 'interestRate':
-        return DEFAULT_PROJECT_FINANCE.interestRate / 100;
-      case 'tenorYears':
-        return getDefaultValue('finance', 'tenorYears', assetType);
-      default:
-        return 0;
-    }
+  const handleAddContract = () => {
+    addContract(assetId);
   };
 
-  // Helper function to round date to first of nearest month
-  const roundToFirstOfMonth = (dateStr) => {
-    if (!dateStr) return '';
-    const date = new Date(dateStr);
-    // Set to first day of the month
-    date.setDate(1);
-    return date.toISOString().split('T')[0];
+  const handleRemoveContract = (contractId) => {
+    removeContract(assetId, contractId);
   };
 
-  // Helper function to add months to a date and round to first of month
-  const addMonthsToDate = (dateStr, months) => {
-    if (!dateStr || !months) return '';
-    const date = new Date(dateStr);
-    date.setMonth(date.getMonth() + parseInt(months));
-    date.setDate(1); // Always set to first of month
-    return date.toISOString().split('T')[0];
-  };
-
-  // Helper function to calculate months between two dates
-  const calculateMonthsBetween = (startDateStr, endDateStr) => {
-    if (!startDateStr || !endDateStr) return '';
-    const startDate = new Date(startDateStr);
-    const endDate = new Date(endDateStr);
-    
-    const yearDiff = endDate.getFullYear() - startDate.getFullYear();
-    const monthDiff = endDate.getMonth() - startDate.getMonth();
-    
-    return yearDiff * 12 + monthDiff;
-  };
-
-  // Load renewables data
-  useEffect(() => {
-    const loadRenewablesData = async () => {
-      try {
-        const response = await fetch('/renewables_registration_data.csv');
-        const csvText = await response.text();
-        const result = Papa.parse(csvText, { header: true, skipEmptyLines: true });
-        setRenewablesData(processAssetData(result.data));
-      } catch (error) {
-        console.error('Error loading renewables data:', error);
-      }
-    };
-    loadRenewablesData();
-  }, []);
-
-  // Update capacity factors when state/type changes
-  useEffect(() => {
-    const factors = getDefaultCapacityFactors(asset, constants);
-    Object.entries(factors).forEach(([key, value]) => {
-      if (key === 'annual') {
-        onUpdateAsset('capacityFactor', value);
-      } else {
-        onUpdateAsset(`qtrCapacityFactor_${key}`, value);
-      }
-    });
-  }, [asset.state, asset.type]);
-
-  // Effect to set default degradation and initialize asset costs if needed
-  useEffect(() => {
-    // Set default degradation using centralized constants
-    if (asset.type && !asset.annualDegradation) {
-      const defaultDegradation = getDefaultValue('performance', 'annualDegradation', asset.type);
-      if (defaultDegradation !== undefined) {
-        onUpdateAsset('annualDegradation', defaultDegradation);
-      }
-    }
-    
-    // Set default construction duration using centralized constants
-    if (!asset.constructionDuration) {
-      const defaultDuration = getDefaultValue('performance', 'constructionDuration', asset.type);
-      if (defaultDuration !== undefined) {
-        onUpdateAsset('constructionDuration', defaultDuration);
-      }
-    }
-    
-    // Initialize asset costs if they don't exist
-    if (!constants.assetCosts[asset.name]) {
-      const capacity = parseFloat(asset.capacity) || 100;
-      
-      const newAssetCosts = {
-        ...constants.assetCosts,
-        [asset.name]: {
-          capex: getAssetCostDefault('capex', asset.type, capacity),
-          operatingCosts: getAssetCostDefault('operatingCosts', asset.type, capacity),
-          operatingCostEscalation: getAssetCostDefault('operatingCostEscalation', asset.type, capacity),
-          terminalValue: getAssetCostDefault('terminalValue', asset.type, capacity),
-          maxGearing: getAssetCostDefault('maxGearing', asset.type, capacity),
-          targetDSCRContract: getAssetCostDefault('targetDSCRContract', asset.type, capacity),
-          targetDSCRMerchant: getAssetCostDefault('targetDSCRMerchant', asset.type, capacity),
-          interestRate: getAssetCostDefault('interestRate', asset.type, capacity),
-          tenorYears: getAssetCostDefault('tenorYears', asset.type, capacity)
-        }
-      };
-      
-      updateConstants('assetCosts', newAssetCosts);
-    }
-  }, [asset.type, asset.name, asset.capacity, constants, onUpdateAsset, updateConstants]);
-
-  // Handle asset name updates by updating the asset costs object key as well
-  useEffect(() => {
-    if (previousName !== asset.name && previousName !== "") {
-      // Asset was renamed
-      const newAssetCosts = { ...constants.assetCosts };
-      
-      // Only transfer values if the old name had cost data
-      if (newAssetCosts[previousName]) {
-        // Copy the cost values from the old name to the new name
-        newAssetCosts[asset.name] = { ...newAssetCosts[previousName] };
-        
-        // Delete the old name entry
-        delete newAssetCosts[previousName];
-        
-        // Update the constants with the new structure
-        updateConstants('assetCosts', newAssetCosts);
-      }
-      
-      // Update the previous name for future comparisons
-      setPreviousName(asset.name);
-    }
-  }, [asset.name, previousName, constants.assetCosts, updateConstants]);
-
-  // Check for out of sync values with template
-  useEffect(() => {
-    if (selectedRenewable) {
-      setOutOfSync({
-        name: asset.name !== selectedRenewable.name,
-        state: asset.state !== selectedRenewable.state,
-        capacity: asset.capacity !== selectedRenewable.capacity,
-        type: asset.type !== selectedRenewable.type,
-        volumeLossAdjustment: selectedRenewable.mlf && 
-          String(asset.volumeLossAdjustment) !== String(selectedRenewable.mlf.toFixed(2)),
-        assetStartDate: selectedRenewable.startDate && 
-          asset.assetStartDate !== selectedRenewable.startDate,
-      });
-    } else {
-      // Clear out of sync state for new assets
-      setOutOfSync({
-        name: false,
-        state: false,
-        capacity: false,
-        type: false,
-        volumeLossAdjustment: false,
-        constructionStartDate: false,
-        constructionDuration: false,
-        assetStartDate: false
-      });
-    }
-  }, [asset, selectedRenewable]);
-
-  const handleFieldUpdate = (field, value, options = {}) => {
-    const processedValue = handleNumericInput(value, options);
-    
-    // Save the previous name for reference before any update
-    if (field === 'name') {
-      setPreviousName(asset.name);
-    }
-    
-    onUpdateAsset(field, processedValue);
-  };
-
-  // Enhanced date field handler with automatic calculation
-  const handleDateFieldUpdate = (field, value) => {
-    // Round the input date to first of month
-    const roundedValue = roundToFirstOfMonth(value);
-    
-    // Update the changed field first
-    onUpdateAsset(field, roundedValue);
-    
-    // Then calculate the dependent field based on which field was changed
-    if (field === 'constructionStartDate' && asset.constructionDuration) {
-      // Calculate ops start from cons start + duration
-      const newOpsStart = addMonthsToDate(roundedValue, asset.constructionDuration);
-      if (newOpsStart !== asset.assetStartDate) {
-        onUpdateAsset('assetStartDate', newOpsStart);
-      }
-    } else if (field === 'assetStartDate' && asset.constructionStartDate) {
-      // Calculate construction duration from the difference
-      const newDuration = calculateMonthsBetween(asset.constructionStartDate, roundedValue);
-      if (newDuration !== asset.constructionDuration) {
-        onUpdateAsset('constructionDuration', newDuration);
-      }
-    }
-  };
-
-  // Enhanced construction duration handler
-  const handleConstructionDurationUpdate = (value) => {
-    const processedValue = handleNumericInput(value, { round: true });
-    onUpdateAsset('constructionDuration', processedValue);
-    
-    // If we have a construction start date, calculate the ops start
-    if (asset.constructionStartDate && processedValue) {
-      const newOpsStart = addMonthsToDate(asset.constructionStartDate, processedValue);
-      if (newOpsStart !== asset.assetStartDate) {
-        onUpdateAsset('assetStartDate', newOpsStart);
-      }
-    }
-  };
-
-  const handleRenewableSelection = (selectedRenewableId) => {
-    const selected = renewablesData.find(r => r.id === selectedRenewableId);
-    if (selected) {
-      setSelectedRenewable(selected);
-      
-      // Save the previous name before updating
-      setPreviousName(asset.name);
-      
-      onUpdateAsset('name', selected.name);
-      onUpdateAsset('state', selected.state);
-      onUpdateAsset('capacity', selected.capacity);
-      onUpdateAsset('type', selected.type);
-      if (selected.mlf) {
-        onUpdateAsset('volumeLossAdjustment', selected.mlf.toFixed(2));
-      }
-      if (selected.startDate) {
-        onUpdateAsset('assetStartDate', selected.startDate);
-      }
-    }
-  };
-
-  // Handle cost field updates
-  const handleCostUpdate = (field, value) => {
-    let processedValue = value === '' ? '' : parseFloat(value);
-    
-    // Handle percentage fields that need to be stored as decimals
-    if (field === 'maxGearing' || field === 'interestRate') {
-      processedValue = processedValue === '' ? '' : processedValue / 100;
-    }
-    
-    const newAssetCosts = {
-      ...constants.assetCosts,
-      [asset.name]: {
-        ...assetCosts,
-        [field]: processedValue
-      }
-    };
-    updateConstants('assetCosts', newAssetCosts);
-  };
-
-  const handleContractUpdate = (id, field, value) => {
-    // Ensure we're working with the current contracts array
-    const updatedContracts = asset.contracts.map(contract => {
-      if (contract.id !== id) return contract;
-      
-      // Handle the update and get the new contract state
-      const updatedContract = updateBundledPrices({...contract}, field, value);
-      
-      // Ensure numeric fields are properly handled
-      if (['strikePrice', 'EnergyPrice', 'greenPrice', 'buyersPercentage', 'indexation'].includes(field)) {
-        // If the value is empty string, keep it as empty string to allow typing
-        updatedContract[field] = value === '' ? '' : value;
-      } else {
-        updatedContract[field] = value;
-      }
-      
-      return updatedContract;
-    });
-
-    onUpdateContracts(updatedContracts);
-  };
-
-  const addContract = () => {
-    const newContract = createNewContract(asset.contracts, asset.assetStartDate);
-    onUpdateContracts([...asset.contracts, newContract]);
-  };
-
-  const removeContract = (contractId) => {
-    onUpdateContracts(asset.contracts.filter(c => c.id !== contractId));
+  const handleUpdateContract = (contractId, field, value) => {
+    updateContract(assetId, contractId, field, value);
   };
 
   return (
@@ -353,29 +61,27 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Asset Details</CardTitle>
-          <Button variant="ghost" size="icon" onClick={onRemoveAsset} className="h-8 w-8 p-0">
+          <Button variant="ghost" size="icon" onClick={handleRemove} className="h-8 w-8 p-0">
             <X className="h-4 w-4" />
           </Button>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             {/* Template Selection */}
-            {!selectedRenewable && asset.name === `Default Asset ${asset.id}` && (
+            {!selectedTemplate && asset.name === `Default Asset ${asset.id}` && (
               <div className="col-span-2">
                 <label className="text-sm font-medium">Template</label>
-                <Select onValueChange={handleRenewableSelection}>
+                <Select onValueChange={handleTemplateSelection}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select an existing renewable" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectGroup>
-                      {renewablesData
-                        .sort((a, b) => a.name.localeCompare(b.name))
-                        .map(renewable => (
-                          <SelectItem key={renewable.id} value={renewable.id}>
-                            {renewable.name} ({renewable.capacity} MW, {renewable.type})
-                          </SelectItem>
-                        ))}
+                      {sortedTemplates.map(renewable => (
+                        <SelectItem key={renewable.id} value={renewable.id}>
+                          {renewable.name} ({renewable.capacity} MW, {renewable.type})
+                        </SelectItem>
+                      ))}
                     </SelectGroup>
                   </SelectContent>
                 </Select>
@@ -387,7 +93,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
               <label className="text-sm font-medium">Name</label>
               <Input
                 value={asset.name || ''}
-                onChange={(e) => onUpdateAsset('name', e.target.value)}
+                onChange={(e) => handleAssetFieldUpdate('name', e.target.value)}
                 className={outOfSync.name ? "text-red-500" : ""}
               />
             </div>
@@ -396,7 +102,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
               <label className="text-sm font-medium">State</label>
               <Select 
                 value={asset.state || ''} 
-                onValueChange={(value) => onUpdateAsset('state', value)}
+                onValueChange={(value) => handleAssetFieldUpdate('state', value)}
               >
                 <SelectTrigger className={outOfSync.state ? "text-red-500" : ""}>
                   <SelectValue placeholder="Select State" />
@@ -413,7 +119,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
               <label className="text-sm font-medium">Type</label>
               <Select 
                 value={asset.type || ''} 
-                onValueChange={(value) => onUpdateAsset('type', value)}
+                onValueChange={(value) => handleAssetFieldUpdate('type', value)}
               >
                 <SelectTrigger className={outOfSync.type ? "text-red-500" : ""}>
                   <SelectValue placeholder="Select Type" />
@@ -437,7 +143,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
                 <Input
                   type="number"
                   value={formatNumericValue(asset.capacity)}
-                  onChange={(e) => handleFieldUpdate('capacity', e.target.value, { round: true })}
+                  onChange={(e) => handleAssetFieldUpdate('capacity', e.target.value, { round: true })}
                   className={outOfSync.capacity ? "text-red-500" : ""}
                 />
               </div>
@@ -448,7 +154,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
                   <Input
                     type="number"
                     value={formatNumericValue(asset.volume)}
-                    onChange={(e) => handleFieldUpdate('volume', e.target.value)}
+                    onChange={(e) => handleAssetFieldUpdate('volume', e.target.value)}
                     placeholder="Volume (MWh)"
                   />
                   <p className="text-xs text-gray-500 mt-1">Storage capacity in MWh</p>
@@ -456,13 +162,13 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
               )}
             </div>
 
-            {/* Enhanced Dates and Construction Section with Linked Logic */}
+            {/* Enhanced Dates and Construction Section */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Cons Start</label>
               <Input
                 type="date"
                 value={asset.constructionStartDate || ''}
-                onChange={(e) => handleDateFieldUpdate('constructionStartDate', e.target.value)}
+                onChange={(e) => handleAssetDateUpdate('constructionStartDate', e.target.value)}
                 className={outOfSync.constructionStartDate ? "text-red-500" : ""}
               />
               <p className="text-xs text-gray-500">When construction begins (rounded to 1st of month)</p>
@@ -474,8 +180,8 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
                 type="number"
                 min="1"
                 value={formatNumericValue(asset.constructionDuration)}
-                onChange={(e) => handleConstructionDurationUpdate(e.target.value)}
-                className={`${outOfSync.constructionDuration ? "text-red-500" : ""} ${getValueStyle(asset.constructionDuration, getDefaultValue('performance', 'constructionDuration', asset.type))}`}
+                onChange={(e) => handleAssetConstructionDurationUpdate(e.target.value)}
+                className={`${outOfSync.constructionDuration ? "text-red-500" : ""} ${getValueStyle(asset.constructionDuration, getFieldDefault('constructionDuration'))}`}
               />
               <p className="text-xs text-gray-500">Construction period length</p>
             </div>
@@ -485,8 +191,13 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
               <Input
                 type="date"
                 value={asset.assetStartDate || ''}
-                onChange={(e) => handleDateFieldUpdate('assetStartDate', e.target.value)}
+                onChange={(e) => handleAssetDateUpdate('assetStartDate', e.target.value)}
                 className={outOfSync.assetStartDate ? "text-red-500" : ""}
+                style={{
+                  backgroundColor: isOpsStartValid()
+                    ? 'rgba(0, 255, 0, 0.1)' // Light green
+                    : 'rgba(255, 0, 0, 0.1)'  // Light red
+                }}
               />
               <p className="text-xs text-gray-500">When operations begin (rounded to 1st of month)</p>
             </div>
@@ -497,7 +208,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
                 type="number"
                 min="0"
                 value={formatNumericValue(asset.assetLife)}
-                onChange={(e) => handleFieldUpdate('assetLife', e.target.value, { round: true })}
+                onChange={(e) => handleAssetFieldUpdate('assetLife', e.target.value, { round: true })}
               />
             </div>
 
@@ -508,8 +219,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
                 <div className="grid grid-cols-4 gap-4">
                   {['Q1', 'Q2', 'Q3', 'Q4'].map((quarter) => {
                     const currentValue = asset[`qtrCapacityFactor_${quarter.toLowerCase()}`];
-                    const defaultFactor = constants.capacityFactors_qtr?.[asset.type]?.[asset.state]?.[quarter];
-                    const defaultValueFormatted = defaultFactor ? String(Math.round(defaultFactor * 100)) : '';
+                    const defaultValue = quarterlyDefaults[quarter.toLowerCase()];
                     
                     return (
                       <div key={quarter}>
@@ -519,12 +229,12 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
                           min="0"
                           max="100"
                           value={currentValue || ''}
-                          onChange={(e) => handleFieldUpdate(
+                          onChange={(e) => handleAssetFieldUpdate(
                             `qtrCapacityFactor_${quarter.toLowerCase()}`, 
                             e.target.value,
                             { min: 0, max: 100, round: true, asString: true }
                           )}
-                          className={getValueStyle(currentValue, defaultValueFormatted)}
+                          className={getValueStyle(currentValue, defaultValue)}
                         />
                       </div>
                     );
@@ -542,7 +252,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
                 max="100"
                 step="0.1"
                 value={formatNumericValue(asset.volumeLossAdjustment)}
-                onChange={(e) => handleFieldUpdate('volumeLossAdjustment', e.target.value, { min: 0, max: 100 })}
+                onChange={(e) => handleAssetFieldUpdate('volumeLossAdjustment', e.target.value, { min: 0, max: 100 })}
                 className={outOfSync.volumeLossAdjustment ? "text-red-500" : ""}
               />
               <p className="text-xs text-gray-500">Include MLF, availability and constraints</p>
@@ -556,30 +266,30 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
                 max="100"
                 step="0.1"
                 value={formatNumericValue(asset.annualDegradation)}
-                onChange={(e) => handleFieldUpdate('annualDegradation', e.target.value, { min: 0, max: 100 })}
-                className={getValueStyle(asset.annualDegradation, getDefaultValue('performance', 'annualDegradation', asset.type))}
+                onChange={(e) => handleAssetFieldUpdate('annualDegradation', e.target.value, { min: 0, max: 100 })}
+                className={getValueStyle(asset.annualDegradation, getFieldDefault('annualDegradation'))}
               />
               <p className="text-xs text-gray-500">Annual reduction in output (e.g. 0.4% per year)</p>
             </div>
 
             <div className="col-span-2 bg-gray-50 p-4 rounded-md">
-            <h4 className="text-sm font-medium mb-2">Year 1 Volume</h4>
-            {year1Volume ? (
-              <>
-                <div className="text-lg font-semibold">
-                  {year1Volume.toFixed(0).toLocaleString()} GWh
-                </div>
-                <p className="text-xs text-gray-500">
-                  {asset.type === 'storage' ? (
-                    `Based on ${asset.volume} MWh × 365 days × ${asset.volumeLossAdjustment || 0}% volume loss adjustment`
-                  ) : (
-                    `Based on ${asset.capacity} MW × ${asset.capacityFactor}% CF × 8,760 hours × ${asset.volumeLossAdjustment || 0}% volume loss adjustment`
-                  )}
-                </p>
-              </>
-            ) : (
-              <div className="text-lg font-semibold">Not calculated</div>
-            )}
+              <h4 className="text-sm font-medium mb-2">Year 1 Volume</h4>
+              {year1Volume ? (
+                <>
+                  <div className="text-lg font-semibold">
+                    {year1Volume.toFixed(0).toLocaleString()} GWh
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    {asset.type === 'storage' ? (
+                      `Based on ${asset.volume} MWh × 365 days × ${asset.volumeLossAdjustment || 0}% volume loss adjustment`
+                    ) : (
+                      `Based on ${asset.capacity} MW × ${asset.capacityFactor}% CF × 8,760 hours × ${asset.volumeLossAdjustment || 0}% volume loss adjustment`
+                    )}
+                  </p>
+                </>
+              ) : (
+                <div className="text-lg font-semibold">Not calculated</div>
+              )}
             </div>
           </div>
         </CardContent>
@@ -597,7 +307,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
               <Input
                 type="number"
                 value={assetCosts.capex ?? ''}
-                onChange={(e) => handleCostUpdate('capex', e.target.value)}
+                onChange={(e) => handleAssetCostUpdate('capex', e.target.value)}
                 className={`w-full ${getValueStyle(assetCosts.capex, getAssetCostDefault('capex', asset.type, asset.capacity))}`}
               />
               <p className="text-xs text-gray-500">Total capital expenditure</p>
@@ -607,7 +317,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
               <Input
                 type="number"
                 value={assetCosts.operatingCosts ?? ''}
-                onChange={(e) => handleCostUpdate('operatingCosts', e.target.value)}
+                onChange={(e) => handleAssetCostUpdate('operatingCosts', e.target.value)}
                 className={`w-full ${getValueStyle(assetCosts.operatingCosts, getAssetCostDefault('operatingCosts', asset.type, asset.capacity))}`}
               />
               <p className="text-xs text-gray-500">Annual operating costs</p>
@@ -617,7 +327,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
               <Input
                 type="number"
                 value={assetCosts.operatingCostEscalation ?? ''}
-                onChange={(e) => handleCostUpdate('operatingCostEscalation', e.target.value)}
+                onChange={(e) => handleAssetCostUpdate('operatingCostEscalation', e.target.value)}
                 className={`w-full ${getValueStyle(assetCosts.operatingCostEscalation, getAssetCostDefault('operatingCostEscalation', asset.type, asset.capacity))}`}
               />
               <p className="text-xs text-gray-500">Annual increase in costs</p>
@@ -627,7 +337,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
               <Input
                 type="number"
                 value={assetCosts.terminalValue ?? ''}
-                onChange={(e) => handleCostUpdate('terminalValue', e.target.value)}
+                onChange={(e) => handleAssetCostUpdate('terminalValue', e.target.value)}
                 className={`w-full ${getValueStyle(assetCosts.terminalValue, getAssetCostDefault('terminalValue', asset.type, asset.capacity))}`}
               />
               <p className="text-xs text-gray-500">End of life value</p>
@@ -648,7 +358,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
               <Input
                 type="number"
                 value={(assetCosts.maxGearing * 100) ?? ''}
-                onChange={(e) => handleCostUpdate('maxGearing', e.target.value)}
+                onChange={(e) => handleAssetCostUpdate('maxGearing', e.target.value)}
                 className={`w-full ${getValueStyle(assetCosts.maxGearing, getAssetCostDefault('maxGearing', asset.type, asset.capacity))}`}
               />
               <p className="text-xs text-gray-500">Maximum debt-to-capital ratio</p>
@@ -658,7 +368,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
               <Input
                 type="number"
                 value={assetCosts.targetDSCRContract ?? ''}
-                onChange={(e) => handleCostUpdate('targetDSCRContract', e.target.value)}
+                onChange={(e) => handleAssetCostUpdate('targetDSCRContract', e.target.value)}
                 className={`w-full ${getValueStyle(assetCosts.targetDSCRContract, getAssetCostDefault('targetDSCRContract', asset.type, asset.capacity))}`}
               />
               <p className="text-xs text-gray-500">For contracted revenue</p>
@@ -668,7 +378,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
               <Input
                 type="number"
                 value={assetCosts.targetDSCRMerchant ?? ''}
-                onChange={(e) => handleCostUpdate('targetDSCRMerchant', e.target.value)}
+                onChange={(e) => handleAssetCostUpdate('targetDSCRMerchant', e.target.value)}
                 className={`w-full ${getValueStyle(assetCosts.targetDSCRMerchant, getAssetCostDefault('targetDSCRMerchant', asset.type, asset.capacity))}`}
               />
               <p className="text-xs text-gray-500">For merchant revenue</p>
@@ -678,7 +388,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
               <Input
                 type="number"
                 value={(assetCosts.interestRate * 100) ?? ''}
-                onChange={(e) => handleCostUpdate('interestRate', e.target.value)}
+                onChange={(e) => handleAssetCostUpdate('interestRate', e.target.value)}
                 className={`w-full ${getValueStyle(assetCosts.interestRate, getAssetCostDefault('interestRate', asset.type, asset.capacity))}`}
               />
               <p className="text-xs text-gray-500">Annual interest rate</p>
@@ -688,7 +398,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
               <Input
                 type="number"
                 value={assetCosts.tenorYears ?? ''}
-                onChange={(e) => handleCostUpdate('tenorYears', e.target.value)}
+                onChange={(e) => handleAssetCostUpdate('tenorYears', e.target.value)}
                 className={`w-full ${getValueStyle(assetCosts.tenorYears, getAssetCostDefault('tenorYears', asset.type, asset.capacity))}`}
               />
               <p className="text-xs text-gray-500">Loan term length</p>
@@ -701,7 +411,7 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Contracts</CardTitle>
-          <Button onClick={addContract}>
+          <Button onClick={handleAddContract}>
             <Plus className="h-4 w-4 mr-2" />Add Contract
           </Button>
         </CardHeader>
@@ -710,8 +420,8 @@ const AssetForm = ({ asset, onUpdateAsset, onUpdateContracts, onRemoveAsset }) =
             <AssetFormContract
               key={contract.id}
               contract={contract}
-              updateContract={(field, value) => handleContractUpdate(contract.id, field, value)}
-              removeContract={() => removeContract(contract.id)}
+              updateContract={(field, value) => handleUpdateContract(contract.id, field, value)}
+              removeContract={() => handleRemoveContract(contract.id)}
               isStorage={asset.type === 'storage'}
               capacity={asset.capacity}
               capacityFactor={asset.capacityFactor}

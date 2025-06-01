@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+// components/AssetSummaryInputs.jsx
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,387 +7,45 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Save } from 'lucide-react';
-import { usePortfolio } from '@/contexts/PortfolioContext';
-import { 
-  formatNumericValue, 
-  handleNumericInput,
-  createNewContract
-} from './AssetUtils';
-import {
-  DEFAULT_CAPEX_RATES,
-  DEFAULT_OPEX_RATES,
-  DEFAULT_PROJECT_FINANCE,
-  DEFAULT_TAX_DEPRECIATION,
-  DEFAULT_ASSET_PERFORMANCE,
-  DEFAULT_TERMINAL_RATES,
-  getDefaultValue,
-  UI_CONSTANTS
-} from '@/lib/default_constants';
+import { useAssetSummary } from '@/hooks/useAssetSummary';
+import { getDefaultValue } from '@/lib/default_constants';
 
 const AssetSummaryInputs = () => {
-  const { assets, setAssets, constants, updateConstants } = usePortfolio();
-  const [editState, setEditState] = useState({});
+  const {
+    assets,
+    editState,
+    constants,
+    corporateTaxRate,
+    deprecationPeriods,
+    getAssetFields,
+    getAdvancedFields,
+    getContractFields,
+    handleFieldUpdate,
+    handleContractUpdate,
+    handleAssetCostChange,
+    handleTaxRateChange,
+    handleDepreciationChange,
+    addContractToAll,
+    getAllContractIds,
+    saveChanges,
+    isOpsStartValid,
+    isContractStartValid,
+    calculateContractTenor,
+    getValueStyle,
+    getAssetCostDefault,
+    formatNumericValue,
+  } = useAssetSummary();
+
   const [activeTab, setActiveTab] = useState("assets");
   const assetCosts = constants.assetCosts || {};
-
-  // Ensure deprecation periods and tax rate exist with defaults
-  const corporateTaxRate = constants.corporateTaxRate !== undefined ? constants.corporateTaxRate : DEFAULT_TAX_DEPRECIATION.corporateTaxRate;
-  const deprecationPeriods = constants.deprecationPeriods || DEFAULT_TAX_DEPRECIATION.deprecationPeriods;
-
-  // Helper function to determine if a value is default (blue) or user-defined (black)
-  const getValueStyle = (currentValue, defaultValue) => {
-    const isDefault = currentValue === undefined || currentValue === null || currentValue === defaultValue;
-    return isDefault ? UI_CONSTANTS.colors.defaultValue : UI_CONSTANTS.colors.userValue;
-  };
-
-  // Helper function to get default values for asset costs
-  const getAssetCostDefault = (field, assetType, capacity) => {
-    const parsedCapacity = parseFloat(capacity) || 100;
-    
-    switch(field) {
-      case 'capex':
-        return getDefaultValue('capex', 'default', assetType) * parsedCapacity;
-      case 'operatingCosts':
-        return getDefaultValue('opex', 'default', assetType) * parsedCapacity;
-      case 'operatingCostEscalation':
-        return DEFAULT_PROJECT_FINANCE.opexEscalation;
-      case 'terminalValue':
-        return getDefaultValue('terminal', 'default', assetType) * parsedCapacity;
-      case 'maxGearing':
-        return DEFAULT_PROJECT_FINANCE.maxGearing;
-      case 'targetDSCRContract':
-        return DEFAULT_PROJECT_FINANCE.targetDSCRContract;
-      case 'targetDSCRMerchant':
-        return DEFAULT_PROJECT_FINANCE.targetDSCRMerchant;
-      case 'interestRate':
-        return DEFAULT_PROJECT_FINANCE.interestRate;
-      case 'tenorYears':
-        return getDefaultValue('finance', 'tenorYears', assetType);
-      default:
-        return 0;
-    }
-  };
-
-  // Helper function to round date to first of nearest month
-  const roundToFirstOfMonth = (dateStr) => {
-    if (!dateStr) return '';
-    const date = new Date(dateStr);
-    // Set to first day of the month
-    date.setDate(1);
-    return date.toISOString().split('T')[0];
-  };
-
-  // Helper function to add months to a date and round to first of month
-  const addMonthsToDate = (dateStr, months) => {
-    if (!dateStr || !months) return '';
-    const date = new Date(dateStr);
-    date.setMonth(date.getMonth() + parseInt(months));
-    date.setDate(1); // Always set to first of month
-    return date.toISOString().split('T')[0];
-  };
-
-  // Helper function to calculate months between two dates
-  const calculateMonthsBetween = (startDateStr, endDateStr) => {
-    if (!startDateStr || !endDateStr) return '';
-    const startDate = new Date(startDateStr);
-    const endDate = new Date(endDateStr);
-    
-    const yearDiff = endDate.getFullYear() - startDate.getFullYear();
-    const monthDiff = endDate.getMonth() - startDate.getMonth();
-    
-    return yearDiff * 12 + monthDiff;
-  };
-
-  // Initialize tax/depreciation values if they don't exist
-  useEffect(() => {
-    if (constants.corporateTaxRate === undefined) {
-      updateConstants('corporateTaxRate', DEFAULT_TAX_DEPRECIATION.corporateTaxRate);
-    }
-    
-    if (!constants.deprecationPeriods) {
-      updateConstants('deprecationPeriods', DEFAULT_TAX_DEPRECIATION.deprecationPeriods);
-    }
-  }, [constants, updateConstants]);
-
-  // Initialize edit state with asset values
-  useEffect(() => {
-    const initialState = {};
-    Object.values(assets).forEach(asset => {
-      // Create a deep copy to avoid reference issues
-      initialState[asset.id] = JSON.parse(JSON.stringify(asset));
-    });
-    setEditState(initialState);
-  }, [assets]);
-
-  // Update a field for a specific asset with linked date logic
-  const handleFieldUpdate = (assetId, field, value, options = {}) => {
-    console.log(`Updating field ${field} for asset ${assetId} with value:`, value);
-    
-    // Handle date fields with linked logic
-    if (field === 'constructionStartDate' || field === 'assetStartDate') {
-      handleDateFieldUpdate(assetId, field, value);
-      return;
-    }
-    
-    // Handle construction duration with linked logic
-    if (field === 'constructionDuration') {
-      handleConstructionDurationUpdate(assetId, value);
-      return;
-    }
-    
-    // For all other fields, use normal processing
-    setEditState(prev => ({
-      ...prev,
-      [assetId]: {
-        ...prev[assetId],
-        [field]: handleNumericInput(value, options)
-      }
-    }));
-  };
-
-  // Enhanced date field handler with automatic calculation
-  const handleDateFieldUpdate = (assetId, field, value) => {
-    // Round the input date to first of month
-    const roundedValue = roundToFirstOfMonth(value);
-    
-    // Update the changed field first
-    setEditState(prev => ({
-      ...prev,
-      [assetId]: {
-        ...prev[assetId],
-        [field]: roundedValue
-      }
-    }));
-    
-    // Get current asset data
-    const currentAsset = editState[assetId];
-    if (!currentAsset) return;
-    
-    // Then calculate the dependent field based on which field was changed
-    if (field === 'constructionStartDate' && currentAsset.constructionDuration) {
-      // Calculate ops start from cons start + duration
-      const newOpsStart = addMonthsToDate(roundedValue, currentAsset.constructionDuration);
-      if (newOpsStart !== currentAsset.assetStartDate) {
-        setEditState(prev => ({
-          ...prev,
-          [assetId]: {
-            ...prev[assetId],
-            assetStartDate: newOpsStart
-          }
-        }));
-      }
-    } else if (field === 'assetStartDate' && currentAsset.constructionStartDate) {
-      // Calculate construction duration from the difference
-      const newDuration = calculateMonthsBetween(currentAsset.constructionStartDate, roundedValue);
-      if (newDuration !== currentAsset.constructionDuration) {
-        setEditState(prev => ({
-          ...prev,
-          [assetId]: {
-            ...prev[assetId],
-            constructionDuration: newDuration
-          }
-        }));
-      }
-    }
-  };
-
-  // Enhanced construction duration handler
-  const handleConstructionDurationUpdate = (assetId, value) => {
-    const processedValue = handleNumericInput(value, { round: true });
-    
-    // Update the construction duration field
-    setEditState(prev => ({
-      ...prev,
-      [assetId]: {
-        ...prev[assetId],
-        constructionDuration: processedValue
-      }
-    }));
-    
-    // Get current asset data
-    const currentAsset = editState[assetId];
-    if (!currentAsset) return;
-    
-    // If we have a construction start date, calculate the ops start
-    if (currentAsset.constructionStartDate && processedValue) {
-      const newOpsStart = addMonthsToDate(currentAsset.constructionStartDate, processedValue);
-      if (newOpsStart !== currentAsset.assetStartDate) {
-        setEditState(prev => ({
-          ...prev,
-          [assetId]: {
-            ...prev[assetId],
-            assetStartDate: newOpsStart
-          }
-        }));
-      }
-    }
-  };
-
-  // Add a new contract to all assets
-  const addContractToAll = () => {
-    const updatedAssets = {};
-    
-    Object.entries(assets).forEach(([id, asset]) => {
-      const newContract = createNewContract(asset.contracts, asset.assetStartDate);
-      updatedAssets[id] = {
-        ...asset,
-        contracts: [...asset.contracts, newContract]
-      };
-    });
-    
-    setAssets(updatedAssets);
-  };
-
-  // Update a contract field for a specific asset
-  const handleContractUpdate = (assetId, contractId, field, value, options = {}) => {
-    console.log(`Updating contract field ${field} for asset ${assetId}, contract ${contractId} with value:`, value);
-    
-    // If it's a date field, pass the value directly
-    if (field === 'startDate' || field === 'endDate') {
-      setEditState(prev => ({
-        ...prev,
-        [assetId]: {
-          ...prev[assetId],
-          contracts: prev[assetId]?.contracts?.map(contract => {
-            if (contract.id !== contractId) return contract;
-            return {
-              ...contract,
-              [field]: value
-            };
-          }) || []
-        }
-      }));
-      return;
-    }
-    
-    // For non-date fields, use normal processing
-    setEditState(prev => ({
-      ...prev,
-      [assetId]: {
-        ...prev[assetId],
-        contracts: prev[assetId]?.contracts?.map(contract => {
-          if (contract.id !== contractId) return contract;
-          return {
-            ...contract,
-            [field]: handleNumericInput(value, options)
-          };
-        }) || []
-      }
-    }));
-  };
-
-  // Save all changes
-  const saveChanges = () => {
-    console.log("Saving changes to assets:", editState);
-    setAssets(editState);
-  };
-
-  // Get all unique contract IDs across all assets
-  const getAllContractIds = () => {
-    const contractIds = new Set();
-    
-    Object.values(assets).forEach(asset => {
-      asset.contracts.forEach(contract => {
-        contractIds.add(contract.id);
-      });
-    });
-    
-    return Array.from(contractIds).sort((a, b) => {
-      // Ensure numeric sorting
-      return parseInt(a) - parseInt(b);
-    });
-  };
-
-  // Handle tax rate change
-  const handleTaxRateChange = (value) => {
-    updateConstants('corporateTaxRate', parseFloat(value) || 0);
-  };
-
-  // Handle depreciation period change
-  const handleDepreciationChange = (assetType, value) => {
-    const updatedPeriods = {
-      ...deprecationPeriods,
-      [assetType]: parseInt(value) || 0
-    };
-    
-    updateConstants('deprecationPeriods', updatedPeriods);
-  };
-
-  // Check if ops start date is valid based on construction start + duration
-  const isOpsStartValid = (asset) => {
-    if (!asset.constructionStartDate || !asset.constructionDuration || !asset.assetStartDate) return true;
-    
-    const consStart = new Date(asset.constructionStartDate);
-    const opsStart = new Date(asset.assetStartDate);
-    const duration = parseInt(asset.constructionDuration) || 0;
-    
-    // Calculate expected ops start date based on construction start + duration
-    const expectedOpsStart = new Date(consStart);
-    expectedOpsStart.setMonth(expectedOpsStart.getMonth() + duration);
-    
-    // Format to YYYY-MM-DD to compare just the dates
-    const expectedDateStr = expectedOpsStart.toISOString().split('T')[0];
-    const actualDateStr = opsStart.toISOString().split('T')[0];
-    
-    return expectedDateStr === actualDateStr;
-  };
-
-  // Check if contract start equals asset ops start
-  const isContractStartValid = (asset, contract) => {
-    if (!asset.assetStartDate || !contract.startDate) return null; // Null means no validation
-    
-    const assetStart = new Date(asset.assetStartDate).toISOString().split('T')[0];
-    const contractStart = new Date(contract.startDate).toISOString().split('T')[0];
-    
-    return assetStart === contractStart;
-  };
-
-  // Calculate contract duration in years
-  const calculateContractTenor = (contract) => {
-    if (!contract.startDate || !contract.endDate) return null;
-    
-    const start = new Date(contract.startDate);
-    const end = new Date(contract.endDate);
-    const diffTime = Math.abs(end - start);
-    const diffYears = (diffTime / (1000 * 60 * 60 * 24 * 365.25)).toFixed(1);
-    return diffYears;
-  };
 
   // Check if assets have any contracts
   const hasContracts = Object.values(assets).some(asset => asset.contracts.length > 0);
   const allContractIds = getAllContractIds();
 
-  const assetFields = [
-    { label: 'Name', field: 'name', type: 'text' },
-    { label: 'State', field: 'state', type: 'select', options: ['NSW', 'VIC', 'SA', 'QLD'] },
-    { label: 'Type', field: 'type', type: 'select', options: ['solar', 'wind', 'storage'] },
-    { label: 'Capacity (MW)', field: 'capacity', type: 'number' },
-    { label: 'Cons Start', field: 'constructionStartDate', type: 'date' },
-    { label: 'Cons Duration (months)', field: 'constructionDuration', type: 'number' },
-    { label: 'Ops Start', field: 'assetStartDate', type: 'date' },
-    { label: 'Asset Life (years)', field: 'assetLife', type: 'number' },
-    { label: 'Volume Loss Adjustment (%)', field: 'volumeLossAdjustment', type: 'number' },
-  ];
-
-  const advancedFields = [
-    { label: 'Annual Degradation (%)', field: 'annualDegradation', type: 'number' },
-    { label: 'Q1 Capacity Factor (%)', field: 'qtrCapacityFactor_q1', type: 'number' },
-    { label: 'Q2 Capacity Factor (%)', field: 'qtrCapacityFactor_q2', type: 'number' },
-    { label: 'Q3 Capacity Factor (%)', field: 'qtrCapacityFactor_q3', type: 'number' },
-    { label: 'Q4 Capacity Factor (%)', field: 'qtrCapacityFactor_q4', type: 'number' },
-  ];
-
-  const contractFields = [
-    { label: 'Counterparty', field: 'counterparty', type: 'text' },
-    { label: 'Type', field: 'type', type: 'select', options: ['bundled', 'green', 'Energy', 'fixed', 'cfd', 'tolling'] },
-    { label: 'Start Date', field: 'startDate', type: 'date' },
-    { label: 'End Date', field: 'endDate', type: 'date' },
-    { label: 'Strike Price ($)', field: 'strikePrice', type: 'number' },
-    { label: 'Energy Price ($)', field: 'EnergyPrice', type: 'number' },
-    { label: 'Green Price ($)', field: 'greenPrice', type: 'number' },
-    { label: 'Buyer\'s Percentage (%)', field: 'buyersPercentage', type: 'number' },
-    { label: 'Indexation (%)', field: 'indexation', type: 'number' },
-  ];
+  const assetFields = getAssetFields();
+  const advancedFields = getAdvancedFields();
+  const contractFields = getContractFields();
 
   const renderCellContent = (assetId, field, type, options = []) => {
     const asset = editState[assetId];
@@ -443,10 +102,7 @@ const AssetSummaryInputs = () => {
           <Input
             type="date"
             value={value || ''}
-            onChange={(e) => {
-              // Use the enhanced date field handler
-              handleFieldUpdate(assetId, field.field, e.target.value);
-            }}
+            onChange={(e) => handleFieldUpdate(assetId, field.field, e.target.value)}
             className={`w-full h-8 ${cellStyle}`}
             style={opsStartStyle}
           />
@@ -559,44 +215,6 @@ const AssetSummaryInputs = () => {
     }
   };
 
-  // Handle asset cost field update
-  const handleAssetCostChange = (assetName, field, value) => {
-    const asset = Object.values(assets).find(a => a.name === assetName);
-    if (!asset) return;
-
-    // Make sure the asset costs object exists for this asset
-    if (!constants.assetCosts[assetName]) {
-      updateConstants('assetCosts', {
-        ...constants.assetCosts,
-        [assetName]: {
-          // Set default values based on asset type and capacity
-          capex: getAssetCostDefault('capex', asset.type, asset.capacity),
-          operatingCosts: getAssetCostDefault('operatingCosts', asset.type, asset.capacity),
-          operatingCostEscalation: getAssetCostDefault('operatingCostEscalation', asset.type, asset.capacity),
-          terminalValue: getAssetCostDefault('terminalValue', asset.type, asset.capacity),
-          maxGearing: getAssetCostDefault('maxGearing', asset.type, asset.capacity) / 100,
-          targetDSCRContract: getAssetCostDefault('targetDSCRContract', asset.type, asset.capacity),
-          targetDSCRMerchant: getAssetCostDefault('targetDSCRMerchant', asset.type, asset.capacity),
-          interestRate: getAssetCostDefault('interestRate', asset.type, asset.capacity) / 100,
-          tenorYears: getAssetCostDefault('tenorYears', asset.type, asset.capacity)
-        }
-      });
-    }
-
-    // Now update the specific field
-    const processedValue = field === 'maxGearing' || field === 'interestRate' 
-      ? parseFloat(value) / 100 
-      : parseFloat(value);
-    
-    updateConstants('assetCosts', {
-      ...constants.assetCosts,
-      [assetName]: {
-        ...constants.assetCosts[assetName],
-        [field]: isNaN(processedValue) ? '' : processedValue
-      }
-    });
-  };
-
   return (
     <div className="w-full p-4 space-y-4">
       <Card className="w-full">
@@ -675,6 +293,52 @@ const AssetSummaryInputs = () => {
               </Table>
             </TabsContent>
             
+            <TabsContent value="contracts">
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-medium">Contract Summary</h3>
+                  <Button onClick={addContractToAll} size="sm">
+                    Add Contract to All Assets
+                  </Button>
+                </div>
+                
+                {hasContracts ? (
+                  <div className="space-y-6">
+                    {allContractIds.map(contractId => (
+                      <div key={contractId}>
+                        <h4 className="text-md font-medium mb-3">Contract {contractId}</h4>
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Field</TableHead>
+                              {Object.values(assets).map(asset => (
+                                <TableHead key={`asset-${asset.id}`}>{asset.name}</TableHead>
+                              ))}
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {contractFields.map(field => (
+                              <TableRow key={field.field}>
+                                <TableCell className="font-medium">{field.label}</TableCell>
+                                {Object.values(assets).map(asset => (
+                                  <TableCell key={`${asset.id}-${field.field}`}>
+                                    {renderContractCellContent(asset.id, contractId, field, field.type, field.options)}
+                                  </TableCell>
+                                ))}
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    No contracts have been added yet. Add contracts to individual assets or use "Add Contract to All Assets" button.
+                  </div>
+                )}
+              </div>
+            </TabsContent>
             
             <TabsContent value="finance">
               <div className="space-y-6">
@@ -860,7 +524,6 @@ const AssetSummaryInputs = () => {
               </div>
             </TabsContent>
             
-            {/* Tax & Depreciation Tab - Styled like Portfolio Inputs */}
             <TabsContent value="taxation">
               <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -879,7 +542,7 @@ const AssetSummaryInputs = () => {
                             step="0.1"
                             value={corporateTaxRate}
                             onChange={(e) => handleTaxRateChange(e.target.value)}
-                            className={`max-w-xs ${getValueStyle(corporateTaxRate, DEFAULT_TAX_DEPRECIATION.corporateTaxRate)}`}
+                            className="max-w-xs"
                           />
                           <p className="text-sm text-gray-500">
                             Corporate tax rate applied to taxable income
@@ -904,7 +567,7 @@ const AssetSummaryInputs = () => {
                               max="40"
                               value={deprecationPeriods.solar}
                               onChange={(e) => handleDepreciationChange('solar', e.target.value)}
-                              className={`max-w-xs ${getValueStyle(deprecationPeriods.solar, DEFAULT_TAX_DEPRECIATION.deprecationPeriods.solar)}`}
+                              className="max-w-xs"
                             />
                           </div>
                           <div className="space-y-2">
@@ -915,7 +578,7 @@ const AssetSummaryInputs = () => {
                               max="40"
                               value={deprecationPeriods.wind}
                               onChange={(e) => handleDepreciationChange('wind', e.target.value)}
-                              className={`max-w-xs ${getValueStyle(deprecationPeriods.wind, DEFAULT_TAX_DEPRECIATION.deprecationPeriods.wind)}`}
+                              className="max-w-xs"
                             />
                           </div>
                           <div className="space-y-2">
@@ -926,7 +589,7 @@ const AssetSummaryInputs = () => {
                               max="40"
                               value={deprecationPeriods.storage}
                               onChange={(e) => handleDepreciationChange('storage', e.target.value)}
-                              className={`max-w-xs ${getValueStyle(deprecationPeriods.storage, DEFAULT_TAX_DEPRECIATION.deprecationPeriods.storage)}`}
+                              className="max-w-xs"
                             />
                           </div>
                         </div>
