@@ -23,6 +23,11 @@ import {
   formatCurrency 
 } from './PlatformPL_Calculations';
 
+// Import default constants
+import { 
+  DEFAULT_PLATFORM_COSTS 
+} from '@/lib/default_constants';
+
 const PlatformPL = ({
   // Allow props to be passed from parent component for integration
   selectedRevenueCase: externalSelectedRevenueCase,
@@ -43,16 +48,16 @@ const PlatformPL = ({
 }) => {
   const { assets, constants, getMerchantPrice, updateConstants } = usePortfolio();
   
-  // Use either passed values or local state
+  // Use either passed values or local state with proper defaults
   const [selectedRevenueCase, setSelectedRevenueCase] = useState(externalSelectedRevenueCase || 'base');
   const [selectedAsset, setSelectedAsset] = useState('Total');
   const [usePortfolioDebt, setUsePortfolioDebt] = useState(externalUsePortfolioDebt !== undefined ? externalUsePortfolioDebt : true);
-  const [platformOpex, setPlatformOpex] = useState(externalPlatformOpex || 4.2); // Default $4.2M
-  const [platformOpexEscalation, setPlatformOpexEscalation] = useState(externalPlatformOpexEscalation || 2.5); // Default 2.5%
+  const [platformOpex, setPlatformOpex] = useState(externalPlatformOpex ?? DEFAULT_PLATFORM_COSTS.platformOpex);
+  const [platformOpexEscalation, setPlatformOpexEscalation] = useState(externalPlatformOpexEscalation ?? DEFAULT_PLATFORM_COSTS.platformOpexEscalation);
   const [years, setYears] = useState([]);
   const [timeView, setTimeView] = useState(externalTimeView || 'annual'); // 'annual' or 'quarterly'
-  const [dividendPolicy, setDividendPolicy] = useState(externalDividendPolicy || 85); // Default 85% payout ratio
-  const [minimumCashBalance, setMinimumCashBalance] = useState(externalMinimumCashBalance || 5.0); // Default minimum $5M cash balance
+  const [dividendPolicy, setDividendPolicy] = useState(externalDividendPolicy ?? DEFAULT_PLATFORM_COSTS.dividendPolicy);
+  const [minimumCashBalance, setMinimumCashBalance] = useState(externalMinimumCashBalance ?? DEFAULT_PLATFORM_COSTS.minimumCashBalance);
   const [activeTab, setActiveTab] = useState(initialTab); // 'pl', 'cf', or 'chart'
   
   // Sync external values if they change
@@ -108,19 +113,30 @@ const PlatformPL = ({
     updateConstants('minimumCashBalance', minimumCashBalance);
   }, [platformOpex, platformOpexEscalation, dividendPolicy, minimumCashBalance, updateConstants]);
 
-  // Load saved values from constants
+  // Load saved values from constants with proper defaults
   useEffect(() => {
     if (constants.platformOpex !== undefined && externalPlatformOpex === undefined) {
       setPlatformOpex(constants.platformOpex);
+    } else if (constants.platformOpex === undefined && externalPlatformOpex === undefined) {
+      setPlatformOpex(DEFAULT_PLATFORM_COSTS.platformOpex);
     }
+    
     if (constants.platformOpexEscalation !== undefined && externalPlatformOpexEscalation === undefined) {
       setPlatformOpexEscalation(constants.platformOpexEscalation);
+    } else if (constants.platformOpexEscalation === undefined && externalPlatformOpexEscalation === undefined) {
+      setPlatformOpexEscalation(DEFAULT_PLATFORM_COSTS.platformOpexEscalation);
     }
+    
     if (constants.dividendPolicy !== undefined && externalDividendPolicy === undefined) {
       setDividendPolicy(constants.dividendPolicy);
+    } else if (constants.dividendPolicy === undefined && externalDividendPolicy === undefined) {
+      setDividendPolicy(DEFAULT_PLATFORM_COSTS.dividendPolicy);
     }
+    
     if (constants.minimumCashBalance !== undefined && externalMinimumCashBalance === undefined) {
       setMinimumCashBalance(constants.minimumCashBalance);
+    } else if (constants.minimumCashBalance === undefined && externalMinimumCashBalance === undefined) {
+      setMinimumCashBalance(DEFAULT_PLATFORM_COSTS.minimumCashBalance);
     }
   }, [
     constants, 
@@ -261,7 +277,7 @@ const PlatformPL = ({
       </CardContent>
     </Card>
   );
-
+  
   // Render Profit & Loss Section
   const renderProfitLoss = () => (
     <Card>

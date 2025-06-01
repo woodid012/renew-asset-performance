@@ -12,17 +12,27 @@ import {
   generateYears
 } from './PlatformPL_Calculations';
 
+// Import default constants
+import { 
+  DEFAULT_PLATFORM_COSTS 
+} from '@/lib/default_constants';
+
 const PlatformFinancials = () => {
-  const { assets, constants, getMerchantPrice } = usePortfolio();
+  const { assets, constants, getMerchantPrice, updateConstants } = usePortfolio();
   const [selectedRevenueCase, setSelectedRevenueCase] = useState('base');
   const [activeTab, setActiveTab] = useState('pl');
   const [usePortfolioDebt, setUsePortfolioDebt] = useState(true);
-  const [platformOpex, setPlatformOpex] = useState(4.2);
-  const [platformOpexEscalation, setPlatformOpexEscalation] = useState(2.5);
+  const [platformOpex, setPlatformOpex] = useState(constants.platformOpex ?? DEFAULT_PLATFORM_COSTS.platformOpex);
+  const [otherOpex] = useState(constants.otherOpex ?? DEFAULT_PLATFORM_COSTS.otherOpex);
+  const [platformOpexEscalation, setPlatformOpexEscalation] = useState(constants.platformOpexEscalation ?? DEFAULT_PLATFORM_COSTS.platformOpexEscalation);
   const [timeView, setTimeView] = useState('annual');
-  const [dividendPolicy, setDividendPolicy] = useState(85);
-  const [minimumCashBalance, setMinimumCashBalance] = useState(5.0);
+  const [dividendPolicy, setDividendPolicy] = useState(constants.dividendPolicy ?? DEFAULT_PLATFORM_COSTS.dividendPolicy);
+  const [minimumCashBalance, setMinimumCashBalance] = useState(constants.minimumCashBalance ?? DEFAULT_PLATFORM_COSTS.minimumCashBalance);
   const [years, setYears] = useState([]);
+
+  // Capital contribution percentages
+  const [newInvestorsPercentage] = useState(80); // 80% for new investors
+  const [zenPercentage] = useState(20); // 20% for ZEN
 
   // Initialize years array based on constants
   useEffect(() => {
@@ -53,7 +63,7 @@ const PlatformFinancials = () => {
       getMerchantPrice,
       selectedRevenueCase,
       usePortfolioDebt,
-      platformOpex,
+      platformOpex + otherOpex, // combine platform opex and other opex
       platformOpexEscalation
     );
   }, [
@@ -62,6 +72,7 @@ const PlatformFinancials = () => {
     constants, 
     usePortfolioDebt, 
     platformOpex, 
+    otherOpex,
     platformOpexEscalation,
     selectedRevenueCase,
     getMerchantPrice
