@@ -1,10 +1,10 @@
-// components/AssetSummaryInputs.jsx
+// components/AssetSummaryInputs.jsx - Streamlined version inspired by Portfolio Configuration
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Save } from 'lucide-react';
 import { useAssetSummary } from '@/hooks/useAssetSummary';
@@ -17,9 +17,6 @@ const AssetSummaryInputs = () => {
     constants,
     corporateTaxRate,
     deprecationPeriods,
-    getAssetFields,
-    getAdvancedFields,
-    getContractFields,
     handleFieldUpdate,
     handleContractUpdate,
     handleAssetCostChange,
@@ -36,18 +33,11 @@ const AssetSummaryInputs = () => {
     formatNumericValue,
   } = useAssetSummary();
 
-  const [activeTab, setActiveTab] = useState("assets");
+  const [activeTab, setActiveTab] = useState("basic");
   const assetCosts = constants.assetCosts || {};
 
-  // Check if assets have any contracts
-  const hasContracts = Object.values(assets).some(asset => asset.contracts.length > 0);
-  const allContractIds = getAllContractIds();
-
-  const assetFields = getAssetFields();
-  const advancedFields = getAdvancedFields();
-  const contractFields = getContractFields();
-
-  const renderCellContent = (assetId, field, type, options = []) => {
+  // Helper function to render different input types
+  const renderTableInput = (assetId, field, type, options = []) => {
     const asset = editState[assetId];
     if (!asset) return null;
 
@@ -89,12 +79,11 @@ const AssetSummaryInputs = () => {
           />
         );
       case 'date':
-        // For Ops Start, add color validation
         const opsStartStyle = field.field === 'assetStartDate' 
           ? { 
               backgroundColor: isOpsStartValid(asset)
-                ? 'rgba(0, 255, 0, 0.1)' // Light green
-                : 'rgba(255, 0, 0, 0.1)'  // Light red
+                ? 'rgba(0, 255, 0, 0.1)' 
+                : 'rgba(255, 0, 0, 0.1)'  
             }
           : {};
           
@@ -130,12 +119,65 @@ const AssetSummaryInputs = () => {
     }
   };
 
-  const renderContractCellContent = (assetId, contractId, field, type, options = []) => {
+  // Asset field definitions
+  const basicFields = [
+    { field: 'name', label: 'Asset Name', type: 'text' },
+    { field: 'state', label: 'State', type: 'select', options: ['NSW', 'VIC', 'SA', 'QLD'] },
+    { field: 'type', label: 'Technology', type: 'select', options: ['wind', 'solar', 'storage'] },
+    { field: 'capacity', label: 'Capacity (MW)', type: 'number' },
+    { field: 'volume', label: 'Storage Volume (MWh)', type: 'number' },
+    { field: 'assetLife', label: 'Asset Life (years)', type: 'number' },
+    { field: 'volumeLossAdjustment', label: 'Volume Loss Adj (%)', type: 'number' },
+  ];
+
+  const timelineFields = [
+    { field: 'constructionStartDate', label: 'Construction Start', type: 'date' },
+    { field: 'constructionDuration', label: 'Construction Duration (months)', type: 'number' },
+    { field: 'assetStartDate', label: 'Operations Start', type: 'date' },
+  ];
+
+  const performanceFields = [
+    { field: 'annualDegradation', label: 'Annual Degradation (%)', type: 'number' },
+    { field: 'qtrCapacityFactor_q1', label: 'Q1 Capacity Factor (%)', type: 'number' },
+    { field: 'qtrCapacityFactor_q2', label: 'Q2 Capacity Factor (%)', type: 'number' },
+    { field: 'qtrCapacityFactor_q3', label: 'Q3 Capacity Factor (%)', type: 'number' },
+    { field: 'qtrCapacityFactor_q4', label: 'Q4 Capacity Factor (%)', type: 'number' },
+  ];
+
+  const costFields = [
+    { field: 'capex', label: 'CAPEX ($M)', type: 'number' },
+    { field: 'operatingCosts', label: 'Operating Costs ($M/year)', type: 'number' },
+    { field: 'operatingCostEscalation', label: 'OpEx Escalation (%)', type: 'number' },
+    { field: 'terminalValue', label: 'Terminal Value ($M)', type: 'number' },
+  ];
+
+  const financeFields = [
+    { field: 'maxGearing', label: 'Max Gearing (%)', type: 'number' },
+    { field: 'targetDSCRContract', label: 'Target DSCR Contract (x)', type: 'number' },
+    { field: 'targetDSCRMerchant', label: 'Target DSCR Merchant (x)', type: 'number' },
+    { field: 'interestRate', label: 'Interest Rate (%)', type: 'number' },
+    { field: 'tenorYears', label: 'Loan Tenor (years)', type: 'number' },
+  ];
+
+  // Check if assets have any contracts
+  const hasContracts = Object.values(assets).some(asset => asset.contracts.length > 0);
+  const allContractIds = getAllContractIds();
+
+  const contractFields = [
+    { field: 'counterparty', label: 'Counterparty', type: 'text' },
+    { field: 'type', label: 'Contract Type', type: 'select' },
+    { field: 'strikePrice', label: 'Strike Price', type: 'number' },
+    { field: 'buyersPercentage', label: 'Buyer %', type: 'number' },
+    { field: 'startDate', label: 'Start Date', type: 'date' },
+    { field: 'endDate', label: 'End Date', type: 'date' },
+  ];
+
+  const renderContractInput = (assetId, contractId, field, type) => {
     const asset = editState[assetId];
     if (!asset) return null;
 
     const contract = asset.contracts.find(c => c.id === contractId);
-    if (!contract) return <span className="text-gray-300">-</span>;
+    if (!contract) return <span className="text-gray-300 text-sm">-</span>;
 
     const value = contract[field.field];
 
@@ -167,8 +209,8 @@ const AssetSummaryInputs = () => {
         if (field.field === 'startDate' && isValid !== null) {
           cellStyle = {
             backgroundColor: isValid 
-              ? 'rgba(0, 255, 0, 0.1)'  // Light green
-              : 'rgba(255, 165, 0, 0.1)' // Light orange
+              ? 'rgba(0, 255, 0, 0.1)'  
+              : 'rgba(255, 165, 0, 0.1)' 
           };
         }
         
@@ -202,7 +244,7 @@ const AssetSummaryInputs = () => {
               <SelectValue placeholder="Select..." />
             </SelectTrigger>
             <SelectContent>
-              {(field.field === 'type' ? contractType : options).map(option => (
+              {contractType.map(option => (
                 <SelectItem key={option} value={option}>
                   {option.charAt(0).toUpperCase() + option.slice(1)}
                 </SelectItem>
@@ -219,80 +261,231 @@ const AssetSummaryInputs = () => {
     <div className="w-full p-4 space-y-4">
       <Card className="w-full">
         <CardHeader className="p-4">
-          <CardTitle>Asset Summary Inputs</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>Asset Summary Inputs</CardTitle>
+            <Button size="sm" onClick={saveChanges} variant="default">
+              <Save className="h-4 w-4 mr-2" />
+              Save Changes
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="p-4 pt-0">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <div className="flex items-center justify-between mb-4">
-              <TabsList className="w-full flex justify-start bg-gray-100">
-                <TabsTrigger value="assets">General</TabsTrigger>
-                <TabsTrigger value="advanced">Capacity</TabsTrigger>
-                <TabsTrigger value="contracts">Contracts</TabsTrigger>
-                <TabsTrigger value="finance">Capex/Opex & Debt</TabsTrigger>
-                <TabsTrigger value="taxation">Tax & Dep</TabsTrigger>
-              </TabsList>
-              <Button size="sm" onClick={saveChanges} variant="default" className="ml-4">
-                <Save className="h-4 w-4 mr-2" />Save Changes
-              </Button>
-            </div>
+            <TabsList className="w-full flex justify-start bg-gray-100">
+              <TabsTrigger value="basic">Basic Details</TabsTrigger>
+              <TabsTrigger value="timeline">Timeline</TabsTrigger>
+              <TabsTrigger value="performance">Performance</TabsTrigger>
+              <TabsTrigger value="costs">Costs & Finance</TabsTrigger>
+              <TabsTrigger value="contracts">Contracts</TabsTrigger>
+              <TabsTrigger value="taxation">Tax & Depreciation</TabsTrigger>
+            </TabsList>
             
-            <TabsContent value="assets">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Field</TableHead>
-                    {Object.values(assets).map(asset => (
-                      <TableHead key={`asset-${asset.id}`}>{asset.name}</TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {assetFields.map(field => (
-                    <TableRow key={field.field}>
-                      <TableCell className="font-medium">
-                        {field.label}
-                        {(field.field === 'constructionStartDate' || field.field === 'assetStartDate') && (
-                          <div className="text-xs text-gray-500 mt-1">
-                            (rounds to 1st of month)
-                          </div>
-                        )}
-                      </TableCell>
+            {/* Basic Details */}
+            <TabsContent value="basic">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Field</TableHead>
                       {Object.values(assets).map(asset => (
-                        <TableCell key={`${asset.id}-${field.field}`}>
-                          {renderCellContent(asset.id, field, field.type, field.options)}
-                        </TableCell>
+                        <TableHead key={`asset-${asset.id}`} className="min-w-32">
+                          {asset.name}
+                        </TableHead>
                       ))}
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {basicFields.map(field => (
+                      <TableRow key={field.field}>
+                        <TableCell className="font-medium min-w-48">
+                          {field.label}
+                        </TableCell>
+                        {Object.values(assets).map(asset => (
+                          <TableCell key={`${asset.id}-${field.field}`}>
+                            {renderTableInput(asset.id, field, field.type, field.options)}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </TabsContent>
             
-            <TabsContent value="advanced">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Field</TableHead>
-                    {Object.values(assets).map(asset => (
-                      <TableHead key={`asset-${asset.id}`}>{asset.name}</TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {advancedFields.map(field => (
-                    <TableRow key={field.field}>
-                      <TableCell className="font-medium">{field.label}</TableCell>
+            {/* Timeline */}
+            <TabsContent value="timeline">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Field</TableHead>
                       {Object.values(assets).map(asset => (
-                        <TableCell key={`${asset.id}-${field.field}`}>
-                          {renderCellContent(asset.id, field, field.type, field.options)}
-                        </TableCell>
+                        <TableHead key={`asset-${asset.id}`} className="min-w-32">
+                          {asset.name}
+                        </TableHead>
                       ))}
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {timelineFields.map(field => (
+                      <TableRow key={field.field}>
+                        <TableCell className="font-medium min-w-48">
+                          {field.label}
+                          {(field.field === 'constructionStartDate' || field.field === 'assetStartDate') && (
+                            <div className="text-xs text-gray-500 mt-1">
+                              (rounds to 1st of month)
+                            </div>
+                          )}
+                        </TableCell>
+                        {Object.values(assets).map(asset => (
+                          <TableCell key={`${asset.id}-${field.field}`}>
+                            {renderTableInput(asset.id, field, field.type, field.options)}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </TabsContent>
             
+            {/* Performance */}
+            <TabsContent value="performance">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Field</TableHead>
+                      {Object.values(assets).map(asset => (
+                        <TableHead key={`asset-${asset.id}`} className="min-w-32">
+                          {asset.name}
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {performanceFields.map(field => (
+                      <TableRow key={field.field}>
+                        <TableCell className="font-medium min-w-48">
+                          {field.label}
+                        </TableCell>
+                        {Object.values(assets).map(asset => (
+                          <TableCell key={`${asset.id}-${field.field}`}>
+                            {/* Hide quarterly capacity factors for storage assets */}
+                            {field.field.startsWith('qtrCapacityFactor_') && asset.type === 'storage' ? (
+                              <span className="text-gray-400 text-sm">N/A</span>
+                            ) : (
+                              renderTableInput(asset.id, field, field.type, field.options)
+                            )}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </TabsContent>
+            
+            {/* Costs & Finance */}
+            <TabsContent value="costs">
+              <div className="space-y-6">
+                {/* Costs Section */}
+                <div>
+                  <h3 className="text-lg font-medium mb-3">Asset Costs</h3>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Field</TableHead>
+                          {Object.values(assets).map(asset => (
+                            <TableHead key={`asset-${asset.id}`} className="min-w-32">
+                              {asset.name}
+                            </TableHead>
+                          ))}
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {costFields.map(field => (
+                          <TableRow key={field.field}>
+                            <TableCell className="font-medium min-w-48">
+                              {field.label}
+                            </TableCell>
+                            {Object.values(assets).map(asset => {
+                              const currentValue = assetCosts[asset.name]?.[field.field];
+                              const defaultValue = getAssetCostDefault(field.field, asset.type, asset.capacity);
+                              return (
+                                <TableCell key={`${field.field}-${asset.id}`}>
+                                  <Input
+                                    type="number"
+                                    value={field.field === 'maxGearing' || field.field === 'interestRate' 
+                                      ? (currentValue ? (currentValue * 100).toFixed(1) : '') 
+                                      : (currentValue ?? '')}
+                                    onChange={(e) => handleAssetCostChange(asset.name, field.field, e.target.value)}
+                                    className={`w-32 h-8 ${getValueStyle(currentValue, defaultValue)}`}
+                                    placeholder={field.field === 'maxGearing' || field.field === 'interestRate' 
+                                      ? (defaultValue * 100).toFixed(1) 
+                                      : defaultValue?.toFixed(2)}
+                                  />
+                                </TableCell>
+                              );
+                            })}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+                
+                {/* Project Finance Section */}
+                <div>
+                  <h3 className="text-lg font-medium mb-3">Project Finance Parameters</h3>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Field</TableHead>
+                          {Object.values(assets).map(asset => (
+                            <TableHead key={`asset-${asset.id}`} className="min-w-32">
+                              {asset.name}
+                            </TableHead>
+                          ))}
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {financeFields.map(field => (
+                          <TableRow key={field.field}>
+                            <TableCell className="font-medium min-w-48">
+                              {field.label}
+                            </TableCell>
+                            {Object.values(assets).map(asset => {
+                              const currentValue = assetCosts[asset.name]?.[field.field];
+                              const defaultValue = getAssetCostDefault(field.field, asset.type, asset.capacity);
+                              return (
+                                <TableCell key={`${field.field}-${asset.id}`}>
+                                  <Input
+                                    type="number"
+                                    value={field.field === 'maxGearing' || field.field === 'interestRate' 
+                                      ? (currentValue ? (currentValue * 100).toFixed(1) : '') 
+                                      : (currentValue ?? '')}
+                                    onChange={(e) => handleAssetCostChange(asset.name, field.field, e.target.value)}
+                                    className={`w-32 h-8 ${getValueStyle(currentValue, defaultValue)}`}
+                                    placeholder={field.field === 'maxGearing' || field.field === 'interestRate' 
+                                      ? (defaultValue * 100).toFixed(1) 
+                                      : defaultValue?.toString()}
+                                  />
+                                </TableCell>
+                              );
+                            })}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+            
+            {/* Contracts */}
             <TabsContent value="contracts">
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
@@ -307,28 +500,34 @@ const AssetSummaryInputs = () => {
                     {allContractIds.map(contractId => (
                       <div key={contractId}>
                         <h4 className="text-md font-medium mb-3">Contract {contractId}</h4>
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Field</TableHead>
-                              {Object.values(assets).map(asset => (
-                                <TableHead key={`asset-${asset.id}`}>{asset.name}</TableHead>
-                              ))}
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {contractFields.map(field => (
-                              <TableRow key={field.field}>
-                                <TableCell className="font-medium">{field.label}</TableCell>
+                        <div className="overflow-x-auto">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Field</TableHead>
                                 {Object.values(assets).map(asset => (
-                                  <TableCell key={`${asset.id}-${field.field}`}>
-                                    {renderContractCellContent(asset.id, contractId, field, field.type, field.options)}
-                                  </TableCell>
+                                  <TableHead key={`asset-${asset.id}`} className="min-w-32">
+                                    {asset.name}
+                                  </TableHead>
                                 ))}
                               </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
+                            </TableHeader>
+                            <TableBody>
+                              {contractFields.map(field => (
+                                <TableRow key={field.field}>
+                                  <TableCell className="font-medium min-w-48">
+                                    {field.label}
+                                  </TableCell>
+                                  {Object.values(assets).map(asset => (
+                                    <TableCell key={`${asset.id}-${field.field}`}>
+                                      {renderContractInput(asset.id, contractId, field, field.type)}
+                                    </TableCell>
+                                  ))}
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -340,190 +539,7 @@ const AssetSummaryInputs = () => {
               </div>
             </TabsContent>
             
-            <TabsContent value="finance">
-              <div className="space-y-6">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Field</TableHead>
-                      {Object.values(assets).map(asset => (
-                        <TableHead key={`asset-${asset.id}`}>{asset.name}</TableHead>
-                      ))}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    <TableRow>
-                      <TableCell className="font-medium">Capex ($M)</TableCell>
-                      {Object.values(assets).map(asset => {
-                        const currentValue = assetCosts[asset.name]?.capex;
-                        const defaultValue = getAssetCostDefault('capex', asset.type, asset.capacity);
-                        return (
-                          <TableCell key={`capex-${asset.id}`}>
-                            <Input
-                              type="number"
-                              value={currentValue ?? ''}
-                              onChange={(e) => handleAssetCostChange(asset.name, 'capex', e.target.value)}
-                              className={`w-32 h-8 ${getValueStyle(currentValue, defaultValue)}`}
-                            />
-                          </TableCell>
-                        );
-                      })}
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="font-medium">Opex ($M/pa)</TableCell>
-                      {Object.values(assets).map(asset => {
-                        const currentValue = assetCosts[asset.name]?.operatingCosts;
-                        const defaultValue = getAssetCostDefault('operatingCosts', asset.type, asset.capacity);
-                        return (
-                          <TableCell key={`opex-${asset.id}`}>
-                            <Input
-                              type="number"
-                              value={currentValue ?? ''}
-                              onChange={(e) => handleAssetCostChange(asset.name, 'operatingCosts', e.target.value)}
-                              className={`w-32 h-8 ${getValueStyle(currentValue, defaultValue)}`}
-                            />
-                          </TableCell>
-                        );
-                      })}
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="font-medium">Opex Escalation (%)</TableCell>
-                      {Object.values(assets).map(asset => {
-                        const currentValue = assetCosts[asset.name]?.operatingCostEscalation;
-                        const defaultValue = getAssetCostDefault('operatingCostEscalation', asset.type, asset.capacity);
-                        return (
-                          <TableCell key={`opexesc-${asset.id}`}>
-                            <Input
-                              type="number"
-                              value={currentValue ?? ''}
-                              onChange={(e) => handleAssetCostChange(asset.name, 'operatingCostEscalation', e.target.value)}
-                              className={`w-32 h-8 ${getValueStyle(currentValue, defaultValue)}`}
-                            />
-                          </TableCell>
-                        );
-                      })}
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="font-medium">Terminal Value ($M)</TableCell>
-                      {Object.values(assets).map(asset => {
-                        const currentValue = assetCosts[asset.name]?.terminalValue;
-                        const defaultValue = getAssetCostDefault('terminalValue', asset.type, asset.capacity);
-                        return (
-                          <TableCell key={`terminal-${asset.id}`}>
-                            <Input
-                              type="number"
-                              value={currentValue ?? ''}
-                              onChange={(e) => handleAssetCostChange(asset.name, 'terminalValue', e.target.value)}
-                              className={`w-32 h-8 ${getValueStyle(currentValue, defaultValue)}`}
-                            />
-                          </TableCell>
-                        );
-                      })}
-                    </TableRow>
-                  </TableBody>
-                </Table>
-                
-                <h3 className="text-lg font-medium mt-6 mb-3">Project Finance Parameters</h3>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Field</TableHead>
-                      {Object.values(assets).map(asset => (
-                        <TableHead key={`asset-${asset.id}`}>{asset.name}</TableHead>
-                      ))}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    <TableRow>
-                      <TableCell className="font-medium">Max Gearing (%)</TableCell>
-                      {Object.values(assets).map(asset => {
-                        const currentValue = assetCosts[asset.name]?.maxGearing;
-                        const defaultValue = getAssetCostDefault('maxGearing', asset.type, asset.capacity);
-                        return (
-                          <TableCell key={`gearing-${asset.id}`}>
-                            <Input
-                              type="number"
-                              value={(currentValue * 100) ?? ''}
-                              onChange={(e) => handleAssetCostChange(asset.name, 'maxGearing', e.target.value)}
-                              className={`w-32 h-8 ${getValueStyle(currentValue, defaultValue)}`}
-                            />
-                          </TableCell>
-                        );
-                      })}
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="font-medium">Target DSCR Contract (x)</TableCell>
-                      {Object.values(assets).map(asset => {
-                        const currentValue = assetCosts[asset.name]?.targetDSCRContract;
-                        const defaultValue = getAssetCostDefault('targetDSCRContract', asset.type, asset.capacity);
-                        return (
-                          <TableCell key={`dscrcontract-${asset.id}`}>
-                            <Input
-                              type="number"
-                              value={currentValue ?? ''}
-                              onChange={(e) => handleAssetCostChange(asset.name, 'targetDSCRContract', e.target.value)}
-                              className={`w-32 h-8 ${getValueStyle(currentValue, defaultValue)}`}
-                            />
-                          </TableCell>
-                        );
-                      })}
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="font-medium">Target DSCR Merchant (x)</TableCell>
-                      {Object.values(assets).map(asset => {
-                        const currentValue = assetCosts[asset.name]?.targetDSCRMerchant;
-                        const defaultValue = getAssetCostDefault('targetDSCRMerchant', asset.type, asset.capacity);
-                        return (
-                          <TableCell key={`dscrmerchant-${asset.id}`}>
-                            <Input
-                              type="number"
-                              value={currentValue ?? ''}
-                              onChange={(e) => handleAssetCostChange(asset.name, 'targetDSCRMerchant', e.target.value)}
-                              className={`w-32 h-8 ${getValueStyle(currentValue, defaultValue)}`}
-                            />
-                          </TableCell>
-                        );
-                      })}
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="font-medium">Interest Rate (%)</TableCell>
-                      {Object.values(assets).map(asset => {
-                        const currentValue = assetCosts[asset.name]?.interestRate;
-                        const defaultValue = getAssetCostDefault('interestRate', asset.type, asset.capacity);
-                        return (
-                          <TableCell key={`interest-${asset.id}`}>
-                            <Input
-                              type="number"
-                              value={(currentValue * 100) ?? ''}
-                              onChange={(e) => handleAssetCostChange(asset.name, 'interestRate', e.target.value)}
-                              className={`w-32 h-8 ${getValueStyle(currentValue, defaultValue)}`}
-                            />
-                          </TableCell>
-                        );
-                      })}
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="font-medium">Tenor (Years)</TableCell>
-                      {Object.values(assets).map(asset => {
-                        const currentValue = assetCosts[asset.name]?.tenorYears;
-                        const defaultValue = getAssetCostDefault('tenorYears', asset.type, asset.capacity);
-                        return (
-                          <TableCell key={`tenor-${asset.id}`}>
-                            <Input
-                              type="number"
-                              value={currentValue ?? ''}
-                              onChange={(e) => handleAssetCostChange(asset.name, 'tenorYears', e.target.value)}
-                              className={`w-32 h-8 ${getValueStyle(currentValue, defaultValue)}`}
-                            />
-                          </TableCell>
-                        );
-                      })}
-                    </TableRow>
-                  </TableBody>
-                </Table>
-              </div>
-            </TabsContent>
-            
+            {/* Tax & Depreciation */}
             <TabsContent value="taxation">
               <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
