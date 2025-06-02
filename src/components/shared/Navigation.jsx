@@ -20,9 +20,15 @@ import {
 export const navigationTabs = [
   {
     id: "landingpage",
-    label: "Usage",
-    icon: HelpCircle,
+    label: "Summary",
+    icon: BarChart3, // Assuming BarChart3 is a suitable icon for Summary/Landing Page
     colors: "hover:bg-blue-100 data-[state=active]:bg-blue-500 data-[state=active]:text-white",
+  },
+      {
+  id: "threeway",
+  label: "3-Way Forecast",
+  icon: Calculator, // or choose a different icon like BarChart3
+  colors: "hover:bg-indigo-100 data-[state=active]:bg-indigo-500 data-[state=active]:text-white",
   },
   {
     id: "inputs",
@@ -36,6 +42,7 @@ export const navigationTabs = [
     icon: Building2,
     colors: "hover:bg-purple-100 data-[state=active]:bg-purple-500 data-[state=active]:text-white",
   },
+
   {
     id: "revenue",
     label: "Revenue Charts",
@@ -53,12 +60,6 @@ export const navigationTabs = [
     label: "Platform Valuation",
     icon: Calculator,
     colors: "hover:bg-blue-100 data-[state=active]:bg-blue-500 data-[state=active]:text-white",
-  },
-  {
-    id: "ppa",
-    label: "Export Audit",
-    icon: FileCheck,
-    colors: "hover:bg-teal-100 data-[state=active]:bg-teal-500 data-[state=active]:text-white",
   },
   {
     id: "settings",

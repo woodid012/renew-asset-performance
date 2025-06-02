@@ -4,6 +4,7 @@ import { TabsContent } from "@/components/ui/tabs";
 
 // Import components for each tab
 import LandingPage from "@/pages/LandingPage";
+import Australian3WayForecast from "@/pages/3way/TestPage";
 import PortfolioInputs from "@/pages/InputsGlobal";
 import AssetDashboard from "@/pages/AssetDashboard";
 import PortfolioRevenue from "@/pages/Revenue_Charts";
@@ -126,6 +127,7 @@ const App = () => {
             case "risk": return EarningsRiskAnalysis;
             case "valuation": return ValuationTabs;
             case "ppa": return ConsolidatedPPATables;
+            case "threeway": return Australian3WayForecast; // Assuming this is the correct import
             case "settings": return PortfolioSettings;
             default: return null;
           }
