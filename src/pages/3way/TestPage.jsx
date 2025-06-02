@@ -243,59 +243,7 @@ const Australian3WayForecast = () => {
         </Card>
       </div>
 
-      {/* Asset Summary Table (only show when viewing portfolio) */}
-      {viewBy === 'portfolio' && Object.keys(assetPLs).length > 1 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Asset Summary - {selectedScenario.charAt(0).toUpperCase() + selectedScenario.slice(1)} Case</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Asset</TableHead>
-                  <TableHead className="text-right">Year 1 Revenue</TableHead>
-                  <TableHead className="text-right">Year 1 EBITDA</TableHead>
-                  <TableHead className="text-right">Year 1 NPAT</TableHead>
-                  <TableHead className="text-right">10-Year Total NPAT</TableHead>
-                  <TableHead className="text-right">Avg EBITDA Margin</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {Object.entries(assetPLs).map(([assetName, assetPL]) => {
-                  const year1 = assetPL[0] || {};
-                  const totalNPAT = assetPL.reduce((sum, year) => sum + (year.netProfitAfterTax || 0), 0);
-                  const avgMargin = assetPL.reduce((sum, year) => {
-                    const margin = year.revenue > 0 ? (year.ebitda / year.revenue) * 100 : 0;
-                    return sum + margin;
-                  }, 0) / assetPL.length;
-                  
-                  return (
-                    <TableRow key={assetName}>
-                      <TableCell className="font-medium">{assetName}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(year1.revenue || 0)}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(year1.ebitda || 0)}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(year1.netProfitAfterTax || 0)}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(totalNPAT)}</TableCell>
-                      <TableCell className="text-right">{formatPercent(avgMargin)}</TableCell>
-                    </TableRow>
-                  );
-                })}
-                <TableRow className="bg-muted/50 font-semibold">
-                  <TableCell>Portfolio Total</TableCell>
-                  <TableCell className="text-right">{formatCurrency(forecastData[0]?.grossRevenue || 0)}</TableCell>
-                  <TableCell className="text-right">{formatCurrency(forecastData[0]?.ebitda || 0)}</TableCell>
-                  <TableCell className="text-right">{formatCurrency(forecastData[0]?.netProfitAfterTax || 0)}</TableCell>
-                  <TableCell className="text-right">{formatCurrency(forecastData.reduce((sum, item) => sum + (item.netProfitAfterTax || 0), 0))}</TableCell>
-                  <TableCell className="text-right">{formatPercent(forecastData[0]?.ebitdaMargin || 0)}</TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Main Forecast Tables */}
+          {/* Main Forecast Tables */}
       <Tabs defaultValue="profit-loss" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="profit-loss">Profit & Loss</TabsTrigger>
