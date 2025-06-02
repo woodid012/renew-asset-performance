@@ -4,32 +4,46 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Download } from 'lucide-react';
+import { Download, Building2, Layers } from 'lucide-react';
+import { usePortfolio } from '@/contexts/PortfolioContext';
 
-import { mockPortfolioData } from './components/PortfolioData';
-import { calculateForecastData, formatCurrency, formatPercent } from './components/forecastCalculations';
-import ProfitLossStatement from './components/ProfitLossStatement';
-import BalanceSheet from './components/BalanceSheet';
-import CashFlowStatement from './components/CashFlowStatement';
+import { calculateForecastData, formatCurrency, formatPercent } from './Components/forecastCalculations';
+import ProfitLossStatement from './Components/ProfitLossStatement';
+import BalanceSheet from './Components/BalanceSheet';
+import CashFlowStatement from './Components/CashFlowStatement';
 
 const Australian3WayForecast = () => {
+  const { assets, constants, getMerchantPrice, portfolioName } = usePortfolio();
   const [selectedScenario, setSelectedScenario] = useState('base');
-  const [showQuarterly, setShowQuarterly] = useState(false);
-  const [selectedYear, setSelectedYear] = useState(2025);
+  const [viewBy, setViewBy] = useState('portfolio');
 
-  // Calculate comprehensive 3-way forecast data
-  const forecastData = useMemo(() => {
-    return calculateForecastData(mockPortfolioData, selectedScenario);
-  }, [selectedScenario]);
+  // Calculate comprehensive 3-way forecast data using real portfolio data
+  const { forecast: forecastData, assetPLs, portfolioPL } = useMemo(() => {
+    if (!assets || Object.keys(assets).length === 0) {
+      return { forecast: [], assetPLs: {}, portfolioPL: [] };
+    }
+    
+    return calculateForecastData(
+      assets,
+      constants,
+      getMerchantPrice,
+      selectedScenario,
+      viewBy
+    );
+  }, [assets, constants, getMerchantPrice, selectedScenario, viewBy]);
 
   const years = forecastData.map(item => item.year);
+  
+  // Get available assets for view selector
+  const availableAssets = Object.values(assets);
 
   const handleExport = () => {
     // Create comprehensive export data
     const exportData = {
-      portfolio: 'Australian Renewable Assets Portfolio',
-      forecastPeriod: `${years[0]} - ${years[years.length - 1]}`,
+      portfolio: portfolioName,
+      forecastPeriod: years.length > 0 ? `${years[0]} - ${years[years.length - 1]}` : '',
       scenario: selectedScenario,
+      viewBy: viewBy,
       exportDate: new Date().toISOString(),
       
       profitAndLoss: forecastData.map(item => ({
@@ -62,18 +76,60 @@ const Australian3WayForecast = () => {
         investingCashFlow: item.investingCashFlow,
         financingCashFlow: item.financingCashFlow,
         netCashFlow: item.netCashFlow
-      }))
+      })),
+
+      // Include individual asset P&Ls if viewing portfolio
+      ...(viewBy === 'portfolio' && {
+        individualAssets: Object.entries(assetPLs).reduce((acc, [assetName, assetPL]) => {
+          acc[assetName] = assetPL.map(item => ({
+            year: item.year,
+            revenue: item.revenue,
+            operatingExpenses: item.operatingExpenses,
+            ebitda: item.ebitda,
+            netProfitAfterTax: item.netProfitAfterTax
+          }));
+          return acc;
+        }, {})
+      })
     };
 
     const dataStr = JSON.stringify(exportData, null, 2);
     const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
     
-    const exportFileName = `3way_forecast_${selectedScenario}_${new Date().toISOString().split('T')[0]}.json`;
+    const cleanPortfolioName = portfolioName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    const viewSuffix = viewBy === 'portfolio' ? 'portfolio' : viewBy.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    const exportFileName = `3way_forecast_${cleanPortfolioName}_${viewSuffix}_${selectedScenario}_${new Date().toISOString().split('T')[0]}.json`;
+    
     const linkElement = document.createElement('a');
     linkElement.setAttribute('href', dataUri);
     linkElement.setAttribute('download', exportFileName);
     linkElement.click();
   };
+
+  // Show loading state if no data
+  if (!assets || Object.keys(assets).length === 0) {
+    return (
+      <div className="w-full p-6 space-y-6 max-w-7xl mx-auto">
+        <Card>
+          <CardContent className="flex justify-center items-center h-32">
+            <p className="text-gray-500">No portfolio data available. Please configure assets first.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (forecastData.length === 0) {
+    return (
+      <div className="w-full p-6 space-y-6 max-w-7xl mx-auto">
+        <Card>
+          <CardContent className="flex justify-center items-center h-32">
+            <p className="text-gray-500">Loading forecast data...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full p-6 space-y-6 max-w-7xl mx-auto">
@@ -81,31 +137,76 @@ const Australian3WayForecast = () => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Australian Standard 3-Way Financial Forecast</h1>
-          <p className="text-gray-600 mt-2">AASB compliant Profit & Loss, Balance Sheet, and Cash Flow projections</p>
+          <p className="text-gray-600 mt-2">
+            AASB compliant Profit & Loss, Balance Sheet, and Cash Flow projections for {portfolioName}
+          </p>
+          <div className="flex items-center gap-2 mt-2">
+            <span className="text-sm text-gray-500">
+              Viewing: {viewBy === 'portfolio' ? 'Portfolio Consolidated' : `Asset: ${viewBy}`}
+            </span>
+            <span className="text-sm text-gray-500">•</span>
+            <span className="text-sm text-gray-500">
+              Scenario: {selectedScenario.charAt(0).toUpperCase() + selectedScenario.slice(1)}
+            </span>
+          </div>
         </div>
         
         <div className="flex items-center gap-4">
-          <Select value={selectedScenario} onValueChange={setSelectedScenario}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="Select scenario" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="base">Base Case</SelectItem>
-              <SelectItem value="conservative">Conservative</SelectItem>
-              <SelectItem value="optimistic">Optimistic</SelectItem>
-            </SelectContent>
-          </Select>
+          {/* View By Selector */}
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium text-gray-700">View By:</label>
+            <Select value={viewBy} onValueChange={setViewBy}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Select view" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="portfolio">
+                  <div className="flex items-center gap-2">
+                    <Layers className="w-4 h-4" />
+                    Portfolio (Consolidated)
+                  </div>
+                </SelectItem>
+                {availableAssets.map(asset => (
+                  <SelectItem key={asset.name} value={asset.name}>
+                    <div className="flex items-center gap-2">
+                      <Building2 className="w-4 h-4" />
+                      {asset.name}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Scenario Selector */}
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium text-gray-700">Scenario:</label>
+            <Select value={selectedScenario} onValueChange={setSelectedScenario}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Select scenario" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="base">Base Case</SelectItem>
+                <SelectItem value="worst">Combined Downside</SelectItem>
+                <SelectItem value="volume">Volume Stress</SelectItem>
+                <SelectItem value="price">Price Stress</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           
-          <Button onClick={handleExport} className="flex items-center gap-2">
-            <Download className="w-4 h-4" />
-            Export Forecast
-          </Button>
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium text-gray-700">&nbsp;</label>
+            <Button onClick={handleExport} className="flex items-center gap-2">
+              <Download className="w-4 h-4" />
+              Export Forecast
+            </Button>
+          </div>
         </div>
       </div>
 
       {/* Summary KPIs */}
       <div className="grid grid-cols-4 gap-4">
-        <Card>
+        <Card className="border-2 border-blue-200">
           <CardContent className="pt-6">
             <div className="text-2xl font-bold text-blue-600">
               {formatCurrency(forecastData[0]?.totalAssets || 0)}
@@ -114,16 +215,16 @@ const Australian3WayForecast = () => {
           </CardContent>
         </Card>
         
-        <Card>
+        <Card className="border-2 border-green-200">
           <CardContent className="pt-6">
             <div className="text-2xl font-bold text-green-600">
-              {formatCurrency(forecastData.reduce((sum, item) => sum + item.netProfitAfterTax, 0))}
+              {formatCurrency(forecastData.reduce((sum, item) => sum + (item.netProfitAfterTax || 0), 0))}
             </div>
-            <p className="text-sm text-muted-foreground">10-Year Total NPAT</p>
+            <p className="text-sm text-muted-foreground">{years.length}-Year Total NPAT</p>
           </CardContent>
         </Card>
         
-        <Card>
+        <Card className="border-2 border-purple-200">
           <CardContent className="pt-6">
             <div className="text-2xl font-bold text-purple-600">
               {formatPercent(forecastData[0]?.ebitdaMargin || 0)}
@@ -132,7 +233,7 @@ const Australian3WayForecast = () => {
           </CardContent>
         </Card>
         
-        <Card>
+        <Card className="border-2 border-orange-200">
           <CardContent className="pt-6">
             <div className="text-2xl font-bold text-orange-600">
               {formatPercent(forecastData[0]?.returnOnAssets || 0)}
@@ -141,6 +242,58 @@ const Australian3WayForecast = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Asset Summary Table (only show when viewing portfolio) */}
+      {viewBy === 'portfolio' && Object.keys(assetPLs).length > 1 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Asset Summary - {selectedScenario.charAt(0).toUpperCase() + selectedScenario.slice(1)} Case</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Asset</TableHead>
+                  <TableHead className="text-right">Year 1 Revenue</TableHead>
+                  <TableHead className="text-right">Year 1 EBITDA</TableHead>
+                  <TableHead className="text-right">Year 1 NPAT</TableHead>
+                  <TableHead className="text-right">10-Year Total NPAT</TableHead>
+                  <TableHead className="text-right">Avg EBITDA Margin</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {Object.entries(assetPLs).map(([assetName, assetPL]) => {
+                  const year1 = assetPL[0] || {};
+                  const totalNPAT = assetPL.reduce((sum, year) => sum + (year.netProfitAfterTax || 0), 0);
+                  const avgMargin = assetPL.reduce((sum, year) => {
+                    const margin = year.revenue > 0 ? (year.ebitda / year.revenue) * 100 : 0;
+                    return sum + margin;
+                  }, 0) / assetPL.length;
+                  
+                  return (
+                    <TableRow key={assetName}>
+                      <TableCell className="font-medium">{assetName}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(year1.revenue || 0)}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(year1.ebitda || 0)}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(year1.netProfitAfterTax || 0)}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(totalNPAT)}</TableCell>
+                      <TableCell className="text-right">{formatPercent(avgMargin)}</TableCell>
+                    </TableRow>
+                  );
+                })}
+                <TableRow className="bg-muted/50 font-semibold">
+                  <TableCell>Portfolio Total</TableCell>
+                  <TableCell className="text-right">{formatCurrency(forecastData[0]?.grossRevenue || 0)}</TableCell>
+                  <TableCell className="text-right">{formatCurrency(forecastData[0]?.ebitda || 0)}</TableCell>
+                  <TableCell className="text-right">{formatCurrency(forecastData[0]?.netProfitAfterTax || 0)}</TableCell>
+                  <TableCell className="text-right">{formatCurrency(forecastData.reduce((sum, item) => sum + (item.netProfitAfterTax || 0), 0))}</TableCell>
+                  <TableCell className="text-right">{formatPercent(forecastData[0]?.ebitdaMargin || 0)}</TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Main Forecast Tables */}
       <Tabs defaultValue="profit-loss" className="w-full">
@@ -187,7 +340,7 @@ const Australian3WayForecast = () => {
                     <TableCell>Current Ratio</TableCell>
                     {forecastData.slice(0, 5).map(item => (
                       <TableCell key={item.year} className="text-right">
-                        {item.currentRatio.toFixed(2)}x
+                        {item.currentRatio?.toFixed(2) || '0.00'}x
                       </TableCell>
                     ))}
                   </TableRow>
@@ -195,7 +348,9 @@ const Australian3WayForecast = () => {
                     <TableCell>Cash Ratio</TableCell>
                     {forecastData.slice(0, 5).map(item => (
                       <TableCell key={item.year} className="text-right">
-                        {(item.cashAndBankBalances / item.totalCurrentLiabilities).toFixed(2)}x
+                        {item.totalCurrentLiabilities > 0 ? 
+                          (item.cashAndBankBalances / item.totalCurrentLiabilities).toFixed(2) : 
+                          '0.00'}x
                       </TableCell>
                     ))}
                   </TableRow>
@@ -220,7 +375,7 @@ const Australian3WayForecast = () => {
                     <TableCell>EBITDA Margin</TableCell>
                     {forecastData.slice(0, 5).map(item => (
                       <TableCell key={item.year} className="text-right">
-                        {formatPercent(item.ebitdaMargin)}
+                        {formatPercent(item.ebitdaMargin || 0)}
                       </TableCell>
                     ))}
                   </TableRow>
@@ -228,7 +383,7 @@ const Australian3WayForecast = () => {
                     <TableCell>Return on Assets</TableCell>
                     {forecastData.slice(0, 5).map(item => (
                       <TableCell key={item.year} className="text-right">
-                        {formatPercent(item.returnOnAssets)}
+                        {formatPercent(item.returnOnAssets || 0)}
                       </TableCell>
                     ))}
                   </TableRow>
@@ -236,7 +391,9 @@ const Australian3WayForecast = () => {
                     <TableCell>Return on Equity</TableCell>
                     {forecastData.slice(0, 5).map(item => (
                       <TableCell key={item.year} className="text-right">
-                        {formatPercent((item.netProfitAfterTax / item.totalEquity) * 100)}
+                        {item.totalEquity > 0 ? 
+                          formatPercent((item.netProfitAfterTax / item.totalEquity) * 100) : 
+                          '0.0%'}
                       </TableCell>
                     ))}
                   </TableRow>
@@ -261,7 +418,7 @@ const Australian3WayForecast = () => {
                     <TableCell>Debt-to-Equity</TableCell>
                     {forecastData.slice(0, 5).map(item => (
                       <TableCell key={item.year} className="text-right">
-                        {item.debtToEquity.toFixed(2)}x
+                        {item.debtToEquity?.toFixed(2) || '0.00'}x
                       </TableCell>
                     ))}
                   </TableRow>
@@ -269,7 +426,9 @@ const Australian3WayForecast = () => {
                     <TableCell>Debt-to-Assets</TableCell>
                     {forecastData.slice(0, 5).map(item => (
                       <TableCell key={item.year} className="text-right">
-                        {(item.totalLiabilities / item.totalAssets).toFixed(2)}x
+                        {item.totalAssets > 0 ? 
+                          (item.totalLiabilities / item.totalAssets).toFixed(2) : 
+                          '0.00'}x
                       </TableCell>
                     ))}
                   </TableRow>
@@ -277,7 +436,9 @@ const Australian3WayForecast = () => {
                     <TableCell>Interest Coverage</TableCell>
                     {forecastData.slice(0, 5).map(item => (
                       <TableCell key={item.year} className="text-right">
-                        {item.interestExpense > 0 ? (item.ebit / item.interestExpense).toFixed(2) : 'N/A'}x
+                        {item.interestExpense > 0 ? 
+                          (item.ebit / item.interestExpense).toFixed(2) : 
+                          'N/A'}x
                       </TableCell>
                     ))}
                   </TableRow>
@@ -302,7 +463,9 @@ const Australian3WayForecast = () => {
                     <TableCell>Asset Turnover</TableCell>
                     {forecastData.slice(0, 5).map(item => (
                       <TableCell key={item.year} className="text-right">
-                        {(item.grossRevenue / item.totalAssets).toFixed(2)}x
+                        {item.totalAssets > 0 ? 
+                          (item.grossRevenue / item.totalAssets).toFixed(2) : 
+                          '0.00'}x
                       </TableCell>
                     ))}
                   </TableRow>
@@ -310,7 +473,9 @@ const Australian3WayForecast = () => {
                     <TableCell>Receivables Turnover</TableCell>
                     {forecastData.slice(0, 5).map(item => (
                       <TableCell key={item.year} className="text-right">
-                        {(item.grossRevenue / item.accountsReceivable).toFixed(1)}x
+                        {item.accountsReceivable > 0 ? 
+                          (item.grossRevenue / item.accountsReceivable).toFixed(1) : 
+                          '0.0'}x
                       </TableCell>
                     ))}
                   </TableRow>
@@ -364,13 +529,50 @@ const Australian3WayForecast = () => {
           <div>
             <h4 className="font-semibold">3. Critical Estimates and Judgments</h4>
             <div className="text-sm text-gray-600 space-y-1">
-              <p><strong>Useful Lives:</strong> Solar assets 30 years, Wind assets 25 years, Storage assets 20 years</p>
-              <p><strong>Revenue Forecasts:</strong> Based on long-term power purchase agreements and merchant price projections</p>
+              <p><strong>Useful Lives:</strong> Based on asset configuration - Solar: {constants.deprecationPeriods?.solar || 30} years, Wind: {constants.deprecationPeriods?.wind || 30} years, Storage: {constants.deprecationPeriods?.storage || 20} years</p>
+              <p><strong>Revenue Forecasts:</strong> Based on portfolio power purchase agreements and merchant price projections using {selectedScenario} case assumptions</p>
               <p><strong>Impairment:</strong> Assets reviewed for impairment indicators at each reporting date</p>
+            </div>
+          </div>
+
+          <div>
+            <h4 className="font-semibold">4. Portfolio Composition</h4>
+            <div className="text-sm text-gray-600">
+              <p><strong>Assets in Portfolio:</strong> {Object.keys(assets).length} renewable energy assets</p>
+              <div className="mt-2 space-y-1">
+                {Object.values(assets).map(asset => (
+                  <p key={asset.name}>
+                    <strong>{asset.name}:</strong> {asset.capacity}MW {asset.type} facility in {asset.state}, operational from {new Date(asset.assetStartDate).getFullYear()}
+                  </p>
+                ))}
+              </div>
+              <p className="mt-2"><strong>Current View:</strong> {viewBy === 'portfolio' ? 'Consolidated portfolio view' : `Individual asset view for ${viewBy}`}</p>
             </div>
           </div>
         </CardContent>
       </Card>
+
+      {/* Quick Actions */}
+      <div className="flex justify-center space-x-4 pt-4">
+        <Button 
+          variant="outline" 
+          onClick={() => setViewBy('portfolio')}
+          disabled={viewBy === 'portfolio'}
+        >
+          <Layers className="w-4 h-4 mr-2" />
+          View Portfolio
+        </Button>
+        {availableAssets.length > 0 && (
+          <Button 
+            variant="outline" 
+            onClick={() => setViewBy(availableAssets[0].name)}
+            disabled={viewBy === availableAssets[0].name}
+          >
+            <Building2 className="w-4 h-4 mr-2" />
+            View First Asset
+          </Button>
+        )}
+      </div>
     </div>
   );
 };
