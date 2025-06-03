@@ -10,7 +10,7 @@ import AssetDashboard from "@/pages/AssetDashboard";
 import PortfolioRevenue from "@/pages/Revenue_Charts";
 import ConsolidatedPPATables from "@/pages/ExportTables";
 import EarningsRiskAnalysis from "@/pages/EaR_Dashboard";
-import ValuationTabs from "@/pages/ValuationTabs";
+import ScenarioManager from "@/pages/ScenarioManager";
 import PortfolioSettings from "@/pages/PortfolioSettings";
 import LoginScreen from "@/pages/LoginScreen";
 
@@ -125,7 +125,7 @@ const App = () => {
             case "dashboard": return AssetDashboard;
             case "revenue": return PortfolioRevenue;
             case "risk": return EarningsRiskAnalysis;
-            case "valuation": return ValuationTabs;
+            case "scenario": return ScenarioManager;
             case "ppa": return ConsolidatedPPATables;
             case "threeway": return Australian3WayForecast; // Assuming this is the correct import
             case "settings": return PortfolioSettings;

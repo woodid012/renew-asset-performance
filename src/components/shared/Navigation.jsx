@@ -1,7 +1,9 @@
+// src/components/shared/Navigation.jsx
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Building2,
   BarChart3,
@@ -15,6 +17,7 @@ import {
   User,
   Layers
 } from 'lucide-react';
+import { useScenarios } from '@/contexts/ScenarioContext';
 
 // Navigation tabs configuration that can be shared between App and LoginScreen
 // This can be imported in both App.jsx and LoginScreen.jsx
@@ -56,7 +59,7 @@ export const navigationTabs = [
     colors: "hover:bg-red-100 data-[state=active]:bg-red-500 data-[state=active]:text-white",
   },
   {
-    id: "valuation",
+    id: "scenario",
     label: "Scenario Manager", // Updated label
     icon: Layers, // Updated icon to better represent scenarios
     colors: "hover:bg-teal-100 data-[state=active]:bg-teal-500 data-[state=active]:text-white", // Updated colors
@@ -79,6 +82,8 @@ const Navigation = ({
   currentUser = null,
   onLogout = null
 }) => {
+  const { scenarios, activeScenario, setActiveScenario, hasModifications } = useScenarios();
+
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <Card className="mx-auto max-w-screen-2xl">
@@ -87,6 +92,30 @@ const Navigation = ({
             <h1 className="text-2xl font-bold">{title}</h1>
             
             <div className="flex items-center gap-4">
+              {/* Scenario Selector */}
+              {currentUser && (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600">Scenario:</span>
+                  <Select value={activeScenario} onValueChange={setActiveScenario}>
+                    <SelectTrigger className="w-40 h-8 text-sm">
+                      <SelectValue placeholder="Select scenario" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {scenarios.map(scenario => (
+                        <SelectItem key={scenario.id} value={scenario.id}>
+                          <div className="flex items-center gap-2">
+                            <span>{scenario.name}</span>
+                            {hasModifications(scenario.id) && (
+                              <div className="w-2 h-2 bg-orange-400 rounded-full" title="Modified" />
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              
               {/* Current User Display */}
               {currentUser && (
                 <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 rounded-md border">

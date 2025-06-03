@@ -1,4 +1,4 @@
-// components/ScenarioManager.jsx - Column-based scenario comparison
+// src/pages/ScenarioManager.jsx - Updated Scenario Manager with Global Context
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,18 +8,18 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Plus, Trash2, Eye, EyeOff } from 'lucide-react';
 import { usePortfolio } from '@/contexts/PortfolioContext';
+import { useScenarios } from '@/contexts/ScenarioContext';
 
 const ScenarioManager = () => {
   const { assets, constants } = usePortfolio();
-  
-  const [scenarios, setScenarios] = useState([
-    {
-      id: 'base',
-      name: 'Base',
-      description: 'Current portfolio inputs',
-      values: {}
-    }
-  ]);
+  const { 
+    scenarios, 
+    activeScenario, 
+    createScenario, 
+    deleteScenario, 
+    updateScenarioValue,
+    hasModifications 
+  } = useScenarios();
   
   const [newScenarioName, setNewScenarioName] = useState('');
   const [hideUnchanged, setHideUnchanged] = useState(false);
@@ -154,41 +154,12 @@ const ScenarioManager = () => {
       : parameter.getValue();
   };
 
-  // Update scenario value
-  const updateScenarioValue = (scenarioId, parameterKey, value) => {
-    setScenarios(prev => prev.map(scenario => {
-      if (scenario.id === scenarioId) {
-        return {
-          ...scenario,
-          values: {
-            ...scenario.values,
-            [parameterKey]: parseFloat(value) || 0
-          }
-        };
-      }
-      return scenario;
-    }));
-  };
-
   // Create new scenario
-  const createScenario = () => {
+  const handleCreateScenario = () => {
     if (!newScenarioName.trim()) return;
 
-    const newScenario = {
-      id: `scenario_${Date.now()}`,
-      name: newScenarioName.trim(),
-      description: `Alternative scenario: ${newScenarioName.trim()}`,
-      values: {}
-    };
-
-    setScenarios(prev => [...prev, newScenario]);
+    createScenario(newScenarioName.trim());
     setNewScenarioName('');
-  };
-
-  // Delete scenario
-  const deleteScenario = (scenarioId) => {
-    if (scenarioId === 'base') return;
-    setScenarios(prev => prev.filter(s => s.id !== scenarioId));
   };
 
   // Check if parameter has any changes across scenarios
@@ -243,6 +214,11 @@ const ScenarioManager = () => {
         <div>
           <h1 className="text-2xl font-bold">Scenario Manager</h1>
           <p className="text-gray-600">Compare different modeling scenarios side-by-side</p>
+          <div className="mt-2">
+            <Badge variant={activeScenario === 'base' ? 'default' : 'secondary'}>
+              Active: {scenarios.find(s => s.id === activeScenario)?.name || 'Base'}
+            </Badge>
+          </div>
         </div>
         
         <div className="flex items-center gap-4">
@@ -274,10 +250,10 @@ const ScenarioManager = () => {
                 value={newScenarioName}
                 onChange={(e) => setNewScenarioName(e.target.value)}
                 placeholder="e.g., High Growth, Conservative, Stressed"
-                onKeyPress={(e) => e.key === 'Enter' && createScenario()}
+                onKeyPress={(e) => e.key === 'Enter' && handleCreateScenario()}
               />
             </div>
-            <Button onClick={createScenario} disabled={!newScenarioName.trim()}>
+            <Button onClick={handleCreateScenario} disabled={!newScenarioName.trim()}>
               <Plus className="h-4 w-4 mr-2" />
               Add Scenario
             </Button>
@@ -305,7 +281,15 @@ const ScenarioManager = () => {
                   {scenarios.map(scenario => (
                     <TableHead key={scenario.id} className="text-center min-w-40">
                       <div className="flex flex-col items-center gap-2">
-                        <div className="font-medium">{scenario.name}</div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{scenario.name}</span>
+                          {scenario.id === activeScenario && (
+                            <Badge variant="secondary" className="text-xs">Active</Badge>
+                          )}
+                          {hasModifications(scenario.id) && (
+                            <div className="w-2 h-2 bg-orange-400 rounded-full" title="Modified" />
+                          )}
+                        </div>
                         {scenario.id !== 'base' && (
                           <Button
                             variant="ghost"
@@ -353,7 +337,7 @@ const ScenarioManager = () => {
                                     value={scenario.values[parameter.key] !== undefined 
                                       ? scenario.values[parameter.key] 
                                       : baseValue}
-                                    onChange={(e) => updateScenarioValue(scenario.id, parameter.key, e.target.value)}
+                                    onChange={(e) => updateScenarioValue(scenario.id, parameter.key, parseFloat(e.target.value) || 0)}
                                     className={`w-full text-center ${isChanged ? 'bg-yellow-50 border-yellow-300' : ''}`}
                                   />
                                 )}
@@ -374,10 +358,14 @@ const ScenarioManager = () => {
       {/* Summary */}
       <Card className="bg-blue-50 border-blue-200">
         <CardContent className="pt-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
             <div>
               <div className="font-medium text-blue-800">Total Scenarios</div>
               <div className="text-blue-600">{scenarios.length}</div>
+            </div>
+            <div>
+              <div className="font-medium text-blue-800">Active Scenario</div>
+              <div className="text-blue-600">{scenarios.find(s => s.id === activeScenario)?.name || 'Base'}</div>
             </div>
             <div>
               <div className="font-medium text-blue-800">Modified Parameters</div>
@@ -390,6 +378,7 @@ const ScenarioManager = () => {
               <div className="text-blue-600 space-y-1">
                 <div>🔵 Base values (current inputs)</div>
                 <div>🟡 Modified values</div>
+                <div>🟠 Modified indicator</div>
               </div>
             </div>
           </div>
