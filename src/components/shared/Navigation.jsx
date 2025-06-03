@@ -12,7 +12,8 @@ import {
   HelpCircle,
   Calculator,
   LogOut,
-  User
+  User,
+  Layers
 } from 'lucide-react';
 
 // Navigation tabs configuration that can be shared between App and LoginScreen
@@ -21,14 +22,14 @@ export const navigationTabs = [
   {
     id: "landingpage",
     label: "Summary",
-    icon: BarChart3, // Assuming BarChart3 is a suitable icon for Summary/Landing Page
+    icon: BarChart3,
     colors: "hover:bg-blue-100 data-[state=active]:bg-blue-500 data-[state=active]:text-white",
   },
-      {
-  id: "threeway",
-  label: "3-Way Forecast",
-  icon: Calculator, // or choose a different icon like BarChart3
-  colors: "hover:bg-indigo-100 data-[state=active]:bg-indigo-500 data-[state=active]:text-white",
+  {
+    id: "threeway",
+    label: "3-Way Forecast",
+    icon: Calculator,
+    colors: "hover:bg-indigo-100 data-[state=active]:bg-indigo-500 data-[state=active]:text-white",
   },
   {
     id: "inputs",
@@ -42,7 +43,6 @@ export const navigationTabs = [
     icon: Building2,
     colors: "hover:bg-purple-100 data-[state=active]:bg-purple-500 data-[state=active]:text-white",
   },
-
   {
     id: "revenue",
     label: "Revenue Charts",
@@ -57,9 +57,9 @@ export const navigationTabs = [
   },
   {
     id: "valuation",
-    label: "Platform Valuation",
-    icon: Calculator,
-    colors: "hover:bg-blue-100 data-[state=active]:bg-blue-500 data-[state=active]:text-white",
+    label: "Scenario Manager", // Updated label
+    icon: Layers, // Updated icon to better represent scenarios
+    colors: "hover:bg-teal-100 data-[state=active]:bg-teal-500 data-[state=active]:text-white", // Updated colors
   },
   {
     id: "settings",

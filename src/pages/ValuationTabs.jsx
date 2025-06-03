@@ -1,193 +1,402 @@
-import React, { useRef } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+// components/ScenarioManager.jsx - Column-based scenario comparison
+import React, { useState, useMemo } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Download, Upload, Settings, BarChart3 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Plus, Trash2, Eye, EyeOff } from 'lucide-react';
 import { usePortfolio } from '@/contexts/PortfolioContext';
 
-// Import the two unified components
-import PortfolioInputs from '@/components/PortfolioInputs';
-import PortfolioAnalysis from '@/components/PortfolioAnalysis';
+const ScenarioManager = () => {
+  const { assets, constants } = usePortfolio();
+  
+  const [scenarios, setScenarios] = useState([
+    {
+      id: 'base',
+      name: 'Base',
+      description: 'Current portfolio inputs',
+      values: {}
+    }
+  ]);
+  
+  const [newScenarioName, setNewScenarioName] = useState('');
+  const [hideUnchanged, setHideUnchanged] = useState(false);
 
-const ValuationTabs = () => {
-  const fileInputRef = useRef(null);
-  const { portfolioName, exportPortfolioData, importPortfolioData } = usePortfolio();
+  // Define all available parameters
+  const allParameters = useMemo(() => {
+    const params = [
+      // Platform Parameters
+      { 
+        category: 'Platform', 
+        key: 'platformOpex', 
+        label: 'Platform Opex ($M/year)', 
+        getValue: () => constants.platformOpex || 4.2 
+      },
+      { 
+        category: 'Platform', 
+        key: 'platformOpexEscalation', 
+        label: 'Platform Opex Escalation (%)', 
+        getValue: () => constants.platformOpexEscalation || 2.5 
+      },
+      { 
+        category: 'Platform', 
+        key: 'dividendPolicy', 
+        label: 'Dividend Policy (%)', 
+        getValue: () => constants.dividendPolicy || 85 
+      },
+      { 
+        category: 'Platform', 
+        key: 'minimumCashBalance', 
+        label: 'Minimum Cash ($M)', 
+        getValue: () => constants.minimumCashBalance || 5.0 
+      },
+      { 
+        category: 'Platform', 
+        key: 'corporateTaxRate', 
+        label: 'Corporate Tax Rate (%)', 
+        getValue: () => constants.corporateTaxRate || 0 
+      },
+      
+      // Market Parameters
+      { 
+        category: 'Market', 
+        key: 'escalation', 
+        label: 'Price Escalation (%)', 
+        getValue: () => constants.escalation || 2.5 
+      },
+      { 
+        category: 'Market', 
+        key: 'volumeVariation', 
+        label: 'Volume Risk (±%)', 
+        getValue: () => constants.volumeVariation || 20 
+      },
+      { 
+        category: 'Market', 
+        key: 'greenPriceVariation', 
+        label: 'Green Price Risk (±%)', 
+        getValue: () => constants.greenPriceVariation || 20 
+      },
+      { 
+        category: 'Market', 
+        key: 'EnergyPriceVariation', 
+        label: 'Energy Price Risk (±%)', 
+        getValue: () => constants.EnergyPriceVariation || 20 
+      },
+      
+      // Discount Rates
+      { 
+        category: 'Finance', 
+        key: 'discountRates.contract', 
+        label: 'Contract Discount Rate (%)', 
+        getValue: () => (constants.discountRates?.contract || 0.08) * 100 
+      },
+      { 
+        category: 'Finance', 
+        key: 'discountRates.merchant', 
+        label: 'Merchant Discount Rate (%)', 
+        getValue: () => (constants.discountRates?.merchant || 0.10) * 100 
+      },
+    ];
 
-  // Import handler
-  const handleImport = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        try {
-          const importedData = JSON.parse(e.target.result);
-          importPortfolioData(importedData);
-          
-          // Show success message
-          const notification = document.createElement('div');
-          notification.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-md shadow-lg z-50';
-          notification.textContent = 'Portfolio data imported successfully';
-          document.body.appendChild(notification);
-          
-          // Remove notification after 3 seconds
-          setTimeout(() => {
-            document.body.removeChild(notification);
-          }, 3000);
-        } catch (error) {
-          // Show error message
-          const notification = document.createElement('div');
-          notification.className = 'fixed top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-md shadow-lg z-50';
-          notification.textContent = 'Error importing portfolio data: Invalid format';
-          document.body.appendChild(notification);
-          
-          setTimeout(() => {
-            document.body.removeChild(notification);
-          }, 3000);
-          
-          console.error('Import error:', error);
+    // Add asset-specific parameters
+    if (assets && typeof assets === 'object') {
+      Object.values(assets).forEach(asset => {
+        if (asset && asset.name) {
+          params.push(
+            { 
+              category: 'Assets', 
+              key: `assets.${asset.name}.capacity`, 
+              label: `${asset.name} - Capacity (MW)`, 
+              getValue: () => asset.capacity || 0 
+            },
+            { 
+              category: 'Assets', 
+              key: `assets.${asset.name}.volumeLossAdjustment`, 
+              label: `${asset.name} - Volume Loss (%)`, 
+              getValue: () => asset.volumeLossAdjustment || 95 
+            },
+            { 
+              category: 'Assets', 
+              key: `assetCosts.${asset.name}.capex`, 
+              label: `${asset.name} - CAPEX ($M)`, 
+              getValue: () => constants.assetCosts?.[asset.name]?.capex || 0 
+            },
+            { 
+              category: 'Assets', 
+              key: `assetCosts.${asset.name}.operatingCosts`, 
+              label: `${asset.name} - Operating Costs ($M)`, 
+              getValue: () => constants.assetCosts?.[asset.name]?.operatingCosts || 0 
+            },
+            { 
+              category: 'Assets', 
+              key: `assetCosts.${asset.name}.terminalValue`, 
+              label: `${asset.name} - Terminal Value ($M)`, 
+              getValue: () => constants.assetCosts?.[asset.name]?.terminalValue || 0 
+            }
+          );
         }
-      };
-      reader.readAsText(file);
+      });
     }
-    // Reset file input
-    event.target.value = '';
+
+    return params;
+  }, [assets, constants]);
+
+  // Get value for a parameter in a specific scenario
+  const getScenarioValue = (scenario, parameter) => {
+    if (scenario.id === 'base') {
+      return parameter.getValue();
+    }
+    
+    return scenario.values[parameter.key] !== undefined 
+      ? scenario.values[parameter.key] 
+      : parameter.getValue();
   };
 
-  // Export handler
-  const handleExport = () => {
-    try {
-      const data = exportPortfolioData();
-      const dataStr = JSON.stringify(data, null, 2);
-      const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-      
-      // Create clean filename
-      const cleanPortfolioName = portfolioName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-      const timestamp = new Date().toISOString().split('T')[0];
-      const exportFileName = `${cleanPortfolioName}_${timestamp}.json`;
-      
-      // Create and trigger download
-      const linkElement = document.createElement('a');
-      linkElement.setAttribute('href', dataUri);
-      linkElement.setAttribute('download', exportFileName);
-      linkElement.click();
-      
-      // Show success message
-      const notification = document.createElement('div');
-      notification.className = 'fixed top-4 right-4 bg-blue-500 text-white px-4 py-2 rounded-md shadow-lg z-50';
-      notification.textContent = `Portfolio data exported as ${exportFileName}`;
-      document.body.appendChild(notification);
-      
-      setTimeout(() => {
-        document.body.removeChild(notification);
-      }, 3000);
-    } catch (error) {
-      // Show error message
-      const notification = document.createElement('div');
-      notification.className = 'fixed top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-md shadow-lg z-50';
-      notification.textContent = 'Error exporting portfolio data';
-      document.body.appendChild(notification);
-      
-      setTimeout(() => {
-        document.body.removeChild(notification);
-      }, 3000);
-      
-      console.error('Export error:', error);
-    }
+  // Update scenario value
+  const updateScenarioValue = (scenarioId, parameterKey, value) => {
+    setScenarios(prev => prev.map(scenario => {
+      if (scenario.id === scenarioId) {
+        return {
+          ...scenario,
+          values: {
+            ...scenario.values,
+            [parameterKey]: parseFloat(value) || 0
+          }
+        };
+      }
+      return scenario;
+    }));
   };
+
+  // Create new scenario
+  const createScenario = () => {
+    if (!newScenarioName.trim()) return;
+
+    const newScenario = {
+      id: `scenario_${Date.now()}`,
+      name: newScenarioName.trim(),
+      description: `Alternative scenario: ${newScenarioName.trim()}`,
+      values: {}
+    };
+
+    setScenarios(prev => [...prev, newScenario]);
+    setNewScenarioName('');
+  };
+
+  // Delete scenario
+  const deleteScenario = (scenarioId) => {
+    if (scenarioId === 'base') return;
+    setScenarios(prev => prev.filter(s => s.id !== scenarioId));
+  };
+
+  // Check if parameter has any changes across scenarios
+  const hasChanges = (parameter) => {
+    const baseValue = parameter.getValue();
+    return scenarios.some(scenario => {
+      if (scenario.id === 'base') return false;
+      const scenarioValue = scenario.values[parameter.key];
+      return scenarioValue !== undefined && scenarioValue !== baseValue;
+    });
+  };
+
+  // Filter parameters based on hideUnchanged setting
+  const visibleParameters = hideUnchanged 
+    ? allParameters.filter(hasChanges)
+    : allParameters;
+
+  // Group parameters by category
+  const groupedParameters = visibleParameters.reduce((groups, param) => {
+    if (!groups[param.category]) {
+      groups[param.category] = [];
+    }
+    groups[param.category].push(param);
+    return groups;
+  }, {});
+
+  // Check if we have any assets to work with
+  const hasAssets = assets && typeof assets === 'object' && Object.keys(assets).length > 0;
+
+  if (!hasAssets) {
+    return (
+      <div className="w-full p-6 space-y-6">
+        <div className="flex justify-between items-center">
+          <h1 className="text-2xl font-bold">Scenario Manager</h1>
+        </div>
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center h-64">
+            <p className="text-lg font-medium text-gray-500">No Assets Available</p>
+            <p className="text-sm text-gray-400 mt-2">
+              Please add assets in the Asset Definition tab before creating scenarios
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
-    <div className="w-full min-h-screen bg-gray-50">
+    <div className="w-full p-6 space-y-6">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Portfolio Analysis</h1>
-            <p className="text-sm text-gray-600 mt-1">
-              Configure portfolio settings and analyze financial performance
-            </p>
-          </div>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold">Scenario Manager</h1>
+          <p className="text-gray-600">Compare different modeling scenarios side-by-side</p>
+        </div>
+        
+        <div className="flex items-center gap-4">
+          <Button
+            variant="outline"
+            onClick={() => setHideUnchanged(!hideUnchanged)}
+            className="flex items-center gap-2"
+          >
+            {hideUnchanged ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+            {hideUnchanged ? 'Show All' : 'Hide Unchanged'}
+          </Button>
           
-          {/* Import/Export Controls */}
-          <div className="flex items-center space-x-3">
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleImport}
-              accept=".json"
-              className="hidden"
-            />
-            
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-2"
-            >
-              <Upload className="w-4 h-4" />
-              Import Portfolio
-            </Button>
-            
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleExport}
-              className="flex items-center gap-2"
-            >
-              <Download className="w-4 h-4" />
-              Export Portfolio
-            </Button>
-          </div>
+          <Badge variant="outline">
+            {Object.keys(assets).length} assets loaded
+          </Badge>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="px-6 py-6">
-        <Tabs defaultValue="inputs" className="w-full">
-          {/* Tab Navigation */}
-          <div className="flex justify-center mb-6">
-            <TabsList className="grid w-full max-w-md grid-cols-2 bg-white border border-gray-200">
-              <TabsTrigger 
-                value="inputs" 
-                className="flex items-center gap-2 data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700"
-              >
-                <Settings className="w-4 h-4" />
-                Configuration
-              </TabsTrigger>
-              <TabsTrigger 
-                value="analysis" 
-                className="flex items-center gap-2 data-[state=active]:bg-green-50 data-[state=active]:text-green-700"
-              >
-                <BarChart3 className="w-4 h-4" />
-                Analysis
-              </TabsTrigger>
-            </TabsList>
+      {/* Create New Scenario */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Add New Scenario</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-4 items-end">
+            <div className="flex-1">
+              <Label>Scenario Name</Label>
+              <Input
+                value={newScenarioName}
+                onChange={(e) => setNewScenarioName(e.target.value)}
+                placeholder="e.g., High Growth, Conservative, Stressed"
+                onKeyPress={(e) => e.key === 'Enter' && createScenario()}
+              />
+            </div>
+            <Button onClick={createScenario} disabled={!newScenarioName.trim()}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Scenario
+            </Button>
           </div>
+        </CardContent>
+      </Card>
 
-          {/* Tab Content */}
-          <TabsContent value="inputs" className="mt-0">
-            <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-              <PortfolioInputs />
+      {/* Scenario Comparison Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Scenario Comparison</CardTitle>
+          <div className="text-sm text-gray-600">
+            {hideUnchanged 
+              ? `Showing ${visibleParameters.length} parameters with changes`
+              : `Showing all ${allParameters.length} parameters`
+            }
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-80">Parameter</TableHead>
+                  {scenarios.map(scenario => (
+                    <TableHead key={scenario.id} className="text-center min-w-40">
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="font-medium">{scenario.name}</div>
+                        {scenario.id !== 'base' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => deleteScenario(scenario.id)}
+                            className="text-red-600 hover:text-red-700 h-6 w-6 p-0"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableHead>
+                  ))}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {Object.entries(groupedParameters).map(([category, parameters]) => (
+                  <React.Fragment key={category}>
+                    <TableRow className="bg-gray-50">
+                      <TableCell colSpan={scenarios.length + 1} className="font-semibold text-gray-700">
+                        {category}
+                      </TableCell>
+                    </TableRow>
+                    {parameters.map(parameter => {
+                      const baseValue = parameter.getValue();
+                      
+                      return (
+                        <TableRow key={parameter.key}>
+                          <TableCell className="font-medium">{parameter.label}</TableCell>
+                          {scenarios.map(scenario => {
+                            const value = getScenarioValue(scenario, parameter);
+                            const isChanged = scenario.id !== 'base' && 
+                                             scenario.values[parameter.key] !== undefined;
+                            
+                            return (
+                              <TableCell key={scenario.id} className="text-center">
+                                {scenario.id === 'base' ? (
+                                  <span className="text-blue-600 font-medium">
+                                    {typeof value === 'number' ? value.toFixed(2) : value}
+                                  </span>
+                                ) : (
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    value={scenario.values[parameter.key] !== undefined 
+                                      ? scenario.values[parameter.key] 
+                                      : baseValue}
+                                    onChange={(e) => updateScenarioValue(scenario.id, parameter.key, e.target.value)}
+                                    className={`w-full text-center ${isChanged ? 'bg-yellow-50 border-yellow-300' : ''}`}
+                                  />
+                                )}
+                              </TableCell>
+                            );
+                          })}
+                        </TableRow>
+                      );
+                    })}
+                  </React.Fragment>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Summary */}
+      <Card className="bg-blue-50 border-blue-200">
+        <CardContent className="pt-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <div>
+              <div className="font-medium text-blue-800">Total Scenarios</div>
+              <div className="text-blue-600">{scenarios.length}</div>
             </div>
-          </TabsContent>
-
-          <TabsContent value="analysis" className="mt-0">
-            <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-              <PortfolioAnalysis />
+            <div>
+              <div className="font-medium text-blue-800">Modified Parameters</div>
+              <div className="text-blue-600">
+                {allParameters.filter(hasChanges).length} of {allParameters.length}
+              </div>
             </div>
-          </TabsContent>
-        </Tabs>
-      </div>
-
-      {/* Help Text */}
-      <div className="fixed bottom-4 right-4 max-w-sm">
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 shadow-sm">
-          <p className="text-xs text-blue-700">
-            <strong>💡 Tip:</strong> All settings auto-save and trigger real-time recalculation. 
-            Switch between Configuration and Analysis tabs to see results update instantly.
-          </p>
-        </div>
-      </div>
+            <div>
+              <div className="font-medium text-blue-800">Legend</div>
+              <div className="text-blue-600 space-y-1">
+                <div>🔵 Base values (current inputs)</div>
+                <div>🟡 Modified values</div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
 
-export default ValuationTabs;
+export default ScenarioManager;
