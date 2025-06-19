@@ -8,7 +8,7 @@ import PortfolioProvider from "@/contexts/PortfolioContext";
 
 // Import components for each tab
 import LandingPage from "@/pages/LandingPage";
-import Australian3WayForecast from "@/pages/3way/TestPage";
+import Australian3WayForecast from "@/pages/3way/FinancialStatements";
 import PortfolioInputs from "@/pages/InputsGlobal";
 import AssetDashboard from "@/pages/AssetDashboard";
 import PortfolioRevenue from "@/pages/Revenue_Charts";

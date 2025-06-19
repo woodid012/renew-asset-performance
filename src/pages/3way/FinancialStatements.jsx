@@ -136,7 +136,7 @@ const Australian3WayForecast = () => {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Australian Standard 3-Way Financial Forecast</h1>
+          <h1 className="text-3xl font-bold text-gray-900">3-Way Financial Forecast</h1>
           <p className="text-gray-600 mt-2">
             AASB compliant Profit & Loss, Balance Sheet, and Cash Flow projections for {portfolioName}
           </p>
@@ -145,9 +145,7 @@ const Australian3WayForecast = () => {
               Viewing: {viewBy === 'portfolio' ? 'Portfolio Consolidated' : `Asset: ${viewBy}`}
             </span>
             <span className="text-sm text-gray-500">•</span>
-            <span className="text-sm text-gray-500">
-              Scenario: {selectedScenario.charAt(0).toUpperCase() + selectedScenario.slice(1)}
-            </span>
+
           </div>
         </div>
         
@@ -178,21 +176,7 @@ const Australian3WayForecast = () => {
             </Select>
           </div>
 
-          {/* Scenario Selector */}
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium text-gray-700">Scenario:</label>
-            <Select value={selectedScenario} onValueChange={setSelectedScenario}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Select scenario" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="base">Base Case</SelectItem>
-                <SelectItem value="worst">Combined Downside</SelectItem>
-                <SelectItem value="volume">Volume Stress</SelectItem>
-                <SelectItem value="price">Price Stress</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+
           
           <div className="flex flex-col gap-2">
             <label className="text-sm font-medium text-gray-700">&nbsp;</label>
@@ -205,43 +189,7 @@ const Australian3WayForecast = () => {
       </div>
 
       {/* Summary KPIs */}
-      <div className="grid grid-cols-4 gap-4">
-        <Card className="border-2 border-blue-200">
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-blue-600">
-              {formatCurrency(forecastData[0]?.totalAssets || 0)}
-            </div>
-            <p className="text-sm text-muted-foreground">Total Assets</p>
-          </CardContent>
-        </Card>
-        
-        <Card className="border-2 border-green-200">
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-green-600">
-              {formatCurrency(forecastData.reduce((sum, item) => sum + (item.netProfitAfterTax || 0), 0))}
-            </div>
-            <p className="text-sm text-muted-foreground">{years.length}-Year Total NPAT</p>
-          </CardContent>
-        </Card>
-        
-        <Card className="border-2 border-purple-200">
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-purple-600">
-              {formatPercent(forecastData[0]?.ebitdaMargin || 0)}
-            </div>
-            <p className="text-sm text-muted-foreground">EBITDA Margin (Year 1)</p>
-          </CardContent>
-        </Card>
-        
-        <Card className="border-2 border-orange-200">
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-orange-600">
-              {formatPercent(forecastData[0]?.returnOnAssets || 0)}
-            </div>
-            <p className="text-sm text-muted-foreground">Return on Assets</p>
-          </CardContent>
-        </Card>
-      </div>
+
 
           {/* Main Forecast Tables */}
       <Tabs defaultValue="profit-loss" className="w-full">
