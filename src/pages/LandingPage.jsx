@@ -3,9 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronRight } from 'lucide-react';
 import { usePortfolio } from '@/contexts/PortfolioContext';
+import { useScenarios } from '@/contexts/ScenarioContext'; // NEW: Import scenarios
 import { 
   calculatePlatformPL, 
   calculateCashFlow, 
@@ -18,13 +17,12 @@ import {
 } from '@/components/ProjectFinance_Calcs';
 
 const SummaryFinancialsLanding = () => {
-  const { assets, constants, getMerchantPrice, portfolioName } = usePortfolio();
-  const [selectedRevenueCase, setSelectedRevenueCase] = useState('base');
-  const [includeTerminalValue, setIncludeTerminalValue] = useState(true);
+  const { assets, constants, getMerchantPrice, portfolioName, baseAssets, baseConstants } = usePortfolio();
   
-  // State for expandable tables
-  const [showPLTable, setShowPLTable] = useState(false);
-  const [expandedPLYears, setExpandedPLYears] = useState(new Set());
+  // NEW: Use global scenarios instead of risk scenarios
+  const { scenarios, activeScenario, setActiveScenario } = useScenarios();
+  
+  const [includeTerminalValue, setIncludeTerminalValue] = useState(true);
 
   // Get current user from session storage
   const currentUser = sessionStorage.getItem('currentUser') || portfolioName || 'Portfolio';
@@ -36,21 +34,21 @@ const SummaryFinancialsLanding = () => {
     return generateYears(startYear, endYear);
   }, [constants.analysisStartYear, constants.analysisEndYear]);
 
-  // Calculate platform P&L data
+  // Calculate platform P&L data using scenario-aware data
   const plData = useMemo(() => {
     if (Object.keys(assets).length === 0) return { platformPL: [], quarters: [] };
     
     return calculatePlatformPL(
-      assets,
-      constants,
+      assets, // Using scenario-modified assets
+      constants, // Using scenario-modified constants
       years,
       getMerchantPrice,
-      selectedRevenueCase,
+      'base', // Always use base calculation since scenarios are applied to the data itself
       true, // Use portfolio debt
       constants.platformOpex || 4.2,
       constants.platformOpexEscalation || 2.5
     );
-  }, [assets, constants, years, getMerchantPrice, selectedRevenueCase]);
+  }, [assets, constants, years, getMerchantPrice]);
 
   // Calculate cash flow data
   const cashFlowData = useMemo(() => {
@@ -66,17 +64,17 @@ const SummaryFinancialsLanding = () => {
     );
   }, [plData.platformPL, plData.quarters, constants.dividendPolicy, constants.minimumCashBalance]);
 
-  // Calculate project metrics
+  // Calculate project metrics using scenario-aware data
   const projectMetrics = useMemo(() => {
     if (Object.keys(assets).length === 0) return {};
     
     try {
       return calculateProjectMetrics(
-        assets,
-        constants.assetCosts,
-        constants,
+        assets, // Using scenario-modified assets
+        constants.assetCosts, // Using scenario-modified asset costs
+        constants, // Using scenario-modified constants
         getMerchantPrice,
-        selectedRevenueCase,
+        'base', // Always use base calculation since scenarios are applied to the data itself
         false,
         includeTerminalValue
       );
@@ -84,44 +82,8 @@ const SummaryFinancialsLanding = () => {
       console.error("Error calculating project metrics:", error);
       return {};
     }
-  }, [assets, constants.assetCosts, constants, getMerchantPrice, selectedRevenueCase, includeTerminalValue]);
+  }, [assets, constants.assetCosts, constants, getMerchantPrice, includeTerminalValue]);
 
-  // Helper functions for expandable tables
-  const groupDataByYears = (data, yearsPerGroup = 5) => {
-    const groups = [];
-    for (let i = 0; i < data.length; i += yearsPerGroup) {
-      const groupData = data.slice(i, i + yearsPerGroup);
-      if (groupData.length > 0) {
-        const startYear = groupData[0].period;
-        const endYear = groupData[groupData.length - 1].period;
-        groups.push({
-          id: `years-${startYear}-${endYear}`,
-          label: `Years ${startYear} - ${endYear}`,
-          data: groupData
-        });
-      }
-    }
-    return groups;
-  };
-
-  const togglePLYearGroup = (groupId) => {
-    const newExpanded = new Set(expandedPLYears);
-    if (newExpanded.has(groupId)) {
-      newExpanded.delete(groupId);
-    } else {
-      newExpanded.add(groupId);
-    }
-    setExpandedPLYears(newExpanded);
-  };
-
-  const expandAllPL = () => {
-    const plGroups = groupDataByYears(plData.platformPL);
-    setExpandedPLYears(new Set(plGroups.map(g => g.id)));
-  };
-
-  const collapseAllPL = () => {
-    setExpandedPLYears(new Set());
-  };
   const formatPercent = (value) => {
     if (value === undefined || value === null) return 'N/A';
     return `${(value * 100).toFixed(1)}%`;
@@ -184,19 +146,11 @@ const SummaryFinancialsLanding = () => {
     return totals;
   };
 
-  // Prepare cash flow waterfall data - removed since using exact format
-  // const waterfallData = useMemo(() => {
-  //   if (!cashFlowData.annual || cashFlowData.annual.length === 0) return [];
-  //   
-  //   return cashFlowData.annual.slice(0, 10).map(cf => ({
-  //     year: cf.period,
-  //     operatingCashFlow: cf.operatingCashFlow,
-  //     tax: -Math.abs(cf.tax),
-  //     debtService: -Math.abs(cf.debtService),
-  //     dividends: -Math.abs(cf.dividend),
-  //     netCashFlow: cf.netCashFlow
-  //   }));
-  // }, [cashFlowData.annual]);
+  // Get active scenario name for display
+  const getActiveScenarioName = () => {
+    const scenario = scenarios.find(s => s.id === activeScenario);
+    return scenario ? scenario.name : 'Base';
+  };
 
   if (!assets || Object.keys(assets).length === 0) {
     return (
@@ -211,28 +165,19 @@ const SummaryFinancialsLanding = () => {
     <div className="p-6 space-y-6">
       {/* Header with scenario selector */}
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Portfolio Financial Summary</h1>
-        <Select value={selectedRevenueCase} onValueChange={setSelectedRevenueCase}>
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="Select scenario" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="base">Base Case</SelectItem>
-            <SelectItem value="worst">Downside Volume & Price</SelectItem>
-            <SelectItem value="volume">Volume Stress</SelectItem>
-            <SelectItem value="price">Price Stress</SelectItem>
-          </SelectContent>
-        </Select>
+
+        
+  
       </div>
 
-      {/* Income Statement Chart - Exact Format */}
+      {/* Income Statement Chart - Simplified without detailed table */}
       <Card>
         <CardHeader>
           <CardTitle>Platform Profit & Loss</CardTitle>
         </CardHeader>
         <CardContent>
           {/* P&L Chart */}
-          <div className="h-96 mb-6">
+          <div className="h-96">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={plData.platformPL}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -254,88 +199,10 @@ const SummaryFinancialsLanding = () => {
               </LineChart>
             </ResponsiveContainer>
           </div>
-          
-          {/* P&L Table - Expandable */}
-          <div className="border-t pt-4">
-            <div className="flex items-center justify-between mb-4">
-              <Button
-                variant="outline"
-                onClick={() => setShowPLTable(!showPLTable)}
-                className="flex items-center gap-2"
-              >
-                {showPLTable ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                {showPLTable ? 'Hide' : 'Show'} Detailed P&L Table
-              </Button>
-              {showPLTable && (
-                <div className="flex gap-2">
-                  <Button variant="ghost" size="sm" onClick={expandAllPL}>
-                    Expand All
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={collapseAllPL}>
-                    Collapse All
-                  </Button>
-                </div>
-              )}
-            </div>
-            
-            {showPLTable && (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Year</TableHead>
-                      <TableHead>Revenue</TableHead>
-                      <TableHead>Asset Opex</TableHead>
-                      <TableHead>Platform Opex</TableHead>
-                      <TableHead>EBITDA</TableHead>
-                      <TableHead>Depreciation</TableHead>
-                      <TableHead>Interest</TableHead>
-                      <TableHead>Principal</TableHead>
-                      <TableHead>EBT</TableHead>
-                      <TableHead>Tax</TableHead>
-                      <TableHead>NPAT</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {groupDataByYears(plData.platformPL).map((group) => (
-                      <React.Fragment key={group.id}>
-                        <TableRow className="bg-gray-100 hover:bg-gray-200 cursor-pointer" onClick={() => togglePLYearGroup(group.id)}>
-                          <TableCell colSpan={11} className="font-medium">
-                            <div className="flex items-center gap-2">
-                              {expandedPLYears.has(group.id) ? 
-                                <ChevronDown className="h-4 w-4" /> : 
-                                <ChevronRight className="h-4 w-4" />
-                              }
-                              {group.label}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                        {expandedPLYears.has(group.id) && group.data.map((row, index) => (
-                          <TableRow key={row.period} className={index % 2 === 0 ? "bg-muted/20" : ""}>
-                            <TableCell className="pl-8">{row.period}</TableCell>
-                            <TableCell>{formatCurrency(row.revenue)}</TableCell>
-                            <TableCell>{formatCurrency(row.assetOpex)}</TableCell>
-                            <TableCell>{formatCurrency(row.platformOpex)}</TableCell>
-                            <TableCell className="font-medium">{formatCurrency(row.ebitda)}</TableCell>
-                            <TableCell>{formatCurrency(row.depreciation)}</TableCell>
-                            <TableCell>{formatCurrency(row.interest)}</TableCell>
-                            <TableCell>{formatCurrency(row.principalRepayment)}</TableCell>
-                            <TableCell>{formatCurrency(row.ebt)}</TableCell>
-                            <TableCell>{formatCurrency(row.tax)}</TableCell>
-                            <TableCell className="font-medium">{formatCurrency(row.npat)}</TableCell>
-                          </TableRow>
-                        ))}
-                      </React.Fragment>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </div>
         </CardContent>
       </Card>
 
-      {/* Key Performance Indicators - Updated Focus */}
+      {/* Key Performance Indicators */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="border-2 border-blue-200">
           <CardContent className="pt-6">
@@ -432,6 +299,7 @@ const SummaryFinancialsLanding = () => {
           </Table>
         </CardContent>
       </Card>
+
     </div>
   );
 };

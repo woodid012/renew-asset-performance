@@ -2,6 +2,10 @@ import React, { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { TabsContent } from "@/components/ui/tabs";
 
+// Context Providers - ORDER MATTERS!
+import ScenarioProvider from "@/contexts/ScenarioContext";
+import PortfolioProvider from "@/contexts/PortfolioContext";
+
 // Import components for each tab
 import LandingPage from "@/pages/LandingPage";
 import Australian3WayForecast from "@/pages/3way/TestPage";
@@ -18,7 +22,8 @@ import LoginScreen from "@/pages/LoginScreen";
 import Navigation, { navigationTabs } from "@/components/shared/Navigation";
 import { usePortfolio } from "@/contexts/PortfolioContext";
 
-const App = () => {
+// Inner App component that uses the contexts
+const AppInner = () => {
   const [activeTab, setActiveTab] = useState("landingpage");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
@@ -127,7 +132,7 @@ const App = () => {
             case "risk": return EarningsRiskAnalysis;
             case "scenario": return ScenarioManager;
             case "ppa": return ConsolidatedPPATables;
-            case "threeway": return Australian3WayForecast; // Assuming this is the correct import
+            case "threeway": return Australian3WayForecast;
             case "settings": return PortfolioSettings;
             default: return null;
           }
@@ -142,6 +147,17 @@ const App = () => {
         );
       })}
     </Navigation>
+  );
+};
+
+// Main App component with proper provider hierarchy
+const App = () => {
+  return (
+    <ScenarioProvider>
+      <PortfolioProvider>
+        <AppInner />
+      </PortfolioProvider>
+    </ScenarioProvider>
   );
 };
 

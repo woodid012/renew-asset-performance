@@ -1,3 +1,4 @@
+// src/contexts/PortfolioContext.jsx - Fixed with Safe Scenario Integration
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import Papa from 'papaparse';
 import _ from 'lodash';
@@ -62,15 +63,33 @@ export function usePortfolio() {
   return context;
 }
 
-// Internal wrapper component that has access to merchant prices
+// Safe hook to use scenarios - returns null if not available
+function useScenariosOrNull() {
+  try {
+    // Try to import useScenarios dynamically
+    const { useScenarios } = require('./ScenarioContext');
+    return useScenarios();
+  } catch (error) {
+    // ScenarioContext not available, return null
+    return null;
+  }
+}
+
+// Internal wrapper component that has access to merchant prices and scenarios
 function PortfolioProviderInner({ children }) {
   const { merchantPrices, getMerchantPrice, getMerchantSpread, priceSource, setPriceSource } = useMerchantPrices();
+  
+  // NEW: Safe access to scenario context - might be null
+  const scenarioContext = useScenariosOrNull();
+  
   const [portfolioSource, setPortfolioSource] = useState('zebre_2025-01-13.json');
   const [activePortfolio, setActivePortfolio] = useState('zebre');
   const [analysisMode, setAnalysisMode] = useState('simple');
   const [portfolioName, setPortfolioName] = useState("Portfolio Name");
-  const [assets, setAssets] = useState({});
-  const [constants, setConstants] = useState({
+  
+  // Base data (unchanged by scenarios)
+  const [baseAssets, setBaseAssets] = useState({});
+  const [baseConstants, setBaseConstants] = useState({
     // System constants
     HOURS_IN_YEAR: DEFAULT_SYSTEM_CONSTANTS.HOURS_IN_YEAR,
     priceAggregation: DEFAULT_SYSTEM_CONSTANTS.priceAggregation,
@@ -119,6 +138,15 @@ function PortfolioProviderInner({ children }) {
     deprecationPeriods: DEFAULT_TAX_DEPRECIATION.deprecationPeriods
   });
 
+  // NEW: Computed scenario-aware values - use base data if scenarios not available
+  const assets = scenarioContext?.getScenarioAssets ? 
+    scenarioContext.getScenarioAssets(baseAssets) : 
+    baseAssets;
+    
+  const constants = scenarioContext?.getScenarioConstants ? 
+    scenarioContext.getScenarioConstants(baseConstants) : 
+    baseConstants;
+
   // Initialize asset costs with default values from centralized constants
   const initializeAssetCosts = useCallback((assets) => {
     const newAssetCosts = {};
@@ -164,24 +192,24 @@ function PortfolioProviderInner({ children }) {
     return newAssetCosts;
   }, []);
 
-  // Update constants when merchant prices change
+  // Update base constants when merchant prices change
   useEffect(() => {
-    setConstants(prev => ({
+    setBaseConstants(prev => ({
       ...prev,
       merchantPrices
     }));
   }, [merchantPrices]);
 
-  // Initialize asset costs when assets change, but only if asset costs don't already exist
+  // Initialize asset costs when base assets change, but only if asset costs don't already exist
   useEffect(() => {
-    if (Object.keys(assets).length > 0 && 
-        (!constants.assetCosts || Object.keys(constants.assetCosts).length === 0)) {
-      setConstants(prev => ({
+    if (Object.keys(baseAssets).length > 0 && 
+        (!baseConstants.assetCosts || Object.keys(baseConstants.assetCosts).length === 0)) {
+      setBaseConstants(prev => ({
         ...prev,
-        assetCosts: initializeAssetCosts(assets)
+        assetCosts: initializeAssetCosts(baseAssets)
       }));
     }
-  }, [assets, constants.assetCosts, initializeAssetCosts]);
+  }, [baseAssets, baseConstants.assetCosts, initializeAssetCosts]);
 
   // Import portfolio data including valuation and project finance inputs
   const importPortfolioData = useCallback((importedData) => {
@@ -191,8 +219,8 @@ function PortfolioProviderInner({ children }) {
         throw new Error('Invalid import data structure');
       }
 
-      // Set portfolio data
-      setAssets(importedData.assets);
+      // Set base portfolio data (not affected by scenarios)
+      setBaseAssets(importedData.assets);
       if (importedData.portfolioName) {
         setPortfolioName(importedData.portfolioName);
       }
@@ -203,10 +231,10 @@ function PortfolioProviderInner({ children }) {
         if (importedData.constants) {
           // Merge with default constants structure to ensure all fields are present
           const mergedConstants = {
-            ...constants, // Start with current defaults
+            ...baseConstants, // Start with current defaults
             ...importedData.constants, // Override with imported values
           };
-          setConstants(mergedConstants);
+          setBaseConstants(mergedConstants);
         }
       } else {
         // Only initialize asset costs if none were provided in the import
@@ -217,8 +245,8 @@ function PortfolioProviderInner({ children }) {
         
         const initializedAssetCosts = initializeAssetCosts(tmpAssets);
         
-        // Update constants with initialized asset costs
-        setConstants(prev => ({
+        // Update base constants with initialized asset costs
+        setBaseConstants(prev => ({
           ...prev,
           ...(importedData.constants || {}),
           assetCosts: initializedAssetCosts
@@ -236,7 +264,7 @@ function PortfolioProviderInner({ children }) {
       console.error('Error importing portfolio data:', error);
       throw error;
     }
-  }, [setPriceSource, initializeAssetCosts, constants]);
+  }, [setPriceSource, initializeAssetCosts, baseConstants]);
 
   // Using a ref to handle the import function reference to avoid circular dependency
   const importPortfolioDataRef = useRef(importPortfolioData);
@@ -261,7 +289,7 @@ function PortfolioProviderInner({ children }) {
         console.log('Portfolio loaded successfully:', portfolioSource);
       } catch (error) {
         console.error('Error loading portfolio:', error);
-        setAssets({});
+        setBaseAssets({});
       }
     };
 
@@ -291,7 +319,7 @@ function PortfolioProviderInner({ children }) {
             return;
           }
           
-          setConstants(prev => ({
+          setBaseConstants(prev => ({
             ...prev,
             merchantPrices: results.data
           }));
@@ -312,25 +340,25 @@ function PortfolioProviderInner({ children }) {
       version: '2.0',
       exportDate: new Date().toISOString(),
       portfolioName,
-      assets,
+      assets: baseAssets, // Export base assets, not scenario-modified ones
       constants: {
-        discountRates: constants.discountRates,
-        assetCosts: constants.assetCosts,
-        volumeVariation: constants.volumeVariation,
-        greenPriceVariation: constants.greenPriceVariation,
-        EnergyPriceVariation: constants.EnergyPriceVariation,
-        escalation: constants.escalation,
-        referenceYear: constants.referenceYear,
-        priceAggregation: constants.priceAggregation,
-        analysisStartYear: constants.analysisStartYear,
-        analysisEndYear: constants.analysisEndYear,
-        platformOpex: constants.platformOpex,
-        otherOpex: constants.otherOpex,
-        platformOpexEscalation: constants.platformOpexEscalation,
-        dividendPolicy: constants.dividendPolicy,
-        minimumCashBalance: constants.minimumCashBalance,
-        corporateTaxRate: constants.corporateTaxRate,
-        deprecationPeriods: constants.deprecationPeriods
+        discountRates: baseConstants.discountRates,
+        assetCosts: baseConstants.assetCosts,
+        volumeVariation: baseConstants.volumeVariation,
+        greenPriceVariation: baseConstants.greenPriceVariation,
+        EnergyPriceVariation: baseConstants.EnergyPriceVariation,
+        escalation: baseConstants.escalation,
+        referenceYear: baseConstants.referenceYear,
+        priceAggregation: baseConstants.priceAggregation,
+        analysisStartYear: baseConstants.analysisStartYear,
+        analysisEndYear: baseConstants.analysisEndYear,
+        platformOpex: baseConstants.platformOpex,
+        otherOpex: baseConstants.otherOpex,
+        platformOpexEscalation: baseConstants.platformOpexEscalation,
+        dividendPolicy: baseConstants.dividendPolicy,
+        minimumCashBalance: baseConstants.minimumCashBalance,
+        corporateTaxRate: baseConstants.corporateTaxRate,
+        deprecationPeriods: baseConstants.deprecationPeriods
       },
       analysisMode,
       activePortfolio,
@@ -339,15 +367,15 @@ function PortfolioProviderInner({ children }) {
     };
 
     return exportData;
-  }, [assets, portfolioName, constants, analysisMode, activePortfolio, portfolioSource, priceSource]);
+  }, [baseAssets, portfolioName, baseConstants, analysisMode, activePortfolio, portfolioSource, priceSource]);
 
   const updateAnalysisMode = useCallback((mode) => {
     setAnalysisMode(mode);
   }, []);
 
-  // Constants update function
+  // NEW: Constants update function - now updates base constants
   const updateConstants = useCallback((field, value) => {
-    setConstants(prev => {
+    setBaseConstants(prev => {
       if (field.includes('.')) {
         const fields = field.split('.');
         const newConstants = { ...prev };
@@ -372,15 +400,26 @@ function PortfolioProviderInner({ children }) {
     });
   }, []);
 
+  // NEW: Assets update function - now updates base assets
+  const setAssets = useCallback((newAssets) => {
+    setBaseAssets(newAssets);
+  }, []);
+
   const value = {
-    assets,
-    setAssets,
+    // Base data (for editing and export)
+    baseAssets,
+    baseConstants,
+    setAssets, // Updates base assets
+    
+    // Scenario-aware data (for calculations and display)
+    assets, // Scenario-modified assets
+    constants, // Scenario-modified constants
+    
     portfolioName,
     setPortfolioName,
     activePortfolio,
     setActivePortfolio,
-    constants,
-    updateConstants,
+    updateConstants, // Updates base constants
     getMerchantPrice,
     getMerchantSpread,
     portfolioSource,
@@ -391,7 +430,11 @@ function PortfolioProviderInner({ children }) {
     updateAnalysisMode,
     loadMerchantPrices,
     exportPortfolioData,
-    importPortfolioData
+    importPortfolioData,
+    
+    // NEW: Scenario awareness
+    currentScenario: scenarioContext?.activeScenario || 'base',
+    scenarioAvailable: !!scenarioContext
   };
 
   return (
