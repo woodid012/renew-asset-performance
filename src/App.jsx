@@ -37,16 +37,29 @@ const AppInner = () => {
   } = usePortfolio();
 
   // Check if user was previously logged in
-  useEffect(() => {
-    const loginStatus = sessionStorage.getItem('portfolioLoggedIn');
-    const storedUser = sessionStorage.getItem('currentUser');
-    
-    if (loginStatus === 'true' && storedUser) {
-      setIsLoggedIn(true);
-      setCurrentUser(storedUser);
-      loadUserPortfolio(storedUser);
-    }
-  }, []);
+  // Check if user was previously logged in
+useEffect(() => {
+  const loginStatus = sessionStorage.getItem('portfolioLoggedIn');
+  const storedUser = sessionStorage.getItem('currentUser');
+  
+  if (loginStatus === 'true' && storedUser) {
+    setIsLoggedIn(true);
+    setCurrentUser(storedUser);
+    // For database mode, we'll load portfolios differently
+    loadUserPortfoliosFromDatabase(storedUser);
+  }
+}, []);
+
+const loadUserPortfoliosFromDatabase = async (username) => {
+  try {
+    // For now, use the admin user ID we know exists
+    const adminUserId = '6853b044dd2ecce8ba519ba5';
+    sessionStorage.setItem('currentUserId', adminUserId);
+    console.log('Set user ID for database operations:', adminUserId);
+  } catch (error) {
+    console.error('Error setting up database user:', error);
+  }
+};
 
   const loadUserPortfolio = async (username) => {
     try {
