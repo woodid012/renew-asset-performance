@@ -1,4 +1,4 @@
-// src/contexts/PortfolioContext.jsx - Fixed with Safe Scenario Integration
+// src/contexts/PortfolioContext.jsx - Updated for MongoDB
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import Papa from 'papaparse';
 import _ from 'lodash';
@@ -21,35 +21,78 @@ import {
   getDefaultValue
 } from '../lib/default_constants';
 
+// API configuration
+const API_BASE = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:3001/api';
+
+// API service functions
+const apiService = {
+  async savePortfolio(userId, portfolioId, portfolioData) {
+    const response = await fetch(`${API_BASE}/portfolio/${userId}/${portfolioId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(portfolioData)
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to save portfolio: ${response.statusText}`);
+    }
+    
+    return response.json();
+  },
+
+  async loadPortfolio(userId, portfolioId) {
+    const response = await fetch(`${API_BASE}/portfolio/${userId}/${portfolioId}`);
+    
+    if (!response.ok) {
+      if (response.status === 404) {
+        return null; // Portfolio doesn't exist
+      }
+      throw new Error(`Failed to load portfolio: ${response.statusText}`);
+    }
+    
+    return response.json();
+  },
+
+  async getUserPortfolios(userId) {
+    const response = await fetch(`${API_BASE}/portfolios/${userId}`);
+    
+    if (!response.ok) {
+      throw new Error(`Failed to get portfolios: ${response.statusText}`);
+    }
+    
+    return response.json();
+  },
+
+  async deletePortfolio(userId, portfolioId) {
+    const response = await fetch(`${API_BASE}/portfolio/${userId}/${portfolioId}`, {
+      method: 'DELETE'
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to delete portfolio: ${response.statusText}`);
+    }
+    
+    return response.json();
+  },
+
+  async login(username, password) {
+    const response = await fetch(`${API_BASE}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    
+    if (!response.ok) {
+      throw new Error('Invalid credentials');
+    }
+    
+    return response.json();
+  }
+};
+
 // Helper function for cost scaling
 const calculateFixedCost = (baseFixedCost, capacity, baseCapacity, scaleFactor) => {
   return baseFixedCost * Math.pow(capacity / baseCapacity, scaleFactor);
-};
-
-// Date helper functions
-const transformDateFormat = (dateStr) => {
-  if (!dateStr) return '';
-  try {
-    const [day, month, year] = dateStr.split('/');
-    if (!day || !month || !year) return dateStr;
-    const paddedDay = day.toString().padStart(2, '0');
-    const paddedMonth = month.toString().padStart(2, '0');
-    return `${year}-${paddedMonth}-${paddedDay}`;
-  } catch (error) {
-    console.warn('Error transforming date:', dateStr, error);
-    return dateStr;
-  }
-};
-
-const getYearFromDate = (dateStr) => {
-  if (!dateStr) return null;
-  try {
-    const [, , year] = dateStr.split('/');
-    return parseInt(year, 10);
-  } catch (error) {
-    console.warn('Error extracting year from date:', dateStr, error);
-    return null;
-  }
 };
 
 // Context creation
@@ -63,82 +106,63 @@ export function usePortfolio() {
   return context;
 }
 
-// Safe hook to use scenarios - returns null if not available
+// Safe hook to use scenarios
 function useScenariosOrNull() {
   try {
-    // Try to import useScenarios dynamically
     const { useScenarios } = require('./ScenarioContext');
     return useScenarios();
   } catch (error) {
-    // ScenarioContext not available, return null
     return null;
   }
 }
 
-// Internal wrapper component that has access to merchant prices and scenarios
+// Internal wrapper component
 function PortfolioProviderInner({ children }) {
   const { merchantPrices, getMerchantPrice, getMerchantSpread, priceSource, setPriceSource } = useMerchantPrices();
-  
-  // NEW: Safe access to scenario context - might be null
   const scenarioContext = useScenariosOrNull();
   
-  const [portfolioSource, setPortfolioSource] = useState('zebre_2025-01-13.json');
-  const [activePortfolio, setActivePortfolio] = useState('zebre');
+  // Add loading and save states
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState(null);
+  const [autoSave, setAutoSave] = useState(true);
+  
+  const [portfolioSource, setPortfolioSource] = useState('mongodb');
+  const [activePortfolio, setActivePortfolio] = useState('default');
   const [analysisMode, setAnalysisMode] = useState('simple');
   const [portfolioName, setPortfolioName] = useState("Portfolio Name");
   
-  // Base data (unchanged by scenarios)
+  // Base data
   const [baseAssets, setBaseAssets] = useState({});
   const [baseConstants, setBaseConstants] = useState({
-    // System constants
     HOURS_IN_YEAR: DEFAULT_SYSTEM_CONSTANTS.HOURS_IN_YEAR,
     priceAggregation: DEFAULT_SYSTEM_CONSTANTS.priceAggregation,
-    
-    // Capacity factors from centralized defaults
     capacityFactors: DEFAULT_CAPACITY_FACTORS.annual,
     capacityFactors_qtr: DEFAULT_CAPACITY_FACTORS.quarterly,
-    
-    // Asset performance from centralized defaults
     annualDegradation: DEFAULT_ASSET_PERFORMANCE.annualDegradation,
-    
-    // Merchant prices (will be updated from provider)
     merchantPrices: merchantPrices,
-    
-    // Risk parameters from centralized defaults
     volumeVariation: DEFAULT_RISK_PARAMETERS.volumeVariation,
     greenPriceVariation: DEFAULT_RISK_PARAMETERS.greenPriceVariation,
     EnergyPriceVariation: DEFAULT_RISK_PARAMETERS.EnergyPriceVariation,
-    
-    // Discount rates from centralized defaults (convert to decimals)
     discountRates: {
       contract: DEFAULT_DISCOUNT_RATES.contract / 100,
       merchant: DEFAULT_DISCOUNT_RATES.merchant / 100
     },
-    
-    // Asset costs (will be initialized)
     assetCosts: {},
-    
-    // Price settings from centralized defaults
     escalation: DEFAULT_PRICE_SETTINGS.escalation,
     referenceYear: DEFAULT_PRICE_SETTINGS.referenceYear,
-    
-    // Analysis settings from centralized defaults
     analysisStartYear: DEFAULT_ANALYSIS_SETTINGS.analysisStartYear,
     analysisEndYear: DEFAULT_ANALYSIS_SETTINGS.analysisEndYear,
-    
-    // Platform costs from centralized defaults
     platformOpex: DEFAULT_PLATFORM_COSTS.platformOpex,
     otherOpex: DEFAULT_PLATFORM_COSTS.otherOpex,
     platformOpexEscalation: DEFAULT_PLATFORM_COSTS.platformOpexEscalation,
     dividendPolicy: DEFAULT_PLATFORM_COSTS.dividendPolicy,
     minimumCashBalance: DEFAULT_PLATFORM_COSTS.minimumCashBalance,
-    
-    // Tax settings from centralized defaults
     corporateTaxRate: DEFAULT_TAX_DEPRECIATION.corporateTaxRate,
     deprecationPeriods: DEFAULT_TAX_DEPRECIATION.deprecationPeriods
   });
 
-  // NEW: Computed scenario-aware values - use base data if scenarios not available
+  // Computed scenario-aware values
   const assets = scenarioContext?.getScenarioAssets ? 
     scenarioContext.getScenarioAssets(baseAssets) : 
     baseAssets;
@@ -147,28 +171,64 @@ function PortfolioProviderInner({ children }) {
     scenarioContext.getScenarioConstants(baseConstants) : 
     baseConstants;
 
-  // Initialize asset costs with default values from centralized constants
+  // Auto-save timer ref
+  const autoSaveTimerRef = useRef(null);
+
+  // Get current user
+  const getCurrentUser = () => {
+    return sessionStorage.getItem('currentUser') || 'guest';
+  };
+
+  // Auto-save function
+  const triggerAutoSave = useCallback(async () => {
+    if (!autoSave || isSaving) return;
+    
+    const userId = getCurrentUser();
+    if (userId === 'guest') return;
+
+    try {
+      setIsSaving(true);
+      const exportData = exportPortfolioData();
+      await apiService.savePortfolio(userId, activePortfolio, exportData);
+      setLastSaved(new Date());
+    } catch (error) {
+      console.error('Auto-save failed:', error);
+      // Don't show error to user for auto-save failures
+    } finally {
+      setIsSaving(false);
+    }
+  }, [autoSave, isSaving, activePortfolio, baseAssets, baseConstants, portfolioName, analysisMode, priceSource]);
+
+  // Debounced auto-save
+  const scheduleAutoSave = useCallback(() => {
+    if (!autoSave) return;
+    
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+    }
+    
+    autoSaveTimerRef.current = setTimeout(triggerAutoSave, 5000); // Save after 5 seconds of inactivity
+  }, [triggerAutoSave, autoSave]);
+
+  // Initialize asset costs
   const initializeAssetCosts = useCallback((assets) => {
     const newAssetCosts = {};
     Object.values(assets).forEach(asset => {
-      const assetType = asset.type === 'battery' ? 'storage' : asset.type; // Map battery to storage
+      const assetType = asset.type === 'battery' ? 'storage' : asset.type;
       
-      // Get default values using the utility function
       const defaultCapex = getDefaultValue('capex', null, assetType) || DEFAULT_CAPEX_RATES.default;
       const defaultOpex = getDefaultValue('opex', null, assetType) || DEFAULT_OPEX_RATES.default;
       const defaultTerminal = getDefaultValue('terminal', null, assetType) || DEFAULT_TERMINAL_RATES.default;
       const defaultTenor = getDefaultValue('finance', 'tenorYears', assetType) || DEFAULT_PROJECT_FINANCE.tenorYears.default;
       
-      // Calculate project costs
       const projCapex = defaultCapex * asset.capacity;
       const projOpex = defaultOpex * asset.capacity;
       
-      // Calculate scaled operating cost using terminal rates as base for scaling
-      const baseCapacity = 100; // Reference capacity for scaling
-      const scaleFactor = 0.75; // Default scale factor
+      const baseCapacity = 100;
+      const scaleFactor = 0.75;
       const scaledOperatingCost = Math.min(
         calculateFixedCost(
-          defaultTerminal * baseCapacity * 0.1, // Use 10% of terminal value as base operating cost
+          defaultTerminal * baseCapacity * 0.1,
           asset.capacity,
           baseCapacity,
           scaleFactor
@@ -181,18 +241,18 @@ function PortfolioProviderInner({ children }) {
         operatingCostEscalation: DEFAULT_PROJECT_FINANCE.opexEscalation,
         terminalValue: Number((defaultTerminal * asset.capacity).toFixed(2)),
         capex: Number(projCapex.toFixed(1)),
-        maxGearing: DEFAULT_PROJECT_FINANCE.maxGearing / 100, // Convert to decimal
+        maxGearing: DEFAULT_PROJECT_FINANCE.maxGearing / 100,
         targetDSCRContract: DEFAULT_PROJECT_FINANCE.targetDSCRContract,
         targetDSCRMerchant: DEFAULT_PROJECT_FINANCE.targetDSCRMerchant,
-        interestRate: DEFAULT_PROJECT_FINANCE.interestRate / 100, // Convert to decimal
+        interestRate: DEFAULT_PROJECT_FINANCE.interestRate / 100,
         tenorYears: defaultTenor,
-        calculatedGearing: DEFAULT_PROJECT_FINANCE.maxGearing / 100 // Convert to decimal
+        calculatedGearing: DEFAULT_PROJECT_FINANCE.maxGearing / 100
       };
     });
     return newAssetCosts;
   }, []);
 
-  // Update base constants when merchant prices change
+  // Update merchant prices
   useEffect(() => {
     setBaseConstants(prev => ({
       ...prev,
@@ -200,7 +260,7 @@ function PortfolioProviderInner({ children }) {
     }));
   }, [merchantPrices]);
 
-  // Initialize asset costs when base assets change, but only if asset costs don't already exist
+  // Initialize asset costs when assets change
   useEffect(() => {
     if (Object.keys(baseAssets).length > 0 && 
         (!baseConstants.assetCosts || Object.keys(baseConstants.assetCosts).length === 0)) {
@@ -211,33 +271,90 @@ function PortfolioProviderInner({ children }) {
     }
   }, [baseAssets, baseConstants.assetCosts, initializeAssetCosts]);
 
-  // Import portfolio data including valuation and project finance inputs
+  // Load portfolio from MongoDB
+  const loadPortfolioFromDB = useCallback(async (userId, portfolioId) => {
+    try {
+      setIsLoading(true);
+      const portfolio = await apiService.loadPortfolio(userId, portfolioId);
+      
+      if (portfolio) {
+        setBaseAssets(portfolio.assets || {});
+        setPortfolioName(portfolio.portfolioName || 'Untitled Portfolio');
+        
+        if (portfolio.constants) {
+          setBaseConstants(prev => ({
+            ...prev,
+            ...portfolio.constants
+          }));
+        }
+        
+        if (portfolio.analysisMode) setAnalysisMode(portfolio.analysisMode);
+        if (portfolio.priceSource) setPriceSource(portfolio.priceSource);
+        
+        setLastSaved(new Date(portfolio.lastUpdated));
+        console.log('Portfolio loaded from MongoDB:', portfolioId);
+      } else {
+        // Portfolio doesn't exist, create new one
+        console.log('Creating new portfolio:', portfolioId);
+        setBaseAssets({});
+        setPortfolioName('New Portfolio');
+      }
+    } catch (error) {
+      console.error('Error loading portfolio from MongoDB:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [setPriceSource]);
+
+  // Save portfolio to MongoDB
+  const savePortfolioDB = useCallback(async (showSuccess = true) => {
+    const userId = getCurrentUser();
+    if (userId === 'guest') {
+      alert('Please log in to save portfolios');
+      return false;
+    }
+
+    try {
+      setIsSaving(true);
+      const exportData = exportPortfolioData();
+      await apiService.savePortfolio(userId, activePortfolio, exportData);
+      setLastSaved(new Date());
+      
+      if (showSuccess) {
+        alert('Portfolio saved successfully!');
+      }
+      return true;
+    } catch (error) {
+      console.error('Error saving portfolio:', error);
+      alert(`Error saving portfolio: ${error.message}`);
+      return false;
+    } finally {
+      setIsSaving(false);
+    }
+  }, [activePortfolio, baseAssets, baseConstants, portfolioName, analysisMode, priceSource]);
+
+  // Import portfolio data
   const importPortfolioData = useCallback((importedData) => {
     try {
-      // Basic validation
       if (!importedData.assets || !importedData.version) {
         throw new Error('Invalid import data structure');
       }
 
-      // Set base portfolio data (not affected by scenarios)
       setBaseAssets(importedData.assets);
       if (importedData.portfolioName) {
         setPortfolioName(importedData.portfolioName);
       }
 
-      // Check if we have asset costs in the imported data
       if (importedData.constants && importedData.constants.assetCosts) {
-        // Use the imported asset costs directly without merging with defaults
         if (importedData.constants) {
-          // Merge with default constants structure to ensure all fields are present
           const mergedConstants = {
-            ...baseConstants, // Start with current defaults
-            ...importedData.constants, // Override with imported values
+            ...baseConstants,
+            ...importedData.constants,
           };
           setBaseConstants(mergedConstants);
         }
       } else {
-        // Only initialize asset costs if none were provided in the import
         const tmpAssets = {};
         Object.entries(importedData.assets).forEach(([id, asset]) => {
           tmpAssets[asset.name] = asset;
@@ -245,7 +362,6 @@ function PortfolioProviderInner({ children }) {
         
         const initializedAssetCosts = initializeAssetCosts(tmpAssets);
         
-        // Update base constants with initialized asset costs
         setBaseConstants(prev => ({
           ...prev,
           ...(importedData.constants || {}),
@@ -253,94 +369,27 @@ function PortfolioProviderInner({ children }) {
         }));
       }
 
-      // Set other state if present
       if (importedData.analysisMode) setAnalysisMode(importedData.analysisMode);
       if (importedData.activePortfolio) setActivePortfolio(importedData.activePortfolio);
-      if (importedData.portfolioSource) setPortfolioSource(importedData.portfolioSource);
       if (importedData.priceSource) setPriceSource(importedData.priceSource);
 
+      // Schedule auto-save for imported data
+      scheduleAutoSave();
+      
       console.log('Portfolio data imported successfully');
     } catch (error) {
       console.error('Error importing portfolio data:', error);
       throw error;
     }
-  }, [setPriceSource, initializeAssetCosts, baseConstants]);
+  }, [setPriceSource, initializeAssetCosts, baseConstants, scheduleAutoSave]);
 
-  // Using a ref to handle the import function reference to avoid circular dependency
-  const importPortfolioDataRef = useRef(importPortfolioData);
-  
-  // Update ref when the function changes
-  useEffect(() => {
-    importPortfolioDataRef.current = importPortfolioData;
-  }, [importPortfolioData]);
-
-  // Load portfolio data whenever source changes
-  useEffect(() => {
-    const loadPortfolio = async () => {
-      try {
-        const response = await fetch(`/${portfolioSource}`);
-        if (!response.ok) throw new Error(`Failed to load portfolio: ${response.statusText}`);
-
-        const data = await response.json();
-        if (!data.assets) throw new Error('Invalid portfolio data structure');
-
-        // Use the ref to access the import function
-        importPortfolioDataRef.current(data);
-        console.log('Portfolio loaded successfully:', portfolioSource);
-      } catch (error) {
-        console.error('Error loading portfolio:', error);
-        setBaseAssets({});
-      }
-    };
-
-    if (portfolioSource) {
-      loadPortfolio();
-    }
-  }, [portfolioSource]);
-
-  // Load and parse merchant price CSV data
-  const loadMerchantPrices = useCallback(async (priceSource) => {
-    try {
-      console.log('Loading merchant prices from CSV...', `/${priceSource}`);
-      const response = await fetch(`/${priceSource}`);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const csvText = await response.text();
-      
-      Papa.parse(csvText, {
-        header: true,
-        dynamicTyping: true,
-        skipEmptyLines: true,
-        complete: (results) => {
-          if (!results.data || results.data.length === 0) {
-            console.error('No data found in merchant prices CSV');
-            return;
-          }
-          
-          setBaseConstants(prev => ({
-            ...prev,
-            merchantPrices: results.data
-          }));
-          console.log('Merchant prices loaded successfully');
-        },
-        error: (error) => {
-          console.error('Error parsing merchant prices CSV:', error);
-        }
-      });
-    } catch (error) {
-      console.error('Error loading merchant prices:', error);
-    }
-  }, []);
-
-  // Export all portfolio data including valuation and project finance inputs
+  // Export portfolio data
   const exportPortfolioData = useCallback(() => {
     const exportData = {
       version: '2.0',
       exportDate: new Date().toISOString(),
       portfolioName,
-      assets: baseAssets, // Export base assets, not scenario-modified ones
+      assets: baseAssets,
       constants: {
         discountRates: baseConstants.discountRates,
         assetCosts: baseConstants.assetCosts,
@@ -369,11 +418,13 @@ function PortfolioProviderInner({ children }) {
     return exportData;
   }, [baseAssets, portfolioName, baseConstants, analysisMode, activePortfolio, portfolioSource, priceSource]);
 
+  // Update analysis mode
   const updateAnalysisMode = useCallback((mode) => {
     setAnalysisMode(mode);
-  }, []);
+    scheduleAutoSave();
+  }, [scheduleAutoSave]);
 
-  // NEW: Constants update function - now updates base constants
+  // Update constants
   const updateConstants = useCallback((field, value) => {
     setBaseConstants(prev => {
       if (field.includes('.')) {
@@ -398,28 +449,50 @@ function PortfolioProviderInner({ children }) {
         [field]: value
       };
     });
-  }, []);
+    scheduleAutoSave();
+  }, [scheduleAutoSave]);
 
-  // NEW: Assets update function - now updates base assets
+  // Update assets
   const setAssets = useCallback((newAssets) => {
     setBaseAssets(newAssets);
+    scheduleAutoSave();
+  }, [scheduleAutoSave]);
+
+  // Load portfolio on mount if user is logged in
+  useEffect(() => {
+    const userId = getCurrentUser();
+    if (userId !== 'guest') {
+      loadPortfolioFromDB(userId, activePortfolio);
+    }
+  }, [activePortfolio, loadPortfolioFromDB]);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+      }
+    };
   }, []);
 
   const value = {
-    // Base data (for editing and export)
+    // Base data
     baseAssets,
     baseConstants,
-    setAssets, // Updates base assets
+    setAssets,
     
-    // Scenario-aware data (for calculations and display)
-    assets, // Scenario-modified assets
-    constants, // Scenario-modified constants
+    // Scenario-aware data
+    assets,
+    constants,
     
     portfolioName,
-    setPortfolioName,
+    setPortfolioName: (name) => {
+      setPortfolioName(name);
+      scheduleAutoSave();
+    },
     activePortfolio,
     setActivePortfolio,
-    updateConstants, // Updates base constants
+    updateConstants,
     getMerchantPrice,
     getMerchantSpread,
     portfolioSource,
@@ -428,11 +501,24 @@ function PortfolioProviderInner({ children }) {
     setPriceCurveSource: setPriceSource,
     analysisMode,
     updateAnalysisMode,
-    loadMerchantPrices,
     exportPortfolioData,
     importPortfolioData,
     
-    // NEW: Scenario awareness
+    // MongoDB functions
+    savePortfolioDB,
+    loadPortfolioFromDB,
+    
+    // Loading states
+    isLoading,
+    isSaving,
+    lastSaved,
+    autoSave,
+    setAutoSave,
+    
+    // Manual save trigger
+    scheduleAutoSave,
+    
+    // Scenario awareness
     currentScenario: scenarioContext?.activeScenario || 'base',
     scenarioAvailable: !!scenarioContext
   };
@@ -444,7 +530,7 @@ function PortfolioProviderInner({ children }) {
   );
 }
 
-// Main provider that wraps everything
+// Main provider
 export function PortfolioProvider({ children }) {
   return (
     <MerchantPriceProvider>
