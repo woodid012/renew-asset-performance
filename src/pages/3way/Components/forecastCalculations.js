@@ -310,26 +310,9 @@ export const calculateForecastData = (
     plData = assetPLs[viewBy] || [];
   }
 
-  // Calculate initial equity for balance sheet calculations
-  const calculateInitialEquity = () => {
-    if (viewBy === 'portfolio') {
-      return Object.values(assets).reduce((sum, asset) => {
-        const assetCosts = constants.assetCosts[asset.name] || {};
-        const capex = assetCosts.capex || 0;
-        const gearing = assetCosts.calculatedGearing || 0.7;
-        return sum + (capex * (1 - gearing));
-      }, 0);
-    } else {
-      const assetCosts = constants.assetCosts[viewBy] || {};
-      const capex = assetCosts.capex || 0;
-      const gearing = assetCosts.calculatedGearing || 0.7;
-      return capex * (1 - gearing);
-    }
-  };
-
-  const initialEquity = calculateInitialEquity();
   let cumulativeRetainedEarnings = 0;
   let cumulativeCashFlow = constants.minimumCashBalance || 5.0;
+  let cumulativeEquityInvested = 0;
 
   const forecast = plData.map((plItem, index) => {
     const year = plItem.year;
@@ -346,6 +329,12 @@ export const calculateForecastData = (
     const taxExpense = plItem.taxExpense || 0;
     const netProfitAfterTax = plItem.netProfitAfterTax || (profitBeforeTax - taxExpense);
     const principalRepayment = plItem.principalRepayment || 0;
+
+    // Calculate annual equity investment (proportional to CAPEX spend)
+    const annualCapexSpend = plItem.annualCapexSpend || 0;
+    const annualDebtDrawdown = plItem.annualDebtDrawdown || 0;
+    const annualEquityInvestment = annualCapexSpend - annualDebtDrawdown;
+    cumulativeEquityInvested += annualEquityInvestment;
 
     // === BALANCE SHEET ===
     
@@ -370,12 +359,12 @@ export const calculateForecastData = (
     const totalNonCurrentLiabilities = longTermDebt;
     const totalLiabilities = totalCurrentLiabilities + totalNonCurrentLiabilities;
     
-    // Equity
+    // Equity - built up progressively during construction
     cumulativeRetainedEarnings += netProfitAfterTax;
     const dividendsPaid = Math.max(0, netProfitAfterTax * (constants.dividendPolicy || 85) / 100);
     cumulativeRetainedEarnings -= dividendsPaid;
     
-    const shareCapital = initialEquity;
+    const shareCapital = cumulativeEquityInvested; // Progressive equity investment
     const totalEquity = shareCapital + cumulativeRetainedEarnings;
     
     // === CASH FLOW STATEMENT ===
@@ -384,12 +373,11 @@ export const calculateForecastData = (
     const operatingCashFlow = ebitda - taxExpense;
     
     // Investing activities - annual CAPEX spend
-    const annualCapexSpend = plItem.annualCapexSpend || 0;
     const investingCashFlow = -annualCapexSpend;
     
-    // Financing activities
-    const debtProceeds = plItem.annualDebtDrawdown || 0;
-    const equityRaised = index === 0 ? initialEquity : 0; // Equity raised upfront
+    // Financing activities - progressive equity and debt investment
+    const debtProceeds = annualDebtDrawdown;
+    const equityRaised = annualEquityInvestment; // Equity invested this year
     const financingCashFlow = debtProceeds + equityRaised - principalRepayment - interestExpense - dividendsPaid;
     
     const netCashFlow = operatingCashFlow + investingCashFlow + financingCashFlow;
@@ -445,6 +433,8 @@ export const calculateForecastData = (
       // Construction tracking
       cumulativeCapexInvested,
       annualCapexSpend: annualCapexSpend,
+      annualEquityInvestment,
+      cumulativeEquityInvested,
       
       // Key ratios
       debtToEquity: totalLiabilities > 0 ? totalLiabilities / Math.max(totalEquity, 1) : 0,
