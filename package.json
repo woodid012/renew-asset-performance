@@ -3,18 +3,15 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-
   "scripts": {
     "dev": "vite",
     "dev:server": "cd server && npm run dev",
     "dev:full": "concurrently \"npm run dev:server\" \"npm run dev\"",
-    "build": "vite build",
-    "build:server": "cd server && npm install",
+    "build": "npm run build:server && vite build",
+    "build:server": "cd server && npm install --production",
     "preview": "vite preview",
-    "deploy": "npm run build"
-  },
-  "devDependencies": {
-    "concurrently": "^8.2.0"
+    "deploy": "npm run build",
+    "vercel-build": "npm run build"
   },
   "dependencies": {
     "@radix-ui/react-checkbox": "^1.1.2",
