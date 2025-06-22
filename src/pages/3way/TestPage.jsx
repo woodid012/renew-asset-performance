@@ -136,7 +136,7 @@ const Australian3WayForecast = () => {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Australian Standard 3-Way Financial Forecast</h1>
+          <h1 className="text-3xl font-bold text-gray-900">3-Way Financial Forecast</h1>
           <p className="text-gray-600 mt-2">
             AASB compliant Profit & Loss, Balance Sheet, and Cash Flow projections for {portfolioName}
           </p>
@@ -178,21 +178,6 @@ const Australian3WayForecast = () => {
             </Select>
           </div>
 
-          {/* Scenario Selector */}
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium text-gray-700">Scenario:</label>
-            <Select value={selectedScenario} onValueChange={setSelectedScenario}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Select scenario" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="base">Base Case</SelectItem>
-                <SelectItem value="worst">Combined Downside</SelectItem>
-                <SelectItem value="volume">Volume Stress</SelectItem>
-                <SelectItem value="price">Price Stress</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
           
           <div className="flex flex-col gap-2">
             <label className="text-sm font-medium text-gray-700">&nbsp;</label>
@@ -204,45 +189,8 @@ const Australian3WayForecast = () => {
         </div>
       </div>
 
-      {/* Summary KPIs */}
-      <div className="grid grid-cols-4 gap-4">
-        <Card className="border-2 border-blue-200">
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-blue-600">
-              {formatCurrency(forecastData[0]?.totalAssets || 0)}
-            </div>
-            <p className="text-sm text-muted-foreground">Total Assets</p>
-          </CardContent>
-        </Card>
-        
-        <Card className="border-2 border-green-200">
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-green-600">
-              {formatCurrency(forecastData.reduce((sum, item) => sum + (item.netProfitAfterTax || 0), 0))}
-            </div>
-            <p className="text-sm text-muted-foreground">{years.length}-Year Total NPAT</p>
-          </CardContent>
-        </Card>
-        
-        <Card className="border-2 border-purple-200">
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-purple-600">
-              {formatPercent(forecastData[0]?.ebitdaMargin || 0)}
-            </div>
-            <p className="text-sm text-muted-foreground">EBITDA Margin (Year 1)</p>
-          </CardContent>
-        </Card>
-        
-        <Card className="border-2 border-orange-200">
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-orange-600">
-              {formatPercent(forecastData[0]?.returnOnAssets || 0)}
-            </div>
-            <p className="text-sm text-muted-foreground">Return on Assets</p>
-          </CardContent>
-        </Card>
-      </div>
 
+      
           {/* Main Forecast Tables */}
       <Tabs defaultValue="profit-loss" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
@@ -434,20 +382,6 @@ const Australian3WayForecast = () => {
         </CardContent>
       </Card>
 
-      {/* Compliance Notes */}
-      <Card className="bg-blue-50 border-blue-200">
-        <CardHeader>
-          <CardTitle className="text-blue-800">Australian Accounting Standards Compliance</CardTitle>
-        </CardHeader>
-        <CardContent className="text-blue-700 space-y-2">
-          <p><strong>AASB 101 - Presentation of Financial Statements:</strong> Structure and presentation of P&L and Balance Sheet follows prescribed format</p>
-          <p><strong>AASB 107 - Statement of Cash Flows:</strong> Direct method used for operating activities classification</p>
-          <p><strong>AASB 116 - Property, Plant and Equipment:</strong> Straight-line depreciation applied over useful life</p>
-          <p><strong>AASB 112 - Income Taxes:</strong> Current tax liabilities recognised based on taxable income</p>
-          <p><strong>AASB 132 - Financial Instruments:</strong> Debt and equity classification per substance over form</p>
-          <p><strong>AASB 15 - Revenue from Contracts:</strong> Revenue recognition over time for energy generation contracts</p>
-        </CardContent>
-      </Card>
 
       {/* Notes to Financial Statements */}
       <Card>
